@@ -74,11 +74,8 @@ def load_and_process_gsheet(mode, sheet_id):
             team_df[col] = team_df[col].astype(str).str.replace(',', '', regex=False).str.strip()
             team_df[col] = pd.to_numeric(team_df[col], errors='coerce').fillna(0)
             
-        # ---------------------------------------------------------
-        # ⚡ [새로 추가된 핵심 로직] 수율 50% 미만 데이터 원천 제외 (노이즈 제거)
-        # ---------------------------------------------------------
+        # 수율 50% 미만 데이터 원천 제외
         calculated_yield = (team_df['이론금액'] / team_df['실제금액']) * 100
-        # 실제 금액 투입이 발생했으나 수율이 50% 미만으로 떨어지는 행은 이상치로 판단하여 탈락시킵니다.
         team_df = team_df[~((team_df['실제금액'] > 0) & (calculated_yield < 50))]
         
         return team_df
@@ -137,7 +134,7 @@ if selected_month:
                     m1_top5 = m1_large.sort_values('수율(%)', ascending=True).head(5)
                     m1_top5['표시텍스트'] = m1_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {r['실제금액']:,.0f}원", axis=1)
                     fig_m1 = px.bar(m1_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
-                    fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total descending'})
+                    fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_m1, use_container_width=True)
                 else: st.write("데이터 없음")
 
@@ -154,29 +151,47 @@ if selected_month:
                 else: st.write("데이터 없음")
 
         with tab3:
+            # ---------------------------------------------------------
+            # ⚡ [수정] 흐려지는 그라데이션 제거 ➔ 100% 선명한 단색 단색 매핑 + 크기 확대
+            # ---------------------------------------------------------
             st.markdown("#### 🔍 한눈에 보는 수율 리스크 매트릭스")
             st.markdown("""
-            * **🚨 우측 하단 (빨간색 구역)**: 투입 금액 규모가 크면서 수율은 낮아, **회사에 손실을 입히는 최우선 개선 품목**입니다.
-            * **🔵 상단 영역 (파란색 구역)**: 수율이 관리 기준(98%) 이상으로 양호하게 통제되고 있는 품목입니다.
+            * **🔴 기준 미달 (진한 빨간색)**: 해당 과의 목표 관리 수율에 미치지 못하는 **리스크 품목**입니다.
+            * **🔵 기준 달성 (진한 파란색)**: 목표 관리 수율을 통제 범위 내에서 달성 중인 **안정 품목**입니다.
             """)
             
             item_scatter = team_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율(%)'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             
+            # [수정] 과별 개별 기준에 부합하는지 체크하여 텍스트로 분리
+            def get_scatter_status(row):
+                targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 SNACK(반)': 95.0, '1팀 스프': 99.53}
+                limit = targets.get(row['생산부문명'], 95.0)
+                return '기준 달성' if row['수율(%)'] >= limit else '기준 미달'
+                
+            item_scatter['관리 상태'] = item_scatter.apply(get_scatter_status, axis=1)
+            
+            # 흐려지지 않는 100% 진한 단색 컬러 지정
+            scatter_colors = {'기준 달성': '#448AFF', '기준 미달': '#FF5252'}
+            
             fig3 = px.scatter(
                 item_scatter, 
                 x='실제금액', 
                 y='수율(%)', 
                 hover_name='하위품목 텍스트',
-                color='수율(%)', 
-                color_continuous_scale='RdBu', 
-                color_continuous_midpoint=98.0,
-                labels={'실제금액': '실제 투입 금액 (원)', '수율(%)': '수율 (%)'},
+                color='관리 상태',  # 수율 숫자가 아닌 '상태' 글자로 색상 매핑
+                color_discrete_map=scatter_colors,
+                category_orders={'관리 상태': ['기준 미달', '기준 달성']},
+                labels={'실제금액': '실제 투입 금액 (원)', '수율(%)': '수율 (%)', '관리 상태': '상태'},
                 title="품목별 집행 규모 대비 효율성(수율) 분포"
             )
             
-            fig3.add_hline(y=98.0, line_dash="dash", line_color="#FF5252", annotation_text="📋 기준 수율선 (98%)", annotation_position="top left")
+            # 참고용 기준선 98% 흐리게 유지
+            fig3.add_hline(y=98.0, line_dash="dash", line_color="#FFF", opacity=0.3, annotation_text="참고 기준선 (98%)", annotation_position="top left")
+            
+            # [수정] 마커 크기를 기존보다 키우고(size=10), 테두리선을 주어 다크모드에서 시인성을 극대화
+            fig3.update_traces(marker=dict(size=11, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)')))
             fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig3, use_container_width=True)
 
