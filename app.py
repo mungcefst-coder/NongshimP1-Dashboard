@@ -204,7 +204,7 @@ if selected_month:
         
         for i, d in enumerate(depts_list):
             with tabs[i]:
-                target_df = team_df if d == '전체 총합' else team_df[team_df['生産部門명'] == d if '生産部門명' in team_df.columns else team_df['생산부문명'] == d]
+                target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 final_summ = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
                 
                 raw_sub_theory = final_summ.loc[final_summ.index.isin(['원자재', '부자재']), '이론금액'].sum()
@@ -232,7 +232,7 @@ if selected_month:
                 }).map(get_custom_color, subset=['수율(%)'])
                 st.dataframe(styled_df, use_container_width=True)
                 
-        # ⚡ [신규 추가] 표 하단에 고정 배치된 부서별 관리 기준 가이드 안내선
+        # ⚡ [오타 수정 완료] unsafe_allow_index 지우고 unsafe_allow_html=True 하나만 남김
         st.markdown("""
         <div style="background-color: #262730; padding: 15px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 10px;">
             <p style="margin: 0; font-size: 14px; color: #B9F6CA; font-weight: bold;">🎯 생산1팀 공장 내부 자재 관리 수율 기준선</p>
@@ -242,6 +242,6 @@ if selected_month:
                 <li><b>1팀 스프:</b> 수율 <b>99.53% 이상</b> 달성 시 통제 정상 (미달 시 <span style="color:#FF5252; font-weight:bold;">붉은색</span> 표시)</li>
             </ul>
         </div>
-        """, unsafe_allow_index=True, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 else:
     st.warning("⚠️ 데이터를 불러올 수 없습니다. 구글 시트 상태를 확인해 주세요.")
