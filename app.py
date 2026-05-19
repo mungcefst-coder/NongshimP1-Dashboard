@@ -5,7 +5,7 @@ import urllib.parse
 
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2")
 
-# ⚡ [본인의 구글 스프레드시트 ID를 입력하세요]
+# 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 
 # 1. 사이드바 설정 (검색 기능 추가)
@@ -54,6 +54,7 @@ def load_and_process_gsheet(mode, sheet_id):
         pure_categories = ['원자재', '부자재', '반제품']
         team_df = team_df[team_df['자재 유형 내역'].isin(pure_categories)]
         
+        # 콤마, 공백 모두 무시하고 강제 숫자 변환
         for col in ['이론금액', '실제금액']:
             team_df[col] = team_df[col].astype(str).str.replace(',', '', regex=False).str.strip()
             team_df[col] = pd.to_numeric(team_df[col], errors='coerce').fillna(0)
@@ -80,16 +81,15 @@ if selected_month:
             team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
             st.info(f"💡 '{search_keyword}'(이)가 포함된 품목만 분석한 결과입니다.")
 
-        # 3. 최상단 KPI 대시보드
+        # 3. 최상단 KPI 대시보드 (이론 금액 / 실제 금액 / 종합 수율 순서)
         total_theory = team_df['이론금액'].sum()
         total_actual = team_df['실제금액'].sum()
-        total_loss = total_actual - total_theory
         total_yield = (total_theory / total_actual * 100) if total_actual > 0 else 0
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("💰 총 실제 투입 금액", f"{total_actual:,.0f} 원")
-        col2.metric("🏆 종합 수율", f"{total_yield:.2f} %")
-        col3.metric("🚨 총 손실 금액 (차액)", f"{total_loss:,.0f} 원")
+        col1.metric("🎯 이론 금액", f"{total_theory:,.0f} 원")
+        col2.metric("💰 실제 금액", f"{total_actual:,.0f} 원")
+        col3.metric("🏆 종합 수율", f"{total_yield:.2f} %")
         st.markdown("---")
 
         # 4. 시각화 분석 탭
@@ -107,7 +107,6 @@ if selected_month:
             item_sum = team_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_sum['손실액'] = item_sum['실제금액'] - item_sum['이론금액']
             
-            # 각 부서별로 손실액이 가장 큰 5개만 추출
             top_losers = item_sum.sort_values(['생산부문명', '손실액'], ascending=[True, False]).groupby('생산부문명').head(5)
             
             fig2 = px.bar(top_losers, x='손실액', y='하위품목 텍스트', color='생산부문명', orientation='h', text='손실액', title="과별 핵심 손실 품목 (단위: 원)")
@@ -119,7 +118,7 @@ if selected_month:
             st.markdown("#### 이론금액 vs 실제금액 산포도 (점 위치가 기준선 아래로 멀어질수록 이상치)")
             item_scatter = team_df.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
             fig3 = px.scatter(item_scatter, x='이론금액', y='실제금액', hover_name='하위품목 텍스트', color='실제금액', color_continuous_scale='Reds', title="품목별 투입 금액 분포")
-            # 기준선 (이론=실제) 추가
+            
             max_val = max(item_scatter['실제금액'].max(), item_scatter['이론금액'].max())
             fig3.add_shape(type="line", x0=0, y0=0, x1=max_val, y1=max_val, line=dict(color="LightSeaGreen", width=2, dash="dash"))
             fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
@@ -146,7 +145,6 @@ if selected_month:
                 final_summ.loc['전체 수율'] = [all_theory, all_actual]
                 final_summ['수율(%)'] = (final_summ['이론금액'] / final_summ['실제금액'] * 100)
                 
-                # 표에 신호등 색상 적용 및 숫자 포맷팅
                 styled_df = final_summ.style.map(color_yield, subset=['수율(%)']).format({
                     '이론금액': '{:,.0f}',
                     '실제금액': '{:,.0f}',
