@@ -64,13 +64,6 @@ def load_and_process_gsheet(mode, sheet_id):
         st.error(f"구글 시트를 읽어오는 중 오류가 발생했습니다. 에러: {e}")
         return pd.DataFrame()
 
-# 신호등 색상 함수
-def color_yield(val):
-    if pd.isna(val): return ''
-    if val >= 98: return 'color: #00FF00;'
-    elif val >= 95: return 'color: #FFC000;'
-    else: return 'color: #FF0000;'
-
 # 메인 화면 구성
 if selected_month:
     team_df = load_and_process_gsheet(selected_month, SHEET_ID)
@@ -100,9 +93,9 @@ if selected_month:
             dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
             
             custom_colors = {
-                '원자재': '#90CAF9', # 눈이 편안한 파스텔 블루
-                '부자재': '#A5D6A7', # 싱그러운 파스텔 그린
-                '반제품': '#FFAB91'  # 부드러운 파스텔 코랄
+                '원자재': '#90CAF9',
+                '부자재': '#A5D6A7',
+                '반제품': '#FFAB91' 
             }
             
             fig1 = px.bar(
@@ -113,8 +106,8 @@ if selected_month:
                 barmode='group', 
                 text='수율(%)', 
                 title="부서 및 자재별 수율 비교",
-                category_orders={'자재 유형 내역': ['원자재', '부자재', '반제품']}, # 순서 강제 고정
-                color_discrete_map=custom_colors # 파스텔 색상 적용
+                category_orders={'자재 유형 내역': ['원자재', '부자재', '반제품']},
+                color_discrete_map=custom_colors
             )
             fig1.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig1, use_container_width=True)
@@ -143,7 +136,7 @@ if selected_month:
 
         st.markdown("---")
         
-        # 5. 상세 현황 표 (신호등 서식 적용)
+        # 5. 상세 현황 표 (신호등 서식 및 순서 적용)
         st.subheader("📋 과별 상세 수율 현황")
         depts = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
         tabs = st.tabs(depts)
@@ -162,7 +155,33 @@ if selected_month:
                 final_summ.loc['전체 수율'] = [all_theory, all_actual]
                 final_summ['수율(%)'] = (final_summ['이론금액'] / final_summ['실제금액'] * 100)
                 
-                styled_df = final_summ.style.map(color_yield, subset=['수율(%)']).format({
+                # ⚡ [요청 1] 표 행 순서 고정 (없는 항목은 건너뛰고 있는 항목만 정렬)
+                desired_order = ['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율']
+                existing_order = [idx for idx in desired_order if idx in final_summ.index]
+                final_summ = final_summ.reindex(existing_order)
+                
+                # ⚡ [요청 2~5] 각 과별 맞춤형 수율 기준 색상 함수 (빨강/파랑)
+                def get_custom_color(val, dept_name=d):
+                    if pd.isna(val): return ''
+                    
+                    # 과별 기준 타겟 설정
+                    targets = {
+                        '1팀 면1과': 98.92,
+                        '1팀 면5과': 97.92,
+                        '1팀 스프': 99.53,
+                        '전체 총합': 98.73
+                    }
+                    limit = targets.get(dept_name, 95.0) # 기본값
+                    
+                    if val < limit:
+                        # 기준 미달: 눈에 띄는 빨간색 + 굵은 글씨
+                        return 'color: #FF5252; font-weight: bold;'
+                    else:
+                        # 기준 달성: 안정적인 파란색 + 굵은 글씨
+                        return 'color: #448AFF; font-weight: bold;'
+                
+                # 표에 색상 및 숫자 포맷 적용
+                styled_df = final_summ.style.map(get_custom_color, subset=['수율(%)']).format({
                     '이론금액': '{:,.0f}',
                     '실제금액': '{:,.0f}',
                     '수율(%)': '{:.2f}%'
