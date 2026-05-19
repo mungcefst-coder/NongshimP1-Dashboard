@@ -1,4 +1,4 @@
-import streamlit st
+import streamlit as st
 import pandas as pd
 import plotly.express as px
 import urllib.parse
@@ -155,12 +155,9 @@ if selected_month:
                 else: st.write("데이터 없음")
 
         with tab3:
-            # ---------------------------------------------------------
-            # ⚡ [수정] 수율 리스크 매트릭스 과별 필터 선택 UI 및 동적 연동
-            # ---------------------------------------------------------
             st.markdown("#### 🔍 한눈에 보는 수율 리스크 매트릭스")
             
-            # 상단 선택 상자 추가
+            # 상단 선택 상자
             scatter_dept = st.selectbox("🎯 분석할 부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_dept_filter")
             
             st.markdown("""
@@ -168,7 +165,6 @@ if selected_month:
             * **🔵 기준 달성 (진한 파란색)**: 목표 관리 수율을 통제 범위 내에서 달성 중인 **안정 품목**입니다.
             """)
             
-            # 선택 상자 값에 따른 데이터 필터링
             if scatter_dept == "전체 1팀":
                 plot_df = team_df.copy()
             else:
@@ -204,7 +200,6 @@ if selected_month:
                     marker=dict(size=11, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)'))
                 )
                 
-                # [기능 고도화] 선택한 과에 따라 빨간색 목표 점선이 유연하게 움직이도록 제어
                 targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53}
                 if scatter_dept in targets:
                     specific_limit = targets[scatter_dept]
