@@ -3,79 +3,8 @@ import pandas as pd
 import plotly.express as px
 import urllib.parse
 
-# 메인 세팅
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V1.1")
-
-# 💎 [디자인 프리미엄 모드 V1.1] 커스텀 고급 CSS 주입
-st.markdown("""
-<style>
-    /* 전체 배경 및 폰트 세팅 */
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
-    html, body, [data-testid="stAppViewContainer"] {
-        font-family: 'Noto Sans KR', sans-serif;
-    }
-    
-    /* 사이드바 프리미엄 스타일 */
-    [data-testid="stSidebar"] {
-        background-color: #111625 !important;
-        border-right: 1px solid #1e293b;
-    }
-    
-    /* 상단 KPI 메트릭 카드 고도화 */
-    [data-testid="stMetricContainer"] {
-        background: linear-gradient(145deg, #161b26, #1b2234) !important;
-        border: 1px solid #233149 !important;
-        border-radius: 12px !important;
-        padding: 20px 25px !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
-        transition: all 0.3s ease !important;
-    }
-    [data-testid="stMetricContainer"]:hover {
-        transform: translateY(-3px);
-        border-color: #0c4da2 !important;
-        box-shadow: 0 6px 20px rgba(12,77,162,0.3) !important;
-    }
-    
-    /* 메트릭 글자 색상 세정 */
-    [data-testid="stMetricLabel"] {
-        color: #94a3b8 !important;
-        font-size: 14px !important;
-        font-weight: 500 !important;
-    }
-    [data-testid="stMetricValue"] {
-        color: #f8fafc !important;
-        font-size: 28px !important;
-        font-weight: 700 !important;
-    }
-    
-    /* 탭 메뉴 디자인 세련화 */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #161b26;
-        padding: 6px;
-        border-radius: 8px;
-        border: 1px solid #233149;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 40px;
-        white-space: pre;
-        background-color: transparent;
-        border-radius: 6px;
-        color: #94a3b8;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-    .stTabs [data-baseweb="tab"]:hover {
-        color: #f8fafc;
-        background-color: #1e293b;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #0c4da2 !important;
-        color: #ffffff !important;
-        font-weight: 700 !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+# 메인 세팅 및 타이틀 버전 수정 (V1.0)
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V1.0")
 
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
@@ -320,14 +249,14 @@ if selected_month:
                 }).map(get_custom_color, subset=['수율(%)'])
                 st.dataframe(styled_df, use_container_width=True)
                 
-        # 한 줄 요약 배너 상자 스타일 패치
+        # 한 줄 요약 배너 상자
         st.markdown("""
-        <div style="background-color: #161b26; padding: 14px 20px; border-radius: 10px; border-left: 5px solid #0c4da2; border: 1px solid #233149; border-left: 5px solid #0c4da2; margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-            <span style="font-size: 14px; color: #5a9bd5; font-weight: bold; margin-right: 15px;">🎯 생산1팀 과별 수율 관리 기준 :</span>
-            <span style="font-size: 13px; color: #e2e8f0; font-weight: 500;">
-                🟢 <b style="color:#f8fafc;">1팀 면1과 :</b> 수율 98.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
-                🟢 <b style="color:#f8fafc;">1팀 면5과 :</b> 수율 97.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
-                🟢 <b style="color:#f8fafc;">1팀 스프 :</b> 수율 99.53% 이상
+        <div style="background-color: #262730; padding: 12px 18px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 10px;">
+            <span style="font-size: 14px; color: #B9F6CA; font-weight: bold; margin-right: 15px;">🎯 생산1팀 과별 수율 관리 기준 :</span>
+            <span style="font-size: 13px; color: #E0E0E0; font-weight: 500;">
+                🟢 <b>1팀 면1과 :</b> 수율 98.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
+                🟢 <b>1팀 면5과 :</b> 수율 97.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
+                🟢 <b>1팀 스프 :</b> 수율 99.53% 이상
             </span>
         </div>
         """, unsafe_allow_html=True)
