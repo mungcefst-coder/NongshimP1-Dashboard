@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import urllib.parse
 
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.4")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.5")
 
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
@@ -20,7 +20,7 @@ with st.sidebar:
     st.subheader("🔍 세부 품목 검색")
     search_keyword = st.text_input("검색어 입력 (예: 팜유, 포장지 등)", placeholder="비워두면 전체 조회")
 
-st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.4")
+st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.5")
 st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
 st.markdown("---")
 
@@ -132,7 +132,7 @@ if selected_month:
                 if not m1_data.empty:
                     m1_large = m1_data.sort_values('실제금액', ascending=False).head(15)
                     m1_top5 = m1_large.sort_values('수율(%)', ascending=True).head(5)
-                    m1_top5['표시텍스트'] = m1_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {r['실제금액']:,.0f}원", axis=1)
+                    m1_top5['표시텍스트'] = m1_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {(r['실제금액']/100000000):.2f}억 원", axis=1)
                     fig_m1 = px.bar(m1_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
                     fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_m1, use_container_width=True)
@@ -144,7 +144,7 @@ if selected_month:
                 if not m5_data.empty:
                     m5_large = m5_data.sort_values('실제금액', ascending=False).head(15)
                     m5_top5 = m5_large.sort_values('수율(%)', ascending=True).head(5)
-                    m5_top5['표시텍스트'] = m5_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {r['실제금액']:,.0f}원", axis=1)
+                    m5_top5['표시텍스트'] = m5_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {(r['실제금액']/100000000):.2f}억 원", axis=1)
                     fig_m5 = px.bar(m5_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
                     fig_m5.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_m5, use_container_width=True)
@@ -152,7 +152,7 @@ if selected_month:
 
         with tab3:
             # ---------------------------------------------------------
-            # ⚡ [수정] 흐려지는 그라데이션 제거 ➔ 100% 선명한 단색 단색 매핑 + 크기 확대
+            # ⚡ [수정] 가로축 단위를 헷갈리는 B, k 대신 '억 원' 단위로 변환
             # ---------------------------------------------------------
             st.markdown("#### 🔍 한눈에 보는 수율 리스크 매트릭스")
             st.markdown("""
@@ -164,35 +164,36 @@ if selected_month:
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율(%)'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             
-            # [수정] 과별 개별 기준에 부합하는지 체크하여 텍스트로 분리
+            # 그래프 표현을 위해 실제금액을 억 원 단위로 나눈 새 칼럼 생성
+            item_scatter['실제 투입 금액 (억 원)'] = item_scatter['실제금액'] / 100000000
+            
             def get_scatter_status(row):
-                targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 SNACK(반)': 95.0, '1팀 스프': 99.53}
+                targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53}
                 limit = targets.get(row['생산부문명'], 95.0)
                 return '기준 달성' if row['수율(%)'] >= limit else '기준 미달'
                 
             item_scatter['관리 상태'] = item_scatter.apply(get_scatter_status, axis=1)
-            
-            # 흐려지지 않는 100% 진한 단색 컬러 지정
             scatter_colors = {'기준 달성': '#448AFF', '기준 미달': '#FF5252'}
             
             fig3 = px.scatter(
                 item_scatter, 
-                x='실제금액', 
+                x='실제 투입 금액 (억 원)', # 축 단위를 억 원으로 고정
                 y='수율(%)', 
                 hover_name='하위품목 텍스트',
-                color='관리 상태',  # 수율 숫자가 아닌 '상태' 글자로 색상 매핑
+                color='관리 상태',  
                 color_discrete_map=scatter_colors,
                 category_orders={'관리 상태': ['기준 미달', '기준 달성']},
-                labels={'실제금액': '실제 투입 금액 (원)', '수율(%)': '수율 (%)', '관리 상태': '상태'},
                 title="품목별 집행 규모 대비 효율성(수율) 분포"
             )
             
-            # 참고용 기준선 98% 흐리게 유지
-            fig3.add_hline(y=98.0, line_dash="dash", line_color="#FFF", opacity=0.3, annotation_text="참고 기준선 (98%)", annotation_position="top left")
+            # 풍선 도움말(Hover) 포맷팅 가독성 패치 (.2f 억 원으로 표시)
+            fig3.update_traces(
+                hovertemplate="<b>%{hovertext}</b><br><br>실제 투입 금액: %{x:.2f}억 원<br>수율: %{y:.2f}%<br>상태: %{legendgroup}<extra></extra>",
+                marker=dict(size=11, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)'))
+            )
             
-            # [수정] 마커 크기를 기존보다 키우고(size=10), 테두리선을 주어 다크모드에서 시인성을 극대화
-            fig3.update_traces(marker=dict(size=11, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)')))
-            fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            fig3.add_hline(y=98.0, line_dash="dash", line_color="#FFF", opacity=0.3, annotation_text="참고 기준선 (98%)", annotation_position="top left")
+            fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(ticksuffix="억"))
             st.plotly_chart(fig3, use_container_width=True)
 
         st.markdown("---")
