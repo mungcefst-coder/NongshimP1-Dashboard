@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit st
 import pandas as pd
 import plotly.express as px
 import urllib.parse
@@ -155,16 +155,28 @@ if selected_month:
                 else: st.write("데이터 없음")
 
         with tab3:
+            # ---------------------------------------------------------
+            # ⚡ [수정] 수율 리스크 매트릭스 과별 필터 선택 UI 및 동적 연동
+            # ---------------------------------------------------------
             st.markdown("#### 🔍 한눈에 보는 수율 리스크 매트릭스")
+            
+            # 상단 선택 상자 추가
+            scatter_dept = st.selectbox("🎯 분석할 부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_dept_filter")
+            
             st.markdown("""
             * **🔴 기준 미달 (진한 빨간색)**: 해당 과의 목표 관리 수율에 미치지 못하는 **리스크 품목**입니다.
             * **🔵 기준 달성 (진한 파란색)**: 목표 관리 수율을 통제 범위 내에서 달성 중인 **안정 품목**입니다.
             """)
             
-            item_scatter = team_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+            # 선택 상자 값에 따른 데이터 필터링
+            if scatter_dept == "전체 1팀":
+                plot_df = team_df.copy()
+            else:
+                plot_df = team_df[team_df['생산부문명'] == scatter_dept].copy()
+            
+            item_scatter = plot_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율(%)'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
-            
             item_scatter['실제 투입 금액 (억 원)'] = item_scatter['실제금액'] / 100000000
             
             def get_scatter_status(row):
@@ -172,28 +184,40 @@ if selected_month:
                 limit = targets.get(row['생산부문명'], 95.0)
                 return '기준 달성' if row['수율(%)'] >= limit else '기준 미달'
                 
-            item_scatter['관리 상태'] = item_scatter.apply(get_scatter_status, axis=1)
-            scatter_colors = {'기준 달성': '#448AFF', '기준 미달': '#FF5252'}
-            
-            fig3 = px.scatter(
-                item_scatter, 
-                x='실제 투입 금액 (억 원)', 
-                y='수율(%)', 
-                hover_name='하위품목 텍스트',
-                color='관리 상태',  
-                color_discrete_map=scatter_colors,
-                category_orders={'관리 상태': ['기준 미달', '기준 달성']},
-                title="품목별 집행 규모 대비 효율성(수율) 분포"
-            )
-            
-            fig3.update_traces(
-                hovertemplate="<b>%{hovertext}</b><br><br>실제 투입 금액: %{x:.2f}억 원<br>수율: %{y:.2f}%<br>상태: %{legendgroup}<extra></extra>",
-                marker=dict(size=11, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)'))
-            )
-            
-            fig3.add_hline(y=98.0, line_dash="dash", line_color="#FFF", opacity=0.3, annotation_text="참고 기준선 (98%)", annotation_position="top left")
-            fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(ticksuffix="억"))
-            st.plotly_chart(fig3, use_container_width=True)
+            if not item_scatter.empty:
+                item_scatter['관리 상태'] = item_scatter.apply(get_scatter_status, axis=1)
+                scatter_colors = {'기준 달성': '#448AFF', '기준 미달': '#FF5252'}
+                
+                fig3 = px.scatter(
+                    item_scatter, 
+                    x='실제 투입 금액 (억 원)', 
+                    y='수율(%)', 
+                    hover_name='하위품목 텍스트',
+                    color='관리 상태',  
+                    color_discrete_map=scatter_colors,
+                    category_orders={'관리 상태': ['기준 미달', '기준 달성']},
+                    title=f"품목별 집행 규모 대비 효율성(수율) 분포 ({scatter_dept})"
+                )
+                
+                fig3.update_traces(
+                    hovertemplate="<b>%{hovertext}</b><br><br>실제 투입 금액: %{x:.2f}억 원<br>수율: %{y:.2f}%<br>상태: %{legendgroup}<extra></extra>",
+                    marker=dict(size=11, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)'))
+                )
+                
+                # [기능 고도화] 선택한 과에 따라 빨간색 목표 점선이 유연하게 움직이도록 제어
+                targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53}
+                if scatter_dept in targets:
+                    specific_limit = targets[scatter_dept]
+                    fig3.add_hline(y=specific_limit, line_dash="dash", line_color="#FF5252", opacity=0.8, 
+                                   annotation_text=f"🎯 {scatter_dept} 관리 기준선 ({specific_limit}%)", annotation_position="top left")
+                else:
+                    fig3.add_hline(y=98.0, line_dash="dash", line_color="#FFF", opacity=0.3, 
+                                   annotation_text="참고 기준선 (98%)", annotation_position="top left")
+                    
+                fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(ticksuffix="억"))
+                st.plotly_chart(fig3, use_container_width=True)
+            else:
+                st.info(f"💡 현재 선택된 월 조건에서 '{scatter_dept}'의 유효한 투입 품목 데이터가 없습니다.")
 
         st.markdown("---")
         
@@ -232,7 +256,7 @@ if selected_month:
                 }).map(get_custom_color, subset=['수율(%)'])
                 st.dataframe(styled_df, use_container_width=True)
                 
-        # ⚡ [수정 사항 반영] 세 줄짜리 리스트를 한 줄로 초슬림 압축 완료!
+        # 한 줄 요약 배너 상자
         st.markdown("""
         <div style="background-color: #262730; padding: 12px 18px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 10px;">
             <span style="font-size: 14px; color: #B9F6CA; font-weight: bold; margin-right: 15px;">🎯 생산1팀 과별 수율 관리 기준 :</span>
