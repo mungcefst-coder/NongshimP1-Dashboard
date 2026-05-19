@@ -50,4 +50,110 @@ def load_and_process_gsheet(mode, sheet_id):
         my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
         team_df = df[df['생산부문명'].isin(my_team)].copy()
         
-        team_df['자재 유형 내
+        team_df['자재 유형 내역'] = team_df['자재 유형 내역'].astype(str).str.strip()
+        pure_categories = ['원자재', '부자재', '반제품']
+        team_df = team_df[team_df['자재 유형 내역'].isin(pure_categories)]
+        
+        # 콤마, 공백 모두 무시하고 강제 숫자 변환
+        for col in ['이론금액', '실제금액']:
+            team_df[col] = team_df[col].astype(str).str.replace(',', '', regex=False).str.strip()
+            team_df[col] = pd.to_numeric(team_df[col], errors='coerce').fillna(0)
+        
+        return team_df
+    except Exception as e:
+        st.error(f"구글 시트를 읽어오는 중 오류가 발생했습니다. 에러: {e}")
+        return pd.DataFrame()
+
+# 신호등 색상 함수
+def color_yield(val):
+    if pd.isna(val): return ''
+    if val >= 98: return 'color: #00FF00;'
+    elif val >= 95: return 'color: #FFC000;'
+    else: return 'color: #FF0000;'
+
+# 메인 화면 구성
+if selected_month:
+    team_df = load_and_process_gsheet(selected_month, SHEET_ID)
+    
+    if not team_df.empty:
+        # 검색어 필터링 적용
+        if search_keyword:
+            team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
+            st.info(f"💡 '{search_keyword}'(이)가 포함된 품목만 분석한 결과입니다.")
+
+        # 3. 최상단 KPI 대시보드
+        total_theory = team_df['이론금액'].sum()
+        total_actual = team_df['실제금액'].sum()
+        total_yield = (total_theory / total_actual * 100) if total_actual > 0 else 0
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("🎯 이론 금액", f"{total_theory:,.0f} 원")
+        col2.metric("💰 실제 금액", f"{total_actual:,.0f} 원")
+        col3.metric("🏆 종합 수율", f"{total_yield:.2f} %")
+        st.markdown("---")
+
+        # 4. 시각화 분석 탭
+        tab1, tab2, tab3 = st.tabs(["📊 과별 비교 분석", "🚨 집중 관리 대상 (Top 5)", "🔍 이상치 탐지 (산포도)"])
+        
+        with tab1:
+            dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
+            dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
+            
+            custom_colors = {
+                '원자재': '#90CAF9', # 눈이 편안한 파스텔 블루
+                '부자재': '#A5D6A7', # 싱그러운 파스텔 그린
+                '반제품': '#FFAB91'  # 부드러운 파스텔 코랄
+            }
+            
+            fig1 = px.bar(
+                dept_sum, 
+                x='생산부문명', 
+                y='수율(%)', 
+                color='자재 유형 내역', 
+                barmode='group', 
+                text='수율(%)', 
+                title="부서 및 자재별 수율 비교",
+                category_orders={'자재 유형 내역': ['원자재', '부자재', '반제품']}, # 순서 강제 고정
+                color_discrete_map=custom_colors # 파스텔 색상 적용
+            )
+            fig1.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig1, use_container_width=True)
+
+        with tab2:
+            st.markdown("#### 손실액 기준 집중 개선 품목 Top 5")
+            item_sum = team_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+            item_sum['손실액'] = item_sum['실제금액'] - item_sum['이론금액']
+            
+            top_losers = item_sum.sort_values(['생산부문명', '손실액'], ascending=[True, False]).groupby('생산부문명').head(5)
+            
+            fig2 = px.bar(top_losers, x='손실액', y='하위품목 텍스트', color='생산부문명', orientation='h', text='손실액', title="과별 핵심 손실 품목 (단위: 원)")
+            fig2.update_traces(texttemplate='%{text:,.0f}')
+            fig2.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig2, use_container_width=True)
+
+        with tab3:
+            st.markdown("#### 이론금액 vs 실제금액 산포도 (점 위치가 기준선 아래로 멀어질수록 이상치)")
+            item_scatter = team_df.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
+            fig3 = px.scatter(item_scatter, x='이론금액', y='실제금액', hover_name='하위품목 텍스트', color='실제금액', color_continuous_scale='Reds', title="품목별 투입 금액 분포")
+            
+            max_val = max(item_scatter['실제금액'].max(), item_scatter['이론금액'].max())
+            fig3.add_shape(type="line", x0=0, y0=0, x1=max_val, y1=max_val, line=dict(color="LightSeaGreen", width=2, dash="dash"))
+            fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig3, use_container_width=True)
+
+        st.markdown("---")
+        
+        # 5. 상세 현황 표 (신호등 서식 적용)
+        st.subheader("📋 과별 상세 수율 현황")
+        depts = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
+        tabs = st.tabs(depts)
+        
+        for i, d in enumerate(depts):
+            with tabs[i]:
+                target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
+                final_summ = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
+                
+                raw_sub_theory = final_summ.loc[final_summ.index.isin(['원자재', '부자재']), '이론금액'].sum()
+                raw_sub_actual = final_summ.loc[final_summ.index.isin(['원자재', '부자재']), '실제금액'].sum()
+                all_theory = final_summ.loc[final_summ.index.isin(['원자재', '부자재', '반제품']), '이론금액'].sum()
+                all_actual = final_summ.loc[final_summ.index.isin(['원자재', '부자재', '반제품']), '실제금
