@@ -131,7 +131,7 @@ if selected_month:
             
             # ⚡ [핵심 로직 변경] 과별로 실제금액이 큰 순서대로 먼저 거른 후, 그 중 수율이 낮은 순 정렬
             with col_m1:
-                st.subheader("📍 면 1과 관리 대상 Top 5")
+                st.subheader("📍 1과 관리 대상 Top 5")
                 m1_data = item_sum[item_sum['생산부문명'] == '1팀 면1과'].copy()
                 if not m1_data.empty:
                     # 1단계: 실제금액 기준 상위 품목 추출 (예: 사용금액이 유의미한 상위 15개 품목)
@@ -150,7 +150,7 @@ if selected_month:
                 else: st.write("데이터 없음")
 
             with col_m5:
-                st.subheader("📍 면 5과 관리 대상 Top 5")
+                st.subheader("📍 5과 관리 대상 Top 5")
                 m5_data = item_sum[item_sum['생산부문명'] == '1팀 면5과'].copy()
                 if not m5_data.empty:
                     # 1단계: 실제금액 기준 상위 품목 추출
