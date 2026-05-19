@@ -154,9 +154,9 @@ if selected_month:
         st.markdown("---")
 
         # =========================================================================
-        # ⚡ [2단 - 중간 좌우 배치] 부서별 수율 비교 바 차트(좌) & 과별 핵심 관리 대상 Top 5(우)
+        # ⚡ [2단 - 중간 좌우 배치] 부서별 수율 비교 바 차트(좌) & 수율 리스크 매트릭스(우)
         # =========================================================================
-        row2_col1, row2_col2 = st.columns([4, 6]) # 가독성을 위해 4:6 비율로 분할 (Top 5 텍스트가 잘 보이기 위함)
+        row2_col1, row2_col2 = st.columns([45, 55]) # 황금 가로 비율 4.5 : 5.5 분할
         
         with row2_col1:
             st.subheader("📊 부서 및 자재별 수율 비교")
@@ -170,99 +170,87 @@ if selected_month:
             st.plotly_chart(fig1, use_container_width=True)
 
         with row2_col2:
-            st.subheader("🚨 과별 핵심 관리 대상 Top 5")
+            st.subheader("🔍 수율 리스크 매트릭스")
             
-            item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].copy()
-            item_sum = item_sum.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
-            item_sum['수율(%)'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
+            # 한 줄 슬림 선택박스 정렬 적용
+            lbl_col, select_col, _ = st.columns([30, 35, 35])
+            with lbl_col:
+                st.markdown("<p style='padding-top: 35px; font-weight: bold; font-size: 14px;'>🎯 분석할 부서 선택 :</p>", unsafe_allow_html=True)
+            with select_col:
+                scatter_dept = st.selectbox("", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_dept_filter")
             
-            premium_blue_palette = ['#0c4da2', '#2a69bd', '#4d88db', '#75a8f5', '#a3c7ff']
+            if scatter_dept == "전체 1팀":
+                plot_df = team_df.copy()
+            else:
+                plot_df = team_df[team_df['생산부문명'] == scatter_dept].copy()
             
-            # 내부에 미니 컬럼 2개로 면1과, 면5과 분할
-            mini_col1, mini_col2 = st.columns(2)
+            item_scatter = plot_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+            item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
+            item_scatter['수율(%)'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
+            item_scatter['실제 투입 금액 (억 원)'] = item_scatter['실제금액'] / 100000000
             
-            with mini_col1:
-                st.markdown("**📍 면 1과 (금액 상위 중 수율 최저 순)**")
-                m1_data = item_sum[item_sum['생산부문명'] == '1팀 면1과'].copy()
-                if not m1_data.empty:
-                    m1_large = m1_data.sort_values('실제금액', ascending=False).head(15)
-                    m1_top5 = m1_large.sort_values('수율(%)', ascending=True).head(5)
-                    m1_top5['표시텍스트'] = m1_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {(r['실제금액']/100000000):.2f}억", axis=1)
-                    fig_m1 = px.bar(m1_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
-                    fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
-                    st.plotly_chart(fig_m1, use_container_width=True)
-                else: st.write("데이터 없음")
-
-            with mini_col2:
-                st.markdown("**📍 면 5과 (금액 상위 중 수율 최저 순)**")
-                m5_data = item_sum[item_sum['생산부문명'] == '1팀 면5과'].copy()
-                if not m5_data.empty:
-                    m5_large = m5_data.sort_values('실제금액', ascending=False).head(15)
-                    m5_top5 = m5_large.sort_values('수율(%)', ascending=True).head(5)
-                    m5_top5['표시텍스트'] = m5_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {(r['실제금액']/100000000):.2f}억", axis=1)
-                    fig_m5 = px.bar(m5_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
-                    fig_m5.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
-                    st.plotly_chart(fig_m5, use_container_width=True)
-                else: st.write("데이터 없음")
+            def get_scatter_status(row):
+                targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53}
+                limit = targets.get(row['생산부문명'], 95.0)
+                return '기준 달성' if row['수율(%)'] >= limit else '기준 미달'
+                
+            if not item_scatter.empty:
+                item_scatter['관리 상태'] = item_scatter.apply(get_scatter_status, axis=1)
+                scatter_colors = {'기준 달성': '#448AFF', '기준 미달': '#FF5252'}
+                
+                fig3 = px.scatter(item_scatter, x='실제 투입 금액 (억 원)', y='수율(%)', hover_name='하위품목 텍스트',
+                    color='관리 상태', color_discrete_map=scatter_colors, category_orders={'관리 상태': ['기준 미달', '기준 달성']})
+                fig3.update_traces(hovertemplate="<b>%{hovertext}</b><br><br>실제 투입 금액: %{x:.2f}억 원<br>수율: %{y:.2f}%<extra></extra>",
+                    marker=dict(size=10, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)')))
+                
+                targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53}
+                if scatter_dept in targets:
+                    specific_limit = targets[scatter_dept]
+                    fig3.add_hline(y=specific_limit, line_dash="dash", line_color="#FF5252", opacity=0.8, annotation_text=f"{specific_limit}%", annotation_position="top left")
+                else:
+                    fig3.add_hline(y=98.0, line_dash="dash", line_color="#FFF", opacity=0.3, annotation_text="98%", annotation_position="top left")
+                    
+                fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(ticksuffix="억"))
+                st.plotly_chart(fig3, use_container_width=True)
+            else:
+                st.info("데이터 없음")
 
         st.markdown("---")
 
         # =========================================================================
-        # ⚡ [3단 - 최하단 전면 배치] 수율 리스크 매트릭스 (가로폭 100% 단독 사용)
+        # ⚡ [3단 - 최하단 전면 배치] 과별 리스크 최상위 집중 관리 대상 Top 5 좌우 듀얼 배치
         # =========================================================================
-        st.subheader("🔍 수율 리스크 매트릭스")
+        st.subheader("🚨 과별 핵심 관리 대상 Top 5 (실제금액 상위 품목 중 수율 최저 순)")
         
-        # 필터 선택 상자 한 줄 정렬
-        lbl_col, select_col, _ = st.columns([13, 20, 67])
-        with lbl_col:
-            st.markdown("<p style='padding-top: 35px; font-weight: bold; font-size: 14px;'>🎯 분석할 부서 선택 :</p>", unsafe_allow_html=True)
-        with select_col:
-            scatter_dept = st.selectbox("", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_dept_filter")
+        item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].copy()
+        item_sum = item_sum.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+        item_sum['수율(%)'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
         
-        st.markdown("""
-        * **🔴 기준 미달 (진한 빨간색)**: 해당 과의 목표 관리 수율에 미치지 못하는 **리스크 품목**입니다.
-        * **🔵 기준 달성 (진한 파란색)**: 목표 관리 수율을 통제 범위 내에서 달성 중인 **안정 품목**입니다.
-        """)
+        premium_blue_palette = ['#0c4da2', '#2a69bd', '#4d88db', '#75a8f5', '#a3c7ff']
+        row3_col1, row3_col2 = st.columns(2)
         
-        if scatter_dept == "전체 1팀":
-            plot_df = team_df.copy()
-        else:
-            plot_df = team_df[team_df['생산부문명'] == scatter_dept].copy()
-        
-        item_scatter = plot_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
-        item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
-        item_scatter['수율(%)'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
-        item_scatter['실제 투입 금액 (억 원)'] = item_scatter['실제금액'] / 100000000
-        
-        def get_scatter_status(row):
-            targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53}
-            limit = targets.get(row['생산부문명'], 95.0)
-            return '기준 달성' if row['수율(%)'] >= limit else '기준 미달'
-            
-        if not item_scatter.empty:
-            item_scatter['관리 상태'] = item_scatter.apply(get_scatter_status, axis=1)
-            scatter_colors = {'기준 달성': '#448AFF', '기준 미달': '#FF5252'}
-            
-            fig3 = px.scatter(item_scatter, x='실제 투입 금액 (억 원)', y='수율(%)', hover_name='하위품목 텍스트',
-                color='관리 상태', color_discrete_map=scatter_colors, category_orders={'관리 상태': ['기준 미달', '기준 달성']})
-            
-            fig3.update_traces(
-                hovertemplate="<b>%{hovertext}</b><br><br>실제 투입 금액: %{x:.2f}억 원<br>수율: %{y:.2f}%<br>상태: %{legendgroup}<extra></extra>",
-                marker=dict(size=11, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)'))
-            )
-            
-            targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53}
-            if scatter_dept in targets:
-                specific_limit = targets[scatter_dept]
-                fig3.add_hline(y=specific_limit, line_dash="dash", line_color="#FF5252", opacity=0.8, 
-                               annotation_text=f"🎯 {scatter_dept} 관리 기준선 ({specific_limit}%)", annotation_position="top left")
-            else:
-                fig3.add_hline(y=98.0, line_dash="dash", line_color="#FFF", opacity=0.3, 
-                               annotation_text="참고 기준선 (98%)", annotation_position="top left")
-                
-            fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(ticksuffix="억"))
-            st.plotly_chart(fig3, use_container_width=True)
-        else:
-            st.info("데이터 없음")
+        with row3_col1:
+            st.markdown("**📍 면 1과 관리 품목**")
+            m1_data = item_sum[item_sum['생산부문명'] == '1팀 면1과'].copy()
+            if not m1_data.empty:
+                m1_large = m1_data.sort_values('실제금액', ascending=False).head(15)
+                m1_top5 = m1_large.sort_values('수율(%)', ascending=True).head(5)
+                m1_top5['표시텍스트'] = m1_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {(r['실제금액']/100000000):.2f}억", axis=1)
+                fig_m1 = px.bar(m1_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
+                fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
+                st.plotly_chart(fig_m1, use_container_width=True)
+            else: st.write("데이터 없음")
+
+        with row3_col2:
+            st.markdown("**📍 면 5과 관리 품목**")
+            m5_data = item_sum[item_sum['생산부문명'] == '1팀 면5과'].copy()
+            if not m5_data.empty:
+                m5_large = m5_data.sort_values('실제금액', ascending=False).head(15)
+                m5_top5 = m5_large.sort_values('수율(%)', ascending=True).head(5)
+                m5_top5['표시텍스트'] = m5_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {(r['실제금액']/100000000):.2f}억", axis=1)
+                fig_m5 = px.bar(m5_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
+                fig_m5.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
+                st.plotly_chart(fig_m5, use_container_width=True)
+            else: st.write("데이터 없음")
 else:
     st.warning("⚠️ 데이터를 불러올 수 없습니다. 구글 시트 상태를 확인해 주세요.")
