@@ -21,7 +21,7 @@ with st.sidebar:
     st.subheader("🔍 세부 품목 검색")
     search_keyword = st.text_input("검색어 입력 (예: 팜유, 포장지 등)", placeholder="비워두면 전체 조회")
 
-# 메인 화면 제목 수정 (V1.0)
+# 메인 화면 제목
 st.title("🚀 생산1팀 통합 수율 관리 시스템 V1.0")
 st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
 st.markdown("---")
@@ -122,9 +122,8 @@ if selected_month:
             st.markdown("#### ⚠️ 과별 주요 자재(금액 상위) 중 수율 리스크 품목 분석 (1팀 스프 제외)")
             
             item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].copy()
-            item_sum = item_sum.groupby(['생산부num명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
-            # 오타 방지용 컬럼 재확인 복구
-            if '생산부num명' in item_sum.columns: item_sum.rename(columns={'생산부num명': '생산부문명'}, inplace=True)
+            # ⚡ [오타 수정 완료] '생산부num명' ➔ '생산부문명'
+            item_sum = item_sum.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_sum['수율(%)'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
             
             premium_blue_palette = ['#0c4da2', '#2a69bd', '#4d88db', '#75a8f5', '#a3c7ff']
@@ -165,7 +164,6 @@ if selected_month:
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율(%)'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             
-            # 가로축 억 원 단위 적용
             item_scatter['실제 투입 금액 (억 원)'] = item_scatter['실제금액'] / 100000000
             
             def get_scatter_status(row):
