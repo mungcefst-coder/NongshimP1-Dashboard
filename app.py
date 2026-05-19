@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import urllib.parse
 
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.2")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.3")
 
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
@@ -20,7 +20,7 @@ with st.sidebar:
     st.subheader("🔍 세부 품목 검색")
     search_keyword = st.text_input("검색어 입력 (예: 팜유, 포장지 등)", placeholder="비워두면 전체 조회")
 
-st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.2")
+st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.3")
 st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
 st.markdown("---")
 
@@ -47,21 +47,32 @@ def load_and_process_gsheet(mode, sheet_id):
             
         if df.empty: return df
 
-        my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
-        team_df = df[df['生産部門名'].isin(my_team)].copy() if '生産部門名' in df.columns else df[df['생산부문명'].isin(my_team)].copy()
-        
         # 칼럼명 한글 표준화 보장
-        if '生産部門名' in team_df.columns: team_df.rename(columns={'生産部門名': '생산부문명'}, inplace=True)
-        if '資材タイプテキスト' in team_df.columns: team_df.rename(columns={'資材タイプテキスト': '자재 유형 내역'}, inplace=True)
-        if '品目テキスト' in team_df.columns: team_df.rename(columns={'品目テキスト': '하위품목 텍스트'}, inplace=True)
-        if '理論金額' in team_df.columns: team_df.rename(columns={'理論金額': '이론금액'}, inplace=True)
-        if '実際金額' in team_df.columns: team_df.rename(columns={'實際金額': '실제금액'}, inplace=True)
-        if '실제금액' not in team_df.columns and '실적금액' in team_df.columns: team_df.rename(columns={'실적금액': '실제금액'}, inplace=True)
+        if '生産部門名' in df.columns: df.rename(columns={'生産部門名': '생산부문명'}, inplace=True)
+        if '資材タイプテキスト' in df.columns: df.rename(columns={'資材タイプテキスト': '자재 유형 내역'}, inplace=True)
+        if '品目テキスト' in df.columns: df.rename(columns={'品目テキスト': '하위품목 텍스트'}, inplace=True)
+        if '理論金額' in df.columns: df.rename(columns={'理論金額': '이론금액'}, inplace=True)
+        if '実際金額' in df.columns: df.rename(columns={'實際金額': '실제금액'}, inplace=True)
+        if '실제금액' not in df.columns and '실적금액' in df.columns: df.rename(columns={'실적금액': '실제금액'}, inplace=True)
+
+        my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
+        team_df = df[df['생산부문명'].isin(my_team)].copy()
+        
+        # ---------------------------------------------------------
+        # ⚡ [새로 추가된 핵심 로직] 데이터 뻥튀기를 유발하는 총합/소계 행 제거
+        # ---------------------------------------------------------
+        if '하위품목 텍스트' in team_df.columns:
+            team_df['하위품목 텍스트'] = team_df['하위품목 텍스트'].astype(str).str.strip()
+            # 품목명에 '소계', '합계', '총합', '결과' 등이 들어간 요약 행들을 강제 필터링하여 제외합니다.
+            exclude_keywords = ['소계', '합계', '총합', '총계', '결과', '부문명']
+            for kw in exclude_keywords:
+                team_df = team_df[~team_df['하위품목 텍스트'].str.contains(kw, na=False)]
 
         team_df['자재 유형 내역'] = team_df['자재 유형 내역'].astype(str).str.strip()
         pure_categories = ['원자재', '부자재', '반제품']
         team_df = team_df[team_df['자재 유형 내역'].isin(pure_categories)]
         
+        # 콤마, 공백 모두 무시하고 강제 숫자 변환
         for col in ['이론금액', '실제금액']:
             team_df[col] = team_df[col].astype(str).str.replace(',', '', regex=False).str.strip()
             team_df[col] = pd.to_numeric(team_df[col], errors='coerce').fillna(0)
@@ -121,7 +132,7 @@ if selected_month:
                     m1_top5 = m1_large.sort_values('수율(%)', ascending=True).head(5)
                     m1_top5['표시텍스트'] = m1_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {r['실제금액']:,.0f}원", axis=1)
                     fig_m1 = px.bar(m1_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
-                    fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total descending'})
+                    fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_m1, use_container_width=True)
                 else: st.write("데이터 없음")
 
@@ -138,9 +149,6 @@ if selected_month:
                 else: st.write("데이터 없음")
 
         with tab3:
-            # ---------------------------------------------------------
-            # ⚡ [직관성 극대화] 3. 수율 리스크 매트릭스 변환 (X=실제금액, Y=수율)
-            # ---------------------------------------------------------
             st.markdown("#### 🔍 한눈에 보는 수율 리스크 매트릭스")
             st.markdown("""
             * **🚨 우측 하단 (빨간색 구역)**: 투입 금액 규모가 크면서 수율은 낮아, **회사에 손실을 입히는 최우선 개선 품목**입니다.
@@ -151,7 +159,6 @@ if selected_month:
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율(%)'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             
-            # X=실제금액, Y=수율, 색상=수율(98% 기준 빨강/파랑 그라데이션)
             fig3 = px.scatter(
                 item_scatter, 
                 x='실제금액', 
@@ -164,7 +171,6 @@ if selected_month:
                 title="품목별 집행 규모 대비 효율성(수율) 분포"
             )
             
-            # 관리 기준선 98%에 가로 점선 추가
             fig3.add_hline(y=98.0, line_dash="dash", line_color="#FF5252", annotation_text="📋 기준 수율선 (98%)", annotation_position="top left")
             fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig3, use_container_width=True)
@@ -201,9 +207,9 @@ if selected_month:
                     if val < limit: return 'color: #FF5252; font-weight: bold;'
                     else: return 'color: #448AFF; font-weight: bold;'
                 
-                styled_df = final_summ.style.map(get_custom_color, subset=['수율(%)']).format({
+                styled_df = final_summ.style.format({
                     '이론금액': '{:,.0f}', '실제금액': '{:,.0f}', '수율(%)': '{:.2f}%'
-                })
+                }).map(get_custom_color, subset=['수율(%)'])
                 st.dataframe(styled_df, use_container_width=True)
 else:
     st.warning("⚠️ 데이터를 불러올 수 없습니다. 구글 시트 상태를 확인해 주세요.")
