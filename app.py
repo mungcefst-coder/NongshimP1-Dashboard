@@ -3,24 +3,28 @@ import pandas as pd
 import plotly.express as px
 import urllib.parse
 
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2")
 
 # ⚡ [본인의 구글 스프레드시트 ID를 입력하세요]
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 
-# 사이드바 설정
+# 1. 사이드바 설정 (검색 기능 추가)
 with st.sidebar:
     st.header("📂 데이터 관리")
-    st.success("📊 구글 스프레드시트 연동 완료 (영구 저장)")
+    st.success("📊 구글 시트 실시간 연동 중")
     
     months = ["전체 누적 데이터", "1월", "2월", "3월", "4월"]
-    selected_month = st.selectbox("분석할 데이터 선택", months)
+    selected_month = st.selectbox("분석할 월 선택", months)
+    
+    st.markdown("---")
+    st.subheader("🔍 세부 품목 검색")
+    search_keyword = st.text_input("검색어 입력 (예: 팜유, 포장지 등)", placeholder="비워두면 전체 조회")
 
-st.title("🚀 생산1팀 통합 수율 관리 시스템")
-st.markdown(f"**현재 선택된 데이터:** `{selected_month}`")
+st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.0")
+st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
 st.markdown("---")
 
-# 구글 스프레드시트 연동 로직
+# 2. 데이터 로드 및 정제 로직
 @st.cache_data(ttl=600)
 def load_and_process_gsheet(mode, sheet_id):
     try:
@@ -31,16 +35,18 @@ def load_and_process_gsheet(mode, sheet_id):
                 url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
                 temp_df = pd.read_csv(url)
                 if not temp_df.empty:
+                    temp_df['월'] = m  # 시계열 분석을 위한 월 칼럼 추가
                     all_dfs.append(temp_df)
             df = pd.concat(all_dfs, ignore_index=True) if all_dfs else pd.DataFrame()
         else:
             encoded_sheet = urllib.parse.quote(mode)
             url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
             df = pd.read_csv(url)
+            if not df.empty:
+                df['월'] = mode
             
         if df.empty: return df
 
-        # 생산1팀 데이터 정제
         my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
         team_df = df[df['생산부문명'].isin(my_team)].copy()
         
@@ -48,11 +54,7 @@ def load_and_process_gsheet(mode, sheet_id):
         pure_categories = ['원자재', '부자재', '반제품']
         team_df = team_df[team_df['자재 유형 내역'].isin(pure_categories)]
         
-        # ---------------------------------------------------------
-        # ⚡ [무적의 강제 변환 로직] 콤마, 공백 모두 무시하고 강제 숫자 변환
-        # ---------------------------------------------------------
         for col in ['이론금액', '실제금액']:
-            # 1. 문자로 만들고 -> 2. 콤마 없애고 -> 3. 양옆 공백 없애고 -> 4. 무조건 숫자로 (실패하면 0)
             team_df[col] = team_df[col].astype(str).str.replace(',', '', regex=False).str.strip()
             team_df[col] = pd.to_numeric(team_df[col], errors='coerce').fillna(0)
         
@@ -61,37 +63,72 @@ def load_and_process_gsheet(mode, sheet_id):
         st.error(f"구글 시트를 읽어오는 중 오류가 발생했습니다. 에러: {e}")
         return pd.DataFrame()
 
+# 신호등 색상 함수
+def color_yield(val):
+    if pd.isna(val): return ''
+    if val >= 98: return 'color: #00FF00;'
+    elif val >= 95: return 'color: #FFC000;'
+    else: return 'color: #FF0000;'
+
 # 메인 화면 구성
 if selected_month:
     team_df = load_and_process_gsheet(selected_month, SHEET_ID)
     
     if not team_df.empty:
-        col1, col2 = st.columns([4, 6])
-        
-        with col1:
-            st.subheader("🎯 수율 집중 개선 품목 (Targeting)")
-            summary = team_df.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum()
-            summary['수율(%)'] = (summary['이론금액'] / summary['실제금액']) * 100
-            summary['손실액'] = summary['실제금액'] - summary['이론금액']
-            
-            critical = summary[(summary['수율(%)'] < 95) & (summary['손실액'] >= 1000000)].copy()
-            if not critical.empty:
-                st.error("🚨 즉각적인 확인 필요")
-                st.dataframe(critical[['수율(%)', '손실액']].sort_values('손실액', ascending=False).style.format({'수율(%)': '{:.2f}%', '손실액': '{:,.0f}원'}), use_container_width=True)
-            else:
-                st.success("✅ 관리 기준 내 정상")
+        # 검색어 필터링 적용
+        if search_keyword:
+            team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
+            st.info(f"💡 '{search_keyword}'(이)가 포함된 품목만 분석한 결과입니다.")
 
-        with col2:
-            st.subheader("📊 과별 수율 그래프")
+        # 3. 최상단 KPI 대시보드
+        total_theory = team_df['이론금액'].sum()
+        total_actual = team_df['실제금액'].sum()
+        total_loss = total_actual - total_theory
+        total_yield = (total_theory / total_actual * 100) if total_actual > 0 else 0
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("💰 총 실제 투입 금액", f"{total_actual:,.0f} 원")
+        col2.metric("🏆 종합 수율", f"{total_yield:.2f} %")
+        col3.metric("🚨 총 손실 금액 (차액)", f"{total_loss:,.0f} 원")
+        st.markdown("---")
+
+        # 4. 시각화 분석 탭
+        tab1, tab2, tab3 = st.tabs(["📊 과별 비교 분석", "🚨 집중 관리 대상 (Top 5)", "🔍 이상치 탐지 (산포도)"])
+        
+        with tab1:
             dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
+            fig1 = px.bar(dept_sum, x='생산부문명', y='수율(%)', color='자재 유형 내역', barmode='group', text='수율(%)', title="부서 및 자재별 수율 비교")
+            fig1.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig1, use_container_width=True)
+
+        with tab2:
+            st.markdown("#### 손실액 기준 집중 개선 품목 Top 5")
+            item_sum = team_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+            item_sum['손실액'] = item_sum['실제금액'] - item_sum['이론금액']
             
-            fig = px.bar(dept_sum, x='생산부문명', y='수율(%)', color='자재 유형 내역', barmode='group', text='수율(%)')
-            fig.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig, use_container_width=True)
+            # 각 부서별로 손실액이 가장 큰 5개만 추출
+            top_losers = item_sum.sort_values(['생산부문명', '손실액'], ascending=[True, False]).groupby('생산부문명').head(5)
+            
+            fig2 = px.bar(top_losers, x='손실액', y='하위품목 텍스트', color='생산부문명', orientation='h', text='손실액', title="과별 핵심 손실 품목 (단위: 원)")
+            fig2.update_traces(texttemplate='%{text:,.0f}')
+            fig2.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig2, use_container_width=True)
+
+        with tab3:
+            st.markdown("#### 이론금액 vs 실제금액 산포도 (점 위치가 기준선 아래로 멀어질수록 이상치)")
+            item_scatter = team_df.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
+            fig3 = px.scatter(item_scatter, x='이론금액', y='실제금액', hover_name='하위품목 텍스트', color='실제금액', color_continuous_scale='Reds', title="품목별 투입 금액 분포")
+            # 기준선 (이론=실제) 추가
+            max_val = max(item_scatter['실제금액'].max(), item_scatter['이론금액'].max())
+            fig3.add_shape(type="line", x0=0, y0=0, x1=max_val, y1=max_val, line=dict(color="LightSeaGreen", width=2, dash="dash"))
+            fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig3, use_container_width=True)
 
         st.markdown("---")
-        st.subheader("📋 과별 수율 현황")
+        
+        # 5. 상세 현황 표 (신호등 서식 적용)
+        st.subheader("📋 과별 상세 수율 현황")
         depts = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
         tabs = st.tabs(depts)
         
@@ -109,8 +146,13 @@ if selected_month:
                 final_summ.loc['전체 수율'] = [all_theory, all_actual]
                 final_summ['수율(%)'] = (final_summ['이론금액'] / final_summ['실제금액'] * 100)
                 
-                st.dataframe(final_summ.style.format({
+                # 표에 신호등 색상 적용 및 숫자 포맷팅
+                styled_df = final_summ.style.map(color_yield, subset=['수율(%)']).format({
                     '이론금액': '{:,.0f}',
                     '실제금액': '{:,.0f}',
                     '수율(%)': '{:.2f}%'
-                }), use_container_width=True)
+                })
+                
+                st.dataframe(styled_df, use_container_width=True)
+else:
+    st.warning("⚠️ 데이터를 불러올 수 없습니다. 구글 시트 상태를 확인해 주세요.")
