@@ -54,7 +54,9 @@ def load_and_process_gsheet(mode, sheet_id):
         if '資材タイプテキスト' in df.columns: df.rename(columns={'資材タイプテキスト': '자재 유형 내역'}, inplace=True)
         if '品目テキスト' in df.columns: df.rename(columns={'品目テキスト': '하위품목 텍스트'}, inplace=True)
         if '理論金額' in df.columns: df.rename(columns={'理論金額': '이론금액'}, inplace=True)
-        if '実際金額' in df.columns: df.rename(columns={'實際金額': '실제금액'}, inplace=True)
+        if 'Actual Amount' in df.columns: df.rename(columns={'Actual Amount': '실제금액'}, inplace=True)
+        if '实际金额' in df.columns: df.rename(columns={'实际金额': '실제금액'}, inplace=True)
+        if '實際金額' in df.columns: df.rename(columns={'實際金額': '실제금액'}, inplace=True)
         if '실제금액' not in df.columns and '실적금액' in df.columns: df.rename(columns={'실적금액': '실제금액'}, inplace=True)
 
         my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
@@ -122,7 +124,6 @@ if selected_month:
             st.markdown("#### ⚠️ 과별 주요 자재(금액 상위) 중 수율 리스크 품목 분석 (1팀 스프 제외)")
             
             item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].copy()
-            # ⚡ [오타 수정 완료] '생산부num명' ➔ '생산부문명'
             item_sum = item_sum.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_sum['수율(%)'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
             
@@ -203,7 +204,7 @@ if selected_month:
         
         for i, d in enumerate(depts_list):
             with tabs[i]:
-                target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
+                target_df = team_df if d == '전체 총합' else team_df[team_df['生産部門명'] == d if '生産部門명' in team_df.columns else team_df['생산부문명'] == d]
                 final_summ = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
                 
                 raw_sub_theory = final_summ.loc[final_summ.index.isin(['원자재', '부자재']), '이론금액'].sum()
@@ -230,5 +231,17 @@ if selected_month:
                     '이론금액': '{:,.0f}', '실제금액': '{:,.0f}', '수율(%)': '{:.2f}%'
                 }).map(get_custom_color, subset=['수율(%)'])
                 st.dataframe(styled_df, use_container_width=True)
+                
+        # ⚡ [신규 추가] 표 하단에 고정 배치된 부서별 관리 기준 가이드 안내선
+        st.markdown("""
+        <div style="background-color: #262730; padding: 15px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 10px;">
+            <p style="margin: 0; font-size: 14px; color: #B9F6CA; font-weight: bold;">🎯 생산1팀 공장 내부 자재 관리 수율 기준선</p>
+            <ul style="margin: 5px 0 0 0; padding-left: 20px; font-size: 13px; color: #E0E0E0; line-height: 1.6;">
+                <li><b>1팀 면1과:</b> 수율 <b>98.92% 이상</b> 달성 시 통제 정상 (미달 시 <span style="color:#FF5252; font-weight:bold;">붉은색</span> 표시)</li>
+                <li><b>1팀 면5과:</b> 수율 <b>97.92% 이상</b> 달성 시 통제 정상 (미달 시 <span style="color:#FF5252; font-weight:bold;">붉은색</span> 표시)</li>
+                <li><b>1팀 스프:</b> 수율 <b>99.53% 이상</b> 달성 시 통제 정상 (미달 시 <span style="color:#FF5252; font-weight:bold;">붉은색</span> 표시)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_index=True, unsafe_allow_html=True)
 else:
     st.warning("⚠️ 데이터를 불러올 수 없습니다. 구글 시트 상태를 확인해 주세요.")
