@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import urllib.parse # ⚡ 한글 변환을 위한 인코딩 도구 추가
+import urllib.parse
 
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
@@ -27,7 +27,6 @@ def load_and_process_gsheet(mode, sheet_id):
         if mode == "전체 누적 데이터":
             all_dfs = []
             for m in ["1월", "2월", "3월", "4월"]:
-                # ⚡ 한글 탭 이름을 웹 주소용 특수 암호 형태로 인코딩합니다.
                 encoded_sheet = urllib.parse.quote(m)
                 url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
                 temp_df = pd.read_csv(url)
@@ -35,7 +34,6 @@ def load_and_process_gsheet(mode, sheet_id):
                     all_dfs.append(temp_df)
             df = pd.concat(all_dfs, ignore_index=True) if all_dfs else pd.DataFrame()
         else:
-            # ⚡ 개별 월 선택 시에도 한글 인코딩 적용
             encoded_sheet = urllib.parse.quote(mode)
             url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
             df = pd.read_csv(url)
@@ -49,9 +47,17 @@ def load_and_process_gsheet(mode, sheet_id):
         team_df['자재 유형 내역'] = team_df['자재 유형 내역'].astype(str).str.strip()
         pure_categories = ['원자재', '부자재', '반제품']
         team_df = team_df[team_df['자재 유형 내역'].isin(pure_categories)]
+        
+        # ---------------------------------------------------------
+        # ⚡ [새로 추가된 핵심 로직] 콤마(,) 제거 및 숫자 강제 변환
+        # ---------------------------------------------------------
+        for col in ['이론금액', '실제금액']:
+            if team_df[col].dtype == 'object':  # 텍스트로 인식되었다면
+                team_df[col] = team_df[col].astype(str).str.replace(',', '').astype(float)
+        
         return team_df
     except Exception as e:
-        st.error(f"구글 시트를 읽어오는 중 오류가 발생했습니다. 탭 이름이나 권한을 확인하세요. 에러: {e}")
+        st.error(f"구글 시트를 읽어오는 중 오류가 발생했습니다. 에러: {e}")
         return pd.DataFrame()
 
 # 메인 화면 구성
@@ -76,35 +82,4 @@ if selected_month:
 
         with col2:
             st.subheader("📊 과별 수율 그래프")
-            dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
-            dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
-            
-            # ⚡ y축 실수를 수정한 올바른 그래프 코드
-            fig = px.bar(dept_sum, x='생산부문명', y='수율(%)', color='자재 유형 내역', barmode='group', text='수율(%)')
-            fig.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig, use_container_width=True)
-
-        st.markdown("---")
-        st.subheader("📋 과별 수율 현황")
-        depts = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
-        tabs = st.tabs(depts)
-        
-        for i, d in enumerate(depts):
-            with tabs[i]:
-                target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
-                final_summ = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
-                
-                raw_sub_theory = final_summ.loc[final_summ.index.isin(['원자재', '부자재']), '이론금액'].sum()
-                raw_sub_actual = final_summ.loc[final_summ.index.isin(['원자재', '부자재']), '실제금액'].sum()
-                all_theory = final_summ.loc[final_summ.index.isin(['원자재', '부자재', '반제품']), '이론금액'].sum()
-                all_actual = final_summ.loc[final_summ.index.isin(['원자재', '부자재', '반제품']), '실제금액'].sum()
-                
-                final_summ.loc['원부자재 수율'] = [raw_sub_theory, raw_sub_actual]
-                final_summ.loc['전체 수율'] = [all_theory, all_actual]
-                final_summ['수율(%)'] = (final_summ['이론금액'] / final_summ['실제금액'] * 100)
-                
-                st.dataframe(final_summ.style.format({
-                    '이론금액': '{:,.0f}',
-                    '실제금액': '{:,.0f}',
-                    '수율(%)': '{:.2f}%'
-                }), use_container_width=True)
+            dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset
