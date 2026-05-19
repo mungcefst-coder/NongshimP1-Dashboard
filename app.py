@@ -232,10 +232,10 @@ if selected_month:
                 }).map(get_custom_color, subset=['수율(%)'])
                 st.dataframe(styled_df, use_container_width=True)
                 
-        # ⚡ [오타 수정 완료] unsafe_allow_index 지우고 unsafe_allow_html=True 하나만 남김
+        # ⚡ [수정 완료] 타이틀을 '생산1팀 과별 수율 관리 기준'으로 정정 배포
         st.markdown("""
         <div style="background-color: #262730; padding: 15px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 10px;">
-            <p style="margin: 0; font-size: 14px; color: #B9F6CA; font-weight: bold;">🎯 생산1팀 공장 내부 자재 관리 수율 기준선</p>
+            <p style="margin: 0; font-size: 14px; color: #B9F6CA; font-weight: bold;">🎯 생산1팀 과별 수율 관리 기준</p>
             <ul style="margin: 5px 0 0 0; padding-left: 20px; font-size: 13px; color: #E0E0E0; line-height: 1.6;">
                 <li><b>1팀 면1과:</b> 수율 <b>98.92% 이상</b> 달성 시 통제 정상 (미달 시 <span style="color:#FF5252; font-weight:bold;">붉은색</span> 표시)</li>
                 <li><b>1팀 면5과:</b> 수율 <b>97.92% 이상</b> 달성 시 통제 정상 (미달 시 <span style="color:#FF5252; font-weight:bold;">붉은색</span> 표시)</li>
