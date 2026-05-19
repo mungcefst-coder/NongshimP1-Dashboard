@@ -62,7 +62,6 @@ def load_and_process_gsheet(mode, sheet_id):
         pure_categories = ['원자재', '부자재', '반제품']
         team_df = team_df[team_df['자재 유형 내역'].isin(pure_categories)]
         
-        # 콤마, 공백 모두 무시하고 강제 숫자 변환
         for col in ['이론금액', '실제금액']:
             team_df[col] = team_df[col].astype(str).str.replace(',', '', regex=False).str.strip()
             team_df[col] = pd.to_numeric(team_df[col], errors='coerce').fillna(0)
@@ -93,35 +92,20 @@ if selected_month:
         st.markdown("---")
 
         # 4. 시각화 분석 탭
-        tab1, tab2, tab3 = st.tabs(["📊 과별 비교 분석", "🚨 집중 관리 대상 (Top 5)", "🔍 이상치 탐지 (산포도)"])
+        tab1, tab2, tab3 = st.tabs(["📊 과별 비교 분석", "🚨 집중 관리 대상 (Top 5)", "🔍 수율 리스크 매트릭스"])
         
         with tab1:
             dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
             
-            custom_colors = {
-                '원자재': '#0c4da2', 
-                '부자재': '#5a9bd5', 
-                '반제품': '#a6c8e0'  
-            }
-            
-            fig1 = px.bar(
-                dept_sum, 
-                x='생산부문명', 
-                y='수율(%)', 
-                color='자재 유형 내역', 
-                barmode='group', 
-                text='수율(%)', 
-                title="부서 및 자재별 수율 비교",
-                category_orders={'자재 유형 내역': ['원자재', '부자재', '반제품']},
-                color_discrete_map=custom_colors
-            )
+            custom_colors = {'원자재': '#0c4da2', '부자재': '#5a9bd5', '반제품': '#a6c8e0'}
+            fig1 = px.bar(dept_sum, x='생산부문명', y='수율(%)', color='자재 유형 내역', barmode='group', text='수율(%)', 
+                          title="부서 및 자재별 수율 비교", category_orders={'자재 유형 내역': ['원자재', '부자재', '반제품']}, color_discrete_map=custom_colors)
             fig1.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig1, use_container_width=True)
 
         with tab2:
-            st.markdown("#### ⚠️ 과별 수율 관리대상 품목")
-            
+            st.markdown("#### ⚠️ 과별 주요 자재(금액 상위) 중 수율 리스크 품목 분석 (1팀 스프 제외)")
             item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].copy()
             item_sum = item_sum.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_sum['수율(%)'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
@@ -129,51 +113,59 @@ if selected_month:
             premium_blue_palette = ['#0c4da2', '#2a69bd', '#4d88db', '#75a8f5', '#a3c7ff']
             col_m1, col_m5 = st.columns(2)
             
-            # ⚡ [핵심 로직 변경] 과별로 실제금액이 큰 순서대로 먼저 거른 후, 그 중 수율이 낮은 순 정렬
             with col_m1:
-                st.subheader("📍 1과 관리 대상 Top 5")
+                st.subheader("📍 면 1과 관리 대상 Top 5")
                 m1_data = item_sum[item_sum['생산부문명'] == '1팀 면1과'].copy()
                 if not m1_data.empty:
-                    # 1단계: 실제금액 기준 상위 품목 추출 (예: 사용금액이 유의미한 상위 15개 품목)
                     m1_large = m1_data.sort_values('실제금액', ascending=False).head(15)
-                    # 2단계: 그 중에서 수율이 가장 좋지 않은 순(오름차순)으로 최종 5개 확정
                     m1_top5 = m1_large.sort_values('수율(%)', ascending=True).head(5)
-                    
                     m1_top5['표시텍스트'] = m1_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {r['실제금액']:,.0f}원", axis=1)
-                    
-                    fig_m1 = px.bar(m1_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트',
-                                    color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
-                    fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', 
-                                         plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]),
-                                         yaxis={'categoryorder':'total descending'})
+                    fig_m1 = px.bar(m1_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
+                    fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total descending'})
                     st.plotly_chart(fig_m1, use_container_width=True)
                 else: st.write("데이터 없음")
 
             with col_m5:
-                st.subheader("📍 5과 관리 대상 Top 5")
+                st.subheader("📍 면 5과 관리 대상 Top 5")
                 m5_data = item_sum[item_sum['생산부문명'] == '1팀 면5과'].copy()
                 if not m5_data.empty:
-                    # 1단계: 실제금액 기준 상위 품목 추출
                     m5_large = m5_data.sort_values('실제금액', ascending=False).head(15)
-                    # 2단계: 그 중에서 수율이 가장 좋지 않은 순(오름차순)으로 최종 5개 확정
                     m5_top5 = m5_large.sort_values('수율(%)', ascending=True).head(5)
-                    
                     m5_top5['표시텍스트'] = m5_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {r['실제금액']:,.0f}원", axis=1)
-                    
-                    fig_m5 = px.bar(m5_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트',
-                                    color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
-                    fig_m5.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', 
-                                         plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]),
-                                         yaxis={'categoryorder':'total descending'})
+                    fig_m5 = px.bar(m5_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
+                    fig_m5.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_m5, use_container_width=True)
                 else: st.write("데이터 없음")
 
         with tab3:
-            st.markdown("#### 이론금액 vs 실제금액 산포도 (기준선 아래로 멀어질수록 이상치)")
-            item_scatter = team_df.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
-            fig3 = px.scatter(item_scatter, x='이론금액', y='실제금액', hover_name='하위품목 텍스트', color='실제금액', color_continuous_scale='Blues')
-            max_val = max(item_scatter['실제금액'].max(), item_scatter['이론금액'].max())
-            fig3.add_shape(type="line", x0=0, y0=0, x1=max_val, y1=max_val, line=dict(color="#0c4da2", width=2, dash="dash"))
+            # ---------------------------------------------------------
+            # ⚡ [직관성 극대화] 3. 수율 리스크 매트릭스 변환 (X=실제금액, Y=수율)
+            # ---------------------------------------------------------
+            st.markdown("#### 🔍 한눈에 보는 수율 리스크 매트릭스")
+            st.markdown("""
+            * **🚨 우측 하단 (빨간색 구역)**: 투입 금액 규모가 크면서 수율은 낮아, **회사에 손실을 입히는 최우선 개선 품목**입니다.
+            * **🔵 상단 영역 (파란색 구역)**: 수율이 관리 기준(98%) 이상으로 양호하게 통제되고 있는 품목입니다.
+            """)
+            
+            item_scatter = team_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+            item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
+            item_scatter['수율(%)'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
+            
+            # X=실제금액, Y=수율, 색상=수율(98% 기준 빨강/파랑 그라데이션)
+            fig3 = px.scatter(
+                item_scatter, 
+                x='실제금액', 
+                y='수율(%)', 
+                hover_name='하위품목 텍스트',
+                color='수율(%)', 
+                color_continuous_scale='RdBu', 
+                color_continuous_midpoint=98.0,
+                labels={'실제금액': '실제 투입 금액 (원)', '수율(%)': '수율 (%)'},
+                title="품목별 집행 규모 대비 효율성(수율) 분포"
+            )
+            
+            # 관리 기준선 98%에 가로 점선 추가
+            fig3.add_hline(y=98.0, line_dash="dash", line_color="#FF5252", annotation_text="📋 기준 수율선 (98%)", annotation_position="top left")
             fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig3, use_container_width=True)
 
