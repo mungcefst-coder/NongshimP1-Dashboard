@@ -232,15 +232,15 @@ if selected_month:
                 }).map(get_custom_color, subset=['수율(%)'])
                 st.dataframe(styled_df, use_container_width=True)
                 
-        # ⚡ [요청 사항 반영] 문구를 심플하게 다이어트 완료
+        # ⚡ [수정 사항 반영] 세 줄짜리 리스트를 한 줄로 초슬림 압축 완료!
         st.markdown("""
-        <div style="background-color: #262730; padding: 15px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 10px;">
-            <p style="margin: 0; font-size: 14px; color: #B9F6CA; font-weight: bold;">🎯 생산1팀 과별 수율 관리 기준</p>
-            <ul style="margin: 5px 0 0 0; padding-left: 20px; font-size: 13px; color: #E0E0E0; line-height: 1.6;">
-                <li><b>1팀 면1과 :</b> 수율 98.92% 이상</li>
-                <li><b>1팀 면5과 :</b> 수율 97.92% 이상</li>
-                <li><b>1팀 스프 :</b> 수율 99.53% 이상</li>
-            </ul>
+        <div style="background-color: #262730; padding: 12px 18px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 10px;">
+            <span style="font-size: 14px; color: #B9F6CA; font-weight: bold; margin-right: 15px;">🎯 생산1팀 과별 수율 관리 기준 :</span>
+            <span style="font-size: 13px; color: #E0E0E0; font-weight: 500;">
+                🟢 <b>1팀 면1과 :</b> 수율 98.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
+                🟢 <b>1팀 면5과 :</b> 수율 97.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
+                🟢 <b>1팀 스프 :</b> 수율 99.53% 이상
+            </span>
         </div>
         """, unsafe_allow_html=True)
 else:
