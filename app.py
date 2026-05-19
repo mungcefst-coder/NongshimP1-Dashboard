@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import urllib.parse
 
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.3")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.4")
 
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
@@ -20,7 +20,7 @@ with st.sidebar:
     st.subheader("🔍 세부 품목 검색")
     search_keyword = st.text_input("검색어 입력 (예: 팜유, 포장지 등)", placeholder="비워두면 전체 조회")
 
-st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.3")
+st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.4")
 st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
 st.markdown("---")
 
@@ -58,12 +58,9 @@ def load_and_process_gsheet(mode, sheet_id):
         my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
         team_df = df[df['생산부문명'].isin(my_team)].copy()
         
-        # ---------------------------------------------------------
-        # ⚡ [새로 추가된 핵심 로직] 데이터 뻥튀기를 유발하는 총합/소계 행 제거
-        # ---------------------------------------------------------
+        # 데이터 뻥튀기를 유발하는 총합/소계 행 제거
         if '하위품목 텍스트' in team_df.columns:
             team_df['하위품목 텍스트'] = team_df['하위품목 텍스트'].astype(str).str.strip()
-            # 품목명에 '소계', '합계', '총합', '결과' 등이 들어간 요약 행들을 강제 필터링하여 제외합니다.
             exclude_keywords = ['소계', '합계', '총합', '총계', '결과', '부문명']
             for kw in exclude_keywords:
                 team_df = team_df[~team_df['하위품목 텍스트'].str.contains(kw, na=False)]
@@ -76,6 +73,13 @@ def load_and_process_gsheet(mode, sheet_id):
         for col in ['이론금액', '실제금액']:
             team_df[col] = team_df[col].astype(str).str.replace(',', '', regex=False).str.strip()
             team_df[col] = pd.to_numeric(team_df[col], errors='coerce').fillna(0)
+            
+        # ---------------------------------------------------------
+        # ⚡ [새로 추가된 핵심 로직] 수율 50% 미만 데이터 원천 제외 (노이즈 제거)
+        # ---------------------------------------------------------
+        calculated_yield = (team_df['이론금액'] / team_df['실제금액']) * 100
+        # 실제 금액 투입이 발생했으나 수율이 50% 미만으로 떨어지는 행은 이상치로 판단하여 탈락시킵니다.
+        team_df = team_df[~((team_df['실제금액'] > 0) & (calculated_yield < 50))]
         
         return team_df
     except Exception as e:
@@ -117,6 +121,7 @@ if selected_month:
 
         with tab2:
             st.markdown("#### ⚠️ 과별 주요 자재(금액 상위) 중 수율 리스크 품목 분석 (1팀 스프 제외)")
+            
             item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].copy()
             item_sum = item_sum.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_sum['수율(%)'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
@@ -132,7 +137,7 @@ if selected_month:
                     m1_top5 = m1_large.sort_values('수율(%)', ascending=True).head(5)
                     m1_top5['표시텍스트'] = m1_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {r['실제금액']:,.0f}원", axis=1)
                     fig_m1 = px.bar(m1_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
-                    fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
+                    fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total descending'})
                     st.plotly_chart(fig_m1, use_container_width=True)
                 else: st.write("데이터 없음")
 
