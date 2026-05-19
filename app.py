@@ -120,7 +120,7 @@ if selected_month:
             st.plotly_chart(fig1, use_container_width=True)
 
         with tab2:
-            st.markdown("#### ⚠️ 과별 주요 자재(금액 상위) 중 수율 리스크 품목 분석 (1팀 스프 제외)")
+            st.markdown("#### ⚠️ 과별 수율 관리대상 품목")
             
             item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].copy()
             item_sum = item_sum.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
