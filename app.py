@@ -49,11 +49,12 @@ def load_and_process_gsheet(mode, sheet_id):
         team_df = team_df[team_df['자재 유형 내역'].isin(pure_categories)]
         
         # ---------------------------------------------------------
-        # ⚡ [새로 추가된 핵심 로직] 콤마(,) 제거 및 숫자 강제 변환
+        # ⚡ [무적의 강제 변환 로직] 콤마, 공백 모두 무시하고 강제 숫자 변환
         # ---------------------------------------------------------
         for col in ['이론금액', '실제금액']:
-            if team_df[col].dtype == 'object':  # 텍스트로 인식되었다면
-                team_df[col] = team_df[col].astype(str).str.replace(',', '').astype(float)
+            # 1. 문자로 만들고 -> 2. 콤마 없애고 -> 3. 양옆 공백 없애고 -> 4. 무조건 숫자로 (실패하면 0)
+            team_df[col] = team_df[col].astype(str).str.replace(',', '', regex=False).str.strip()
+            team_df[col] = pd.to_numeric(team_df[col], errors='coerce').fillna(0)
         
         return team_df
     except Exception as e:
@@ -82,4 +83,34 @@ if selected_month:
 
         with col2:
             st.subheader("📊 과별 수율 그래프")
-            dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset
+            dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
+            dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
+            
+            fig = px.bar(dept_sum, x='생산부문명', y='수율(%)', color='자재 유형 내역', barmode='group', text='수율(%)')
+            fig.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("---")
+        st.subheader("📋 과별 수율 현황")
+        depts = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
+        tabs = st.tabs(depts)
+        
+        for i, d in enumerate(depts):
+            with tabs[i]:
+                target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
+                final_summ = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
+                
+                raw_sub_theory = final_summ.loc[final_summ.index.isin(['원자재', '부자재']), '이론금액'].sum()
+                raw_sub_actual = final_summ.loc[final_summ.index.isin(['원자재', '부자재']), '실제금액'].sum()
+                all_theory = final_summ.loc[final_summ.index.isin(['원자재', '부자재', '반제품']), '이론금액'].sum()
+                all_actual = final_summ.loc[final_summ.index.isin(['원자재', '부자재', '반제품']), '실제금액'].sum()
+                
+                final_summ.loc['원부자재 수율'] = [raw_sub_theory, raw_sub_actual]
+                final_summ.loc['전체 수율'] = [all_theory, all_actual]
+                final_summ['수율(%)'] = (final_summ['이론금액'] / final_summ['실제금액'] * 100)
+                
+                st.dataframe(final_summ.style.format({
+                    '이론금액': '{:,.0f}',
+                    '실제금액': '{:,.0f}',
+                    '수율(%)': '{:.2f}%'
+                }), use_container_width=True)
