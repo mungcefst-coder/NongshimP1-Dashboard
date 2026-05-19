@@ -48,8 +48,16 @@ def load_and_process_gsheet(mode, sheet_id):
         if df.empty: return df
 
         my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
-        team_df = df[df['생산부문명'].isin(my_team)].copy()
+        team_df = df[df['生産部門名'].isin(my_team)].copy() if '生産部門名' in df.columns else df[df['생산부문명'].isin(my_team)].copy()
         
+        # 칼럼명 한글 표준화 보장
+        if '生産部門名' in team_df.columns: team_df.rename(columns={'生産部門名': '생산부문명'}, inplace=True)
+        if '資材タイプテキスト' in team_df.columns: team_df.rename(columns={'資材タイプテキスト': '자재 유형 내역'}, inplace=True)
+        if '品目テキスト' in team_df.columns: team_df.rename(columns={'品目テキスト': '하위품목 텍스트'}, inplace=True)
+        if '理論金額' in team_df.columns: team_df.rename(columns={'理論金額': '이론금액'}, inplace=True)
+        if '実際金額' in team_df.columns: team_df.rename(columns={'實際金額': '실제금액'}, inplace=True)
+        if '실제금액' not in team_df.columns and '실적금액' in team_df.columns: team_df.rename(columns={'실적금액': '실제금액'}, inplace=True)
+
         team_df['자재 유형 내역'] = team_df['자재 유형 내역'].astype(str).str.strip()
         pure_categories = ['원자재', '부자재', '반제품']
         team_df = team_df[team_df['자재 유형 내역'].isin(pure_categories)]
@@ -91,11 +99,10 @@ if selected_month:
             dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
             
-            # ⚡ [요청 3] 메인 컬러 #0c4da2 기반의 현대적인 고품격 블루 팔레트 맵핑
             custom_colors = {
-                '원자재': '#0c4da2', # 현대적이고 묵직한 메인 블루
-                '부자재': '#5a9bd5', # 세련된 중간 톤 미디엄 블루
-                '반제품': '#a6c8e0'  # 편안함을 주는 소프트 그레이 블루
+                '원자재': '#0c4da2', 
+                '부자재': '#5a9bd5', 
+                '반제품': '#a6c8e0'  
             }
             
             fig1 = px.bar(
@@ -113,51 +120,51 @@ if selected_month:
             st.plotly_chart(fig1, use_container_width=True)
 
         with tab2:
-            st.markdown("#### ⚠️ 과별 실제 금액 대비 수율 최저 품목 분석 (1팀 스프 제외)")
+            st.markdown("#### ⚠️ 과별 주요 자재(금액 상위) 중 수율 리스크 품목 분석 (1팀 스프 제외)")
             
-            # 1팀 스프 제외 및 기본 그룹화
             item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].copy()
             item_sum = item_sum.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
-            
-            # 실제 사용 금액이 존재하는 대상만 필터링
-            item_sum = item_sum[item_sum['실제금액'] > 0].copy()
             item_sum['수율(%)'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
             
-            # ⚡ [요청 1] 손실금액 기준이 아닌, 수율이 가장 낮은 순(오름차순)으로 과별 Top 5 정렬
-            top_low_yields = item_sum.sort_values(['생산부문명', '수율(%)'], ascending=[True, True]).groupby('생산부문명').head(5)
-            
-            # ⚡ [요청 2] 그래프 데이터 상에 수율과 실제 금액이 동시에 명시되도록 문자열 가공
-            top_low_yields['표시텍스트'] = top_low_yields.apply(
-                lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {r['실제금액']:,.0f}원", axis=1
-            )
-            
-            # ⚡ [요청 3] 메인 컬러(#0c4da2) 그라데이션 스타일의 프리미엄 파스텔 블루 팔레트 연출
             premium_blue_palette = ['#0c4da2', '#2a69bd', '#4d88db', '#75a8f5', '#a3c7ff']
-            
-            # ⚡ [요청 2] 과별 2분할 독립 그래프 시각화
             col_m1, col_m5 = st.columns(2)
             
+            # ⚡ [핵심 로직 변경] 과별로 실제금액이 큰 순서대로 먼저 거른 후, 그 중 수율이 낮은 순 정렬
             with col_m1:
-                st.subheader("📍 면 1과 수율 최저 Top 5")
-                m1_top = top_low_yields[top_low_yields['생산부문명'] == '1팀 면1과'].copy()
-                if not m1_top.empty:
-                    fig_m1 = px.bar(m1_top, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트',
+                st.subheader("📍 면 1과 관리 대상 Top 5")
+                m1_data = item_sum[item_sum['생산부문명'] == '1팀 면1과'].copy()
+                if not m1_data.empty:
+                    # 1단계: 실제금액 기준 상위 품목 추출 (예: 사용금액이 유의미한 상위 15개 품목)
+                    m1_large = m1_data.sort_values('실제금액', ascending=False).head(15)
+                    # 2단계: 그 중에서 수율이 가장 좋지 않은 순(오름차순)으로 최종 5개 확정
+                    m1_top5 = m1_large.sort_values('수율(%)', ascending=True).head(5)
+                    
+                    m1_top5['표시텍스트'] = m1_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {r['실제금액']:,.0f}원", axis=1)
+                    
+                    fig_m1 = px.bar(m1_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트',
                                     color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
                     fig_m1.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', 
                                          plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]),
-                                         yaxis={'categoryorder':'total ascending'}) # 수율이 낮을수록 위쪽 정렬
+                                         yaxis={'categoryorder':'total descending'})
                     st.plotly_chart(fig_m1, use_container_width=True)
                 else: st.write("데이터 없음")
 
             with col_m5:
-                st.subheader("📍 면 5과 수율 최저 Top 5")
-                m5_top = top_low_yields[top_low_yields['생산부문명'] == '1팀 면5과'].copy()
-                if not m5_top.empty:
-                    fig_m5 = px.bar(m5_top, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트',
+                st.subheader("📍 면 5과 관리 대상 Top 5")
+                m5_data = item_sum[item_sum['생산부문명'] == '1팀 면5과'].copy()
+                if not m5_data.empty:
+                    # 1단계: 실제금액 기준 상위 품목 추출
+                    m5_large = m5_data.sort_values('실제금액', ascending=False).head(15)
+                    # 2단계: 그 중에서 수율이 가장 좋지 않은 순(오름차순)으로 최종 5개 확정
+                    m5_top5 = m5_large.sort_values('수율(%)', ascending=True).head(5)
+                    
+                    m5_top5['표시텍스트'] = m5_top5.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {r['실제금액']:,.0f}원", axis=1)
+                    
+                    fig_m5 = px.bar(m5_top5, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트',
                                     color='하위품목 텍스트', color_discrete_sequence=premium_blue_palette)
                     fig_m5.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', 
                                          plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]),
-                                         yaxis={'categoryorder':'total ascending'}) # 수율이 낮을수록 위쪽 정렬
+                                         yaxis={'categoryorder':'total descending'})
                     st.plotly_chart(fig_m5, use_container_width=True)
                 else: st.write("데이터 없음")
 
@@ -172,7 +179,7 @@ if selected_month:
 
         st.markdown("---")
         
-        # 5. 상세 현황 표 (정렬 순서 고정 및 맞춤형 신호등 서식)
+        # 5. 상세 현황 표
         st.subheader("📋 과별 상세 수율 현황")
         depts_list = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
         tabs = st.tabs(depts_list)
@@ -191,12 +198,10 @@ if selected_month:
                 final_summ.loc['전체 수율'] = [all_theory, all_actual]
                 final_summ['수율(%)'] = (final_summ['이론금액'] / final_summ['실제금액'] * 100)
                 
-                # 행 순서 고정
                 desired_order = ['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율']
                 existing_order = [idx for idx in desired_order if idx in final_summ.index]
                 final_summ = final_summ.reindex(existing_order)
                 
-                # 과별 개별 수율 기준 색상 함수
                 def get_custom_color(val, dept_name=d):
                     if pd.isna(val): return ''
                     targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53, '전체 총합': 98.73}
