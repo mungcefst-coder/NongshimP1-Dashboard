@@ -1,65 +1,61 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import os
 
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
-# 서버 전용 로컬 저장 폴더
-DATA_DIR = "Smart_Yield_Data"
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
+# ⚡ [여기에 본인의 구글 스프레드시트 ID를 붙여넣으세요]
+# 예: SHEET_ID = "1A2B3C4D5E..."
+SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 
-# 사이드바 - 파일 업로드 및 월 선택
+# 사이드바 설정
 with st.sidebar:
     st.header("📂 데이터 관리")
-    uploaded_files = st.file_uploader("월별 Raw 데이터 업로드 (여러 파일 가능)", type=["xlsx", "XLSX"], accept_multiple_files=True)
+    st.success("📊 구글 스프레드시트 연동 완료 (영구 저장)")
     
-    if uploaded_files:
-        for uploaded_file in uploaded_files:
-            file_path = os.path.join(DATA_DIR, uploaded_file.name)
-            with open(file_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-        st.success("데이터가 서버에 임시 저장되었습니다!")
-        st.cache_data.clear()
-
-    files = [f for f in os.listdir(DATA_DIR) if f.lower().endswith('.xlsx')]
-    if files:
-        selected_file = st.selectbox("분석할 데이터 선택", ["전체 누적 데이터"] + sorted(files, reverse=True))
-    else:
-        selected_file = None
-        st.info("파일을 먼저 업로드해주세요.")
+    # 분석할 월 선택 메뉴 (구글 시트의 탭 이름과 일치해야 합니다)
+    months = ["전체 누적 데이터", "1월", "2월", "3월", "4월"]
+    selected_month = st.selectbox("분석할 데이터 선택", months)
 
 st.title("🚀 생산1팀 통합 수율 관리 시스템")
-st.markdown(f"**현재 선택된 데이터:** `{selected_file}`")
+st.markdown(f"**현재 선택된 데이터:** `{selected_month}`")
 st.markdown("---")
 
-# 데이터 로드 및 전처리 로직
-@st.cache_data
-def load_and_process_data(mode):
-    if mode == "전체 누적 데이터":
-        all_dfs = []
-        for f in os.listdir(DATA_DIR):
-            if f.lower().endswith('.xlsx'):
-                temp_df = pd.read_excel(os.path.join(DATA_DIR, f))
-                all_dfs.append(temp_df)
-        df = pd.concat(all_dfs, ignore_index=True) if all_dfs else pd.DataFrame()
-    else:
-        df = pd.read_excel(os.path.join(DATA_DIR, mode))
-    
-    if df.empty: return df
+# 구글 스프레드시트에서 실시간으로 데이터를 긁어오는 로직
+@st.cache_data(ttl=600) # 10분간 캐시 유지 (구글 시트 변경 시 10분 뒤 자동 반영)
+def load_and_process_gsheet(mode, sheet_id):
+    try:
+        if mode == "전체 누적 데이터":
+            all_dfs = []
+            # 전체 누적일 경우 1월부터 4월까지 탭을 다 불러와서 합칩니다.
+            for m in ["1월", "2월", "3월", "4월"]:
+                url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={m}"
+                temp_df = pd.read_csv(url)
+                if not temp_df.empty:
+                    all_dfs.append(temp_df)
+            df = pd.concat(all_dfs, ignore_index=True) if all_dfs else pd.DataFrame()
+        else:
+            # 특정 월만 선택했을 경우 해당 탭만 불러옵니다.
+            url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={mode}"
+            df = pd.read_csv(url)
+            
+        if df.empty: return df
 
-    my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
-    team_df = df[df['생산부문명'].isin(my_team)].copy()
-    
-    team_df['자재 유형 내역'] = team_df['자재 유형 내역'].astype(str).str.strip()
-    pure_categories = ['원자재', '부자재', '반제품']
-    team_df = team_df[team_df['자재 유형 내역'].isin(pure_categories)]
-    
-    return team_df
+        # 생산1팀 데이터 정제
+        my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
+        team_df = df[df['생산부문명'].isin(my_team)].copy()
+        
+        team_df['자재 유형 내역'] = team_df['자재 유형 내역'].astype(str).str.strip()
+        pure_categories = ['원자재', '부자재', '반제품']
+        team_df = team_df[team_df['자재 유형 내역'].isin(pure_categories)]
+        return team_df
+    except Exception as e:
+        st.error(f"구글 시트를 읽어오는 중 오류가 발생했습니다. 탭 이름이나 권한을 확인하세요. 에러: {e}")
+        return pd.DataFrame()
 
-if selected_file:
-    team_df = load_and_process_data(selected_file)
+# 메인 화면 구성
+if selected_month:
+    team_df = load_and_process_gsheet(selected_month, SHEET_ID)
     
     if not team_df.empty:
         col1, col2 = st.columns([4, 6])
@@ -82,7 +78,7 @@ if selected_file:
             dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
             
-            fig = px.bar(dept_sum, x='생산부문명', y='수율(%)', color='자재 유형 내역', barmode='group', text='수율(%)')
+            fig = px.bar(dept_sum, x='생산부문명', y='자재 유형 내역', y='수율(%)', color='자재 유형 내역', barmode='group', text='수율(%)')
             fig.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig, use_container_width=True)
 
@@ -110,5 +106,3 @@ if selected_file:
                     '실제금액': '{:,.0f}',
                     '수율(%)': '{:.2f}%'
                 }), use_container_width=True)
-else:
-    st.warning("👈 왼쪽 사이드바에서 데이터를 업로드하고 분석을 시작하세요!")
