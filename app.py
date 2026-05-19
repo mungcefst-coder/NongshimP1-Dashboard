@@ -156,4 +156,18 @@ if selected_month:
                 raw_sub_theory = final_summ.loc[final_summ.index.isin(['원자재', '부자재']), '이론금액'].sum()
                 raw_sub_actual = final_summ.loc[final_summ.index.isin(['원자재', '부자재']), '실제금액'].sum()
                 all_theory = final_summ.loc[final_summ.index.isin(['원자재', '부자재', '반제품']), '이론금액'].sum()
-                all_actual = final_summ.loc[final_summ.index.isin(['원자재', '부자재', '반제품']), '실제금
+                all_actual = final_summ.loc[final_summ.index.isin(['원자재', '부자재', '반제품']), '실제금액'].sum()
+                
+                final_summ.loc['원부자재 수율'] = [raw_sub_theory, raw_sub_actual]
+                final_summ.loc['전체 수율'] = [all_theory, all_actual]
+                final_summ['수율(%)'] = (final_summ['이론금액'] / final_summ['실제금액'] * 100)
+                
+                styled_df = final_summ.style.map(color_yield, subset=['수율(%)']).format({
+                    '이론금액': '{:,.0f}',
+                    '실제금액': '{:,.0f}',
+                    '수율(%)': '{:.2f}%'
+                })
+                
+                st.dataframe(styled_df, use_container_width=True)
+else:
+    st.warning("⚠️ 데이터를 불러올 수 없습니다. 구글 시트 상태를 확인해 주세요.")
