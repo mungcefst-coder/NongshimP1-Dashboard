@@ -157,16 +157,12 @@ if selected_month:
         with tab3:
             st.markdown("#### 🔍 한눈에 보는 수율 리스크 매트릭스")
             
-            # ⚡ [핵심 수정] 텍스트와 박스를 초슬림 비율로 한 줄 정렬 (텍스트 1.3 : 박스 2 : 나머지 빈공간 6.7)
-            lbl_col, select_col, _ = st.columns([13, 20, 67])
+            # ⚡ [수정] 가로폭 쪼개기용 칼럼 생성 (비율 1:3 ➔ 왼쪽 25%만 사용)
+            box_col, empty_col = st.columns([1, 3])
             
-            with lbl_col:
-                # 패딩 값을 주어 선택 박스 높이와 수평선이 딱 맞아떨어지게 배치
-                st.markdown("<p style='padding-top: 35px; font-weight: bold; font-size: 15px;'>🎯 분석할 부서 선택 :</p>", unsafe_allow_html=True)
-                
-            with select_col:
-                # 상단 라벨을 빈칸("")으로 처리하여 라벨이 차지하는 윗공간을 제거하고 슬림화
-                scatter_dept = st.selectbox("", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_dept_filter")
+            with box_col:
+                # 박스가 좁은 칼럼 안으로 들어가면서 과하게 커지지 않고 미니멀하게 제한됩니다.
+                scatter_dept = st.selectbox("🎯 분석할 부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_dept_filter")
             
             st.markdown("""
             * **🔴 기준 미달 (진한 빨간색)**: 해당 과의 목표 관리 수율에 미치지 못하는 **리스크 품목**입니다.
