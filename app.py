@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import urllib.parse
 
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.5")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.0")
 
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
