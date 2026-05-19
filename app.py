@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import urllib.parse # ⚡ 한글 변환을 위한 인코딩 도구 추가
 
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
-# ⚡ [여기에 본인의 구글 스프레드시트 ID를 붙여넣으세요]
-# 예: SHEET_ID = "1A2B3C4D5E..."
+# ⚡ [본인의 구글 스프레드시트 ID를 입력하세요]
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 
 # 사이드바 설정
@@ -13,7 +13,6 @@ with st.sidebar:
     st.header("📂 데이터 관리")
     st.success("📊 구글 스프레드시트 연동 완료 (영구 저장)")
     
-    # 분석할 월 선택 메뉴 (구글 시트의 탭 이름과 일치해야 합니다)
     months = ["전체 누적 데이터", "1월", "2월", "3월", "4월"]
     selected_month = st.selectbox("분석할 데이터 선택", months)
 
@@ -21,22 +20,24 @@ st.title("🚀 생산1팀 통합 수율 관리 시스템")
 st.markdown(f"**현재 선택된 데이터:** `{selected_month}`")
 st.markdown("---")
 
-# 구글 스프레드시트에서 실시간으로 데이터를 긁어오는 로직
-@st.cache_data(ttl=600) # 10분간 캐시 유지 (구글 시트 변경 시 10분 뒤 자동 반영)
+# 구글 스프레드시트 연동 로직
+@st.cache_data(ttl=600)
 def load_and_process_gsheet(mode, sheet_id):
     try:
         if mode == "전체 누적 데이터":
             all_dfs = []
-            # 전체 누적일 경우 1월부터 4월까지 탭을 다 불러와서 합칩니다.
             for m in ["1월", "2월", "3월", "4월"]:
-                url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={m}"
+                # ⚡ 한글 탭 이름을 웹 주소용 특수 암호 형태로 인코딩합니다.
+                encoded_sheet = urllib.parse.quote(m)
+                url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
                 temp_df = pd.read_csv(url)
                 if not temp_df.empty:
                     all_dfs.append(temp_df)
             df = pd.concat(all_dfs, ignore_index=True) if all_dfs else pd.DataFrame()
         else:
-            # 특정 월만 선택했을 경우 해당 탭만 불러옵니다.
-            url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={mode}"
+            # ⚡ 개별 월 선택 시에도 한글 인코딩 적용
+            encoded_sheet = urllib.parse.quote(mode)
+            url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
             df = pd.read_csv(url)
             
         if df.empty: return df
@@ -78,6 +79,7 @@ if selected_month:
             dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
             
+            # ⚡ y축 실수를 수정한 올바른 그래프 코드
             fig = px.bar(dept_sum, x='생산부문명', y='수율(%)', color='자재 유형 내역', barmode='group', text='수율(%)')
             fig.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig, use_container_width=True)
