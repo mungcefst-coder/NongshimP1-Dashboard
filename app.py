@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import urllib.parse
 
 # 1. 페이지 세팅 및 타이틀 (전체 레이아웃 밝게 유지)
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V3.7")
 
 # 디자인 테마 컬러 정의
 MAIN_BLUE = "#4A90E2"       # 올해 실적 (밝고 선명한 블루)
@@ -31,8 +31,7 @@ with st.sidebar:
     search_keyword = st.text_input("🔍 세부 품목 검색", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
-st.title("💎 생산1팀 통합 수율 관리 시스템")
-# ⚡ [오류 해결] 따옴표 누락 구문을 정확하게 닫아 차트 엔진 복구
+st.title("💎 생산1팀 통합 수율 관리 시스템 V3.7")
 st.markdown(f"**현재 조회 데이터:** `{selected_month}` (브라이트 블루 리스크 강화 모드)")
 st.markdown("---")
 
@@ -44,7 +43,7 @@ def preprocess_df(df, month_label):
     rename_map = {
         '生産部門名': '생산부문명', '生産部門명': '생산부문명',
         '資재 유형 내역': '자재 유형 내역', '資材タイプテキスト': '자재 유형 내역',
-        '品목텍스트': '하위품목 텍스트', '品目テキスト': '하위품목 텍스트',
+        '品목텍스트': '하위품목 텍스트', '品목 텍스트': '하위품목 텍스트', '品目テキスト': '하위품목 텍스트', '하위품목텍스트': '하위품목 텍스트',
         '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', '实际金額': '실제금액', '实际金额': '실제금액'
     }
     df.rename(columns=rename_map, inplace=True)
@@ -161,8 +160,8 @@ if data_pool:
 
         st.markdown("---")
         # ⚡ 2단 - 자재별 비교 & 리스크 매트릭스
-        r2_c1, r2_c2 = st.columns([45, 55])
-        with r2_c1:
+        r2_col1, r2_col2 = st.columns([45, 55])
+        with r2_col1:
             st.subheader("📊 부서/자재별 수율 비교")
             dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
@@ -171,10 +170,15 @@ if data_pool:
             fig1.update_layout(template='plotly_white', yaxis=dict(range=[80, 105]), height=350)
             st.plotly_chart(fig1, use_container_width=True)
 
-        with r2_c2:
+        with r2_col2:
             st.subheader("🔍 수율 리스크 매트릭스")
-            scatter_dept = st.selectbox("부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_filter")
-            plot_df = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부num명'] == scatter_dept if '생산부num명' in team_df.columns else team_df['생산부문명'] == scatter_dept].copy()
+            
+            # ⚡ [핵심 패치] 부서 선택 셀렉트 박스의 너비를 줄이기 위해 대형 3개 컬럼 격자 구성 (30%, 35%, 35%)
+            select_box_col, _, _ = st.columns([30, 35, 35])
+            with select_box_col:
+                scatter_dept = st.selectbox("부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_filter")
+                
+            plot_df = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
             
             item_scatter = plot_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
