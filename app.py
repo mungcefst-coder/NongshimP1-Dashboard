@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import urllib.parse
 
 # 1. 페이지 세팅 및 타이틀
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.6")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.7")
 
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
@@ -27,8 +27,8 @@ with st.sidebar:
     search_keyword = st.text_input("검색어 입력 (예: 팜유, 포장지 등)", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
-st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.6")
-st.markdown(f"**현재 조회 데이터:** `{selected_month}` (전년 동월 대비 분석 모드)")
+st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.7")
+st.markdown(f"**현재 조회 데이터:** `{selected_month}` (과별 탭 맞춤 유기적 연동 모드)")
 st.markdown("---")
 
 # 2. 개별 년월 데이터 전처리 로직 (독립 격리)
@@ -62,7 +62,6 @@ def preprocess_df(df, month_label):
         df['자재 유형 내역'] = df['자재 유형 내역'].astype(str).str.strip()
         df = df[df['자재 유형 내역'].isin(['원자재', '부자재', '반제품'])]
     
-    # ⚡ [오류 해결] full_df 참조 버그를 현재 데이터프레임인 df[col]로 완벽 정정
     for col in ['이론금액', '실제금액']:
         if col in df.columns:
             df[col] = df[col].astype(str).str.replace(',', '', regex=False).str.strip()
@@ -130,18 +129,22 @@ if data_pool:
         st.markdown("---")
 
         # =========================================================================
-        # 1단 레이아웃 - 좌우 5:5 분할 배치
+        # ⚡ 1단 레이아웃 - 좌우 5:5 분할 배치 (과별 상단 대형 탭 스크린 내재화)
         # =========================================================================
-        main_col1, main_col2 = st.columns([50, 50])
-
-        # --- [왼쪽 열: 선택된 년월의 수율 실적 표] ---
-        with main_col1:
-            st.subheader(f"📋 {selected_month} 상세 수율 현황")
-            depts_list = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
-            tabs = st.tabs(depts_list)
-            
-            for i, d in enumerate(depts_list):
-                with tabs[i]:
+        st.subheader("📋 과별 상세 수율 통제 및 전년비 비교 분석")
+        
+        # 💡 [구조 변경] 메인 상단 탭을 밖으로 빼서 표와 그래프를 동시에 제어하도록 고도화
+        depts_list = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
+        selected_dept_tab = st.tabs(depts_list)
+        
+        for i, d in enumerate(depts_list):
+            with selected_dept_tab[i]:
+                # 내부 공간을 좌우 5:5로 쪼개기
+                tab_col1, tab_col2 = st.columns([50, 50])
+                
+                # --- [왼쪽 스크린: 선택된 과의 순수 상세 현황 표] ---
+                with tab_col1:
+                    st.markdown(f"**📊 {d} 상세 지표 ({selected_month})**")
                     target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                     
                     if not target_df.empty:
@@ -176,79 +179,91 @@ if data_pool:
                         
                         st.dataframe(styled_df, use_container_width=True)
                     else:
-                        st.write("해당 부서의 데이터가 없습니다.")
-                    
-            st.markdown("""
-            <div style="background-color: #262730; padding: 10px 14px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 5px;">
-                <span style="font-size: 12px; color: #E0E0E0; font-weight: 500;">
-                    🔹 <b>면1과 :</b> 98.92% 이상 | 🔹 <b>면5과 :</b> 97.92% 이상 | 🔹 <b>스프 :</b> 99.53% 이상 | 🔹 <b>총합 :</b> 98.73% 이상
-                </span>
-            </div>
-            """, unsafe_allow_html=True)
+                        st.write("💡 해당 년월에 해당 과의 유효 데이터가 존재하지 않습니다.")
+                        
+                    st.markdown(f"""
+                    <div style="background-color: #262730; padding: 10px 14px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 5px;">
+                        <span style="font-size: 11px; color: #E0E0E0; font-weight: 500;">
+                            🎯 <b>{d} 관리 기준 수율 :</b> { '98.92%' if d=='1팀 면1과' else '97.92%' if d=='1팀 면5과' else '99.53%' if d=='1팀 스프' else '98.73%' } 이상 통제 필요
+                        </span>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-        # --- [오른쪽 열: 전년 동월대비 딱 2개 시점만 비교하는 그래프] ---
-        with main_col2:
-            st.subheader("📈 전년 동월 대비 실적 비교 (YoY 정밀 타격)")
-            
-            compare_data = []
-            
-            if selected_month != "전체 누적 데이터":
-                curr_y = team_df['이론금액'].sum()
-                curr_x = team_df['실제금액'].sum()
-                curr_yld = (curr_y / curr_x * 100) if curr_x > 0 else 0
-                compare_data.append({"시점": f"현재 ({selected_month})", "실제금액": curr_x, "수율": round(curr_yld, 2)})
-                
-                try:
-                    yy, mm = selected_month.split('.')
-                    prev_year_label = f"{int(yy)-1:02d}.{mm}"
+                # --- [오른쪽 스크린: ⚡ 클릭한 과(d)의 데이터만 추출하여 전년 동월과 1:1 비교] ---
+                with tab_col2:
+                    st.markdown(f"**📈 {d} 전년 동월 대비 실적 비교 (YoY)**")
                     
-                    if prev_year_label in data_pool:
-                        p_df = data_pool[prev_year_label]
-                        p_y = p_df['이론금액'].sum()
-                        p_x = p_df['실제금액'].sum()
-                        p_yld = (p_y / p_x * 100) if p_x > 0 else 0
-                        compare_data.insert(0, {"시점": f"작년 동월 ({prev_year_label})", "실제금액": p_x, "수율": round(p_yld, 2)})
-                except:
-                    pass
-            else:
-                t_y = trend_raw_df['이론금액'].sum()
-                t_x = trend_raw_df['실제금액'].sum()
-                t_yl = (t_y / t_x * 100) if t_x > 0 else 0
-                compare_data.append({"시점": "전체 누적 실적", "실제금액": t_x, "수율": round(t_yl, 2)})
-            
-            comp_df = pd.DataFrame(compare_data)
-            
-            chart_annotations = []
-            for idx, r in comp_df.iterrows():
-                b_txt = f"{r['수율']:.2f}%"
-                if idx == 0 or len(comp_df) < 2:
-                    chart_annotations.append(b_txt)
-                else:
-                    gap = r['수율'] - comp_df.loc[0, '수율']
-                    if gap > 0: chart_annotations.append(f"{b_txt}<br><span style='color:#00E676; font-size:12px;'>작년비 ▲{gap:.2f}%</span>")
-                    elif gap < 0: chart_annotations.append(f"{b_txt}<br><span style='color:#FF5252; font-size:12px;'>작년비 ▼{abs(gap):.2f}%</span>")
-                    else: chart_annotations.append(f"{b_txt}<br><span style='color:#FFF; font-size:12px;'>동일</span>")
-            
-            fig_yoy = go.Figure()
-            fig_yoy.add_trace(go.Bar(
-                x=comp_df['시점'], y=comp_df['실제금액'], name="실제 집행금액(원)", yaxis="y1", 
-                marker_color='rgba(12, 77, 162, 0.55)', hovertemplate="%{y:,.0f} 원<extra></extra>", 
-                width=0.4 if len(comp_df)>1 else 0.2
-            ))
-            fig_yoy.add_trace(go.Scatter(
-                x=comp_df['시점'], y=comp_df['수율'], name="종합 수율(%)", yaxis="y2", 
-                line=dict(color='#00E676', width=4), mode='lines+markers+text' if len(comp_df)>1 else 'markers+text', 
-                text=chart_annotations, textposition="top center", marker=dict(size=12)
-            ))
-            
-            fig_yoy.update_layout(
-                template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                yaxis=dict(title="실제 투입 금액 (원)", side="left", showgrid=False),
-                yaxis2=dict(title="수율 (%)", side="right", overlaying="y", range=[95, 102], showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                margin=dict(l=0, r=0, t=30, b=0), height=310
-            )
-            st.plotly_chart(fig_yoy, use_container_width=True)
+                    compare_data = []
+                    
+                    if selected_month != "전체 누적 데이터":
+                        # 1. 현재 선택월의 '해당 과' 데이터 집계
+                        curr_dept_df = data_pool.get(selected_month, pd.DataFrame())
+                        if d != '전체 총합' and not curr_dept_df.empty:
+                            curr_dept_df = curr_dept_df[curr_dept_df['생산부문명'] == d]
+                            
+                        c_y = curr_dept_df['이론금액'].sum()
+                        c_x = curr_dept_df['실제금액'].sum()
+                        c_yld = (c_y / c_x * 100) if c_x > 0 else 0
+                        compare_data.append({"시점": f"현재 ({selected_month})", "실제금액": c_x, "수율": round(c_yld, 2)})
+                        
+                        # 2. 작년 동월의 '해당 과' 데이터 자동 연산 및 매핑
+                        try:
+                            yy, mm = selected_month.split('.')
+                            prev_year_label = f"{int(yy)-1:02d}.{mm}"
+                            
+                            if prev_year_label in data_pool:
+                                p_dept_df = data_pool[prev_year_label]
+                                if d != '전체 총합' and not p_dept_df.empty:
+                                    p_dept_df = p_dept_df[p_dept_df['생산부문명'] == d]
+                                    
+                                p_y = p_dept_df['이론금액'].sum()
+                                p_x = p_dept_df['실제금액'].sum()
+                                p_yld = (p_y / p_x * 100) if p_x > 0 else 0
+                                compare_data.insert(0, {"시점": f"작년 동월 ({prev_year_label})", "실제금액": p_x, "수율": round(p_yld, 2)})
+                        except:
+                            pass
+                    else:
+                        # 전체 누적일 때 해당 과의 누적치 요약
+                        t_dept_df = trend_raw_df if d == '전체 총합' else trend_raw_df[trend_raw_df['생산부문명'] == d]
+                        t_y = t_dept_df['이론금액'].sum()
+                        t_x = t_dept_df['실제금액'].sum()
+                        t_yl = (t_y / t_x * 100) if t_x > 0 else 0
+                        compare_data.append({"시점": f"{d} 누적 실적", "실제금액": t_x, "수율": round(t_yl, 2)})
+                    
+                    comp_df = pd.DataFrame(compare_data)
+                    
+                    # 작년비 증감 텍스트 어노테이션 생성
+                    chart_annotations = []
+                    for idx, r in comp_df.iterrows():
+                        b_txt = f"{r['수율']:.2f}%"
+                        if idx == 0 or len(comp_df) < 2:
+                            chart_annotations.append(b_txt)
+                        else:
+                            gap = r['수율'] - comp_df.loc[0, '수율']
+                            if gap > 0: chart_annotations.append(f"{b_txt}<br><span style='color:#00E676; font-size:12px;'>작년비 ▲{gap:.2f}%</span>")
+                            elif gap < 0: chart_annotations.append(f"{b_txt}<br><span style='color:#FF5252; font-size:12px;'>작년비 ▼{abs(gap):.2f}%</span>")
+                            else: chart_annotations.append(f"{b_txt}<br><span style='color:#FFF; font-size:12px;'>동일</span>")
+                    
+                    fig_yoy = go.Figure()
+                    fig_yoy.add_trace(go.Bar(
+                        x=comp_df['시점'], y=comp_df['실제금액'], name="실제 금액(원)", yaxis="y1", 
+                        marker_color='rgba(12, 77, 162, 0.55)', hovertemplate="%{y:,.0f} 원<extra></extra>", 
+                        width=0.35 if len(comp_df)>1 else 0.18
+                    ))
+                    fig_yoy.add_trace(go.Scatter(
+                        x=comp_df['시점'], y=comp_df['수율'], name="종합 수율(%)", yaxis="y2", 
+                        line=dict(color='#00E676', width=4), mode='lines+markers+text' if len(comp_df)>1 else 'markers+text', 
+                        text=chart_annotations, textposition="top center", marker=dict(size=12)
+                    ))
+                    
+                    fig_yoy.update_layout(
+                        template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                        yaxis=dict(title="실제 투입 금액 (원)", side="left", showgrid=False),
+                        yaxis2=dict(title="수율 (%)", side="right", overlaying="y", range=[94, 102], showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                        margin=dict(l=0, r=0, t=30, b=0), height=290
+                    )
+                    st.plotly_chart(fig_yoy, use_container_width=True)
 
     st.markdown("---")
 
