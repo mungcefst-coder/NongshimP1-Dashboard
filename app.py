@@ -47,7 +47,7 @@ st.markdown("""
 # 사이드바 컨트롤러
 with st.sidebar:
     st.header("📂 데이터 관제")
-    st.info("📊 연도별 누적 교차 비교 기능 가동 중")
+    st.info("📊 수율 종합 상황판 실시간 가동 중")
     
     selected_months = st.multiselect(
         "분석할 년월(YY.MM) 복수 선택", 
