@@ -4,8 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import urllib.parse
 
-# 1. 페이지 세팅 및 타이틀 (전체 레이아웃 밝게 유지)
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V3.7")
+# 1. 페이지 세팅 및 타이틀 (브라우저 탭 제목에 기어 이모티콘 및 버전 정보 제거)
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
 # 디자인 테마 컬러 정의
 MAIN_BLUE = "#4A90E2"       # 올해 실적 (밝고 선명한 블루)
@@ -30,8 +30,8 @@ with st.sidebar:
     st.markdown("---")
     search_keyword = st.text_input("🔍 세부 품목 검색", placeholder="비워두면 전체 조회")
 
-# 메인 화면 제목
-st.title("💎 생산1팀 통합 수율 관리 시스템 V3.7")
+# 메인 화면 제목 (⚡ ⚙️ 기어 이모티콘 적용 및 버전 표기 완전 제거)
+st.title("⚙️ 생산1팀 통합 수율 관리 시스템")
 st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
 st.markdown("---")
 
@@ -47,10 +47,14 @@ def preprocess_df(df, month_label):
         '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', '实际金額': '실제금액', 'Actual金额': '실제금액'
     }
     df.rename(columns=rename_map, inplace=True)
-    my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
+    
     if '생산부문명' in df.columns:
-        df = df[df['생산부문명'].isin(my_team)]
-    else: return pd.DataFrame()
+        df['생산부문명'] = df['생산부문명'].strip() if hasattr(df['생산부문명'], 'strip') else df['생산부문명']
+        dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실'}
+        df = df[df['생산부문명'].isin(dept_map.keys())].copy()
+        df['생산부문명'] = df['생산부문명'].map(dept_map)
+    else: 
+        return pd.DataFrame()
     
     if '자재 유형 내역' in df.columns:
         df = df[df['자재 유형 내역'].isin(['원자재', '부자재', '반제품'])]
@@ -99,7 +103,7 @@ if data_pool:
 
         # ⚡ 1단 - 생산1팀 수율 종합 지표
         st.subheader("📋 생산1팀 수율 종합 지표")
-        depts_list = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
+        depts_list = ['면 1과', '면 5과', '스프실', '전체 총합']
         selected_dept_tab = st.tabs(depts_list)
         
         for i, d in enumerate(depts_list):
@@ -110,19 +114,15 @@ if data_pool:
                     st.markdown(f"**📊 {d} 지표 ({selected_month})**")
                     target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                     if not target_df.empty:
-                        # ⚡ [좌측 표 패치] 원자재 > 부자재 > 반제품 순으로 인덱스 정렬 강제 고정 후 요약 행 결합
                         base_summ = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
-                        
-                        # 존재하는 카테고리만 원하는 순서대로 필터링 및 재배치
                         order_list = [c for c in ['원자재', '부자재', '반제품'] if c in base_summ.index]
                         final_summ = base_summ.reindex(order_list)
                         
-                        # 요약 및 수율 계산 수행
                         final_summ.loc['전체 수율'] = [final_summ['이론금액'].sum(), final_summ['실제금액'].sum()]
                         final_summ['수율(%)'] = (final_summ['이론금액'] / final_summ['실제금액'] * 100)
                         
                         def sig(v, dn=d):
-                            trg = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53, '전체 총합': 98.73}
+                            trg = {'면 1과': 98.92, '면 5과': 97.92, '스프실': 99.53, '전체 총합': 98.73}
                             limit = trg.get(dn, 98.73)
                             return f"🟢 {v:.2f}%" if v >= limit else f"🔴 {v:.2f}%"
                         
@@ -130,7 +130,7 @@ if data_pool:
                         st.dataframe(final_summ.style.format({'이론금액': '{:,.0f}', '실제금액': '{:,.0f}'}), use_container_width=True)
                     
                     st.markdown(f"""<div style="background-color:#F0F7FF; padding:10px; border-radius:8px; border-left:5px solid {MAIN_BLUE}; font-size:12px; color:#34495E;">
-                        🎯 <b>{d} 기준 :</b> { '98.92%' if d=='1팀 면1과' else '97.92%' if d=='1팀 면5과' else '99.53%' if d=='1팀 스프' else '98.73%' } 이상</div>""", unsafe_allow_html=True)
+                        🎯 <b>{d} 기준 :</b> { '98.92%' if d=='면 1과' else '97.92%' if d=='면 5과' else '99.53%' if d=='스프실' else '98.73%' } 이상</div>""", unsafe_allow_html=True)
 
                 with tab_col2:
                     st.markdown(f"**📈 전년 동기대비 수율 비교**")
@@ -162,7 +162,6 @@ if data_pool:
                         fig_yoy = px.bar(comp_df, x='자재', y='수율', color='구분', barmode='group', text='수율',
                                          color_discrete_map={selected_month: MAIN_BLUE, comp_df['구분'].unique()[0]: COMP_GRAY})
                         
-                        # ⚡ [우측 표 패치] X축 카테고리 순서를 원자재 > 부자재 > 반제품 순으로 강제 지정
                         fig_yoy.update_layout(
                             template='plotly_white', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                             yaxis=dict(range=[85, 103]), 
@@ -195,7 +194,7 @@ if data_pool:
             
             select_box_col, _, _ = st.columns([30, 35, 35])
             with select_box_col:
-                scatter_dept = st.selectbox("부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_filter")
+                scatter_dept = st.selectbox("부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="matrix_filter")
                 
             plot_df = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
             
@@ -234,13 +233,13 @@ if data_pool:
         st.markdown("---")
         # ⚡ 3단 - Top 5 (채도 감쇄 그라데이션)
         st.subheader("🚨 과별 핵심 관리 대상 Top 5")
-        item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+        item_sum = team_df[team_df['생산부문명'] != '스프실'].groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
         item_sum['수율'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
         r3_c1, r3_c2 = st.columns(2)
         
         blue_grad = ['#D6EAF8', '#AED6F1', '#85C1E9', '#5DADE2', '#2E86C1'] 
         
-        for i, d in enumerate(['1팀 면1과', '1팀 면5과']):
+        for i, d in enumerate(['면 1과', '면 5과']):
             with [r3_c1, r3_c2][i]:
                 st.markdown(f"**📍 {d}**")
                 m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
