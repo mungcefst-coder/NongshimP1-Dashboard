@@ -102,7 +102,7 @@ if data_pool and selected_months:
         team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
     # 1단 - 수율 종합 지표
-    st.subheader("📋 생산1팀 수율 종합 지표")
+    st.subheader("📋 생산1팀 수율 종합 상황판")
     depts_list = ['면 1과', '면 5과', '스프실', '전체 총합']
     selected_dept_tab = st.tabs(depts_list)
     
@@ -112,7 +112,7 @@ if data_pool and selected_months:
             target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
             
             with tab_col1:
-                st.markdown(f"**📊 {d} 연도별 누적 지표 대조**")
+                st.markdown(f"**📊 {d} 수율 지표**")
                 if not target_df.empty:
                     base_summ = target_df.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
                     total_rows = []
@@ -148,7 +148,7 @@ if data_pool and selected_months:
                 
             with tab_col2:
                 # ⚡ [방안 1 적용] 중복 막대 차트를 걷어내고 시간의 흐름에 따른 '월별 누적 수율 변동 추이(Line)' 신설
-                st.markdown(f"**📈 연도별 월간 누적 수율 추이 흐름 (시계열 Trend)**")
+                st.markdown(f"**📈 수율 현황 Graph**")
                 if not target_df.empty:
                     # 선택된 월들에 대해 월별 정렬 후 누적 연산을 위한 기본 그룹바이
                     trend_raw = target_df.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index()
@@ -191,7 +191,7 @@ if data_pool and selected_months:
     r2_col1, r2_col2 = st.columns([48, 52])
     
     with r2_col1:
-        st.subheader("📊 부서별 연도 누적 수율 대조")
+        st.subheader("📊 부서별 수율 실적")
         mat_choice = st.selectbox("조회할 자재 유형 선택", ["원자재", "부자재", "반제품"], key="mat_opt")
         filtered_r2_1 = team_df[team_df['자재 유형 내역'] == mat_choice]
         if not filtered_r2_1.empty:
@@ -211,7 +211,7 @@ if data_pool and selected_months:
         else: st.caption("해당 자재 데이터가 없습니다.")
 
     with r2_col2:
-        st.subheader("🔍 연도별 누적 수율 리스크 매트릭스")
+        st.subheader("🔍 수율 리스크 매트릭스")
         scatter_dept = st.selectbox("부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="m_dept")
         plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
         
@@ -245,7 +245,7 @@ if data_pool and selected_months:
 
     # 3단 - 과별 관리 대상 Top 5
     st.markdown("---")
-    st.subheader("🚨 과별 핵심 관리 대상 Top 5")
+    st.subheader("🚨 핵심 관리 대상 Top 5")
     tab_26, tab_25 = st.tabs(["📅 2026년 누적 관리 품목", "📅 2025년 누적 관리 품목"])
     
     for target_yr, current_tab in [("26년 누적", tab_26), ("25년 누적", tab_25)]:
