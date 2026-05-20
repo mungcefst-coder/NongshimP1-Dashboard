@@ -51,10 +51,10 @@ def preprocess_df(df, month_label):
     df = df.copy(); df['월'] = month_label
     df.columns = [str(c).strip() for c in df.columns]
     rename_map = {
-        '生産部門名': '생산부문명', '生産部門명': '생산부문명',
-        '資재 유형 내역': '자재 유형 내역', '資材タイプテキスト': '자재 유형 내역',
-        '品목텍스트': '하위품목 텍스트', '品목 텍스트': '하위품목 텍스트', '品目テキスト': '하위품목 텍스트', '하위품목텍스트': '하위품목 텍스트',
-        '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', '实际金額': '실제금액', 'Actual金额': '실제금액'
+        '生産部門명': '생산부문명', '生産部門名': '생산부문명',
+        '資재 유형 내역': '자재 유형 내역', '資材タイプ텍스트': '자재 유형 내역',
+        '品목텍스트': '하위품목 텍스트', '品목 텍스트': '하위품목 텍스트', '하위품목텍스트': '하위품목 텍스트',
+        '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', 'Actual金额': '실제금액'
     }
     df.rename(columns=rename_map, inplace=True)
     
@@ -96,14 +96,12 @@ data_pool = load_all_raw_data(SHEET_ID, ALL_MONTHS)
 if data_pool and selected_months:
     active_dfs = [data_pool[m] for m in selected_months if m in data_pool]
     team_df = pd.concat(active_dfs, ignore_index=True)
-    
-    # 확실하게 연도 그룹 정의 ('25년 누적' vs '26년 누적')
     team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
     
     if search_keyword:
         team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-    # 1단 - 생산1팀 수율 종합 지표 (테이블 및 YoY 그래프)
+    # 1단 - 수율 종합 지표
     st.subheader("📋 생산1팀 수율 종합 지표")
     depts_list = ['면 1과', '면 5과', '스프실', '전체 총합']
     selected_dept_tab = st.tabs(depts_list)
@@ -124,23 +122,18 @@ if data_pool and selected_months:
                     if total_rows:
                         base_summ = pd.concat([base_summ, pd.DataFrame(total_rows)], ignore_index=True)
                     base_summ['수율(%)'] = (base_summ['이론금액'] / base_summ['실제금액'] * 100)
-                    
                     pivot_df = base_summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율(%)'])
-                    
                     all_cols = []
                     for yr in ['25년 누적', '26년 누적']:
                         for val in ['이론금액', '실제금액', '수율(%)']:
                             all_cols.append((val, yr))
                     pivot_df = pivot_df.reindex(columns=all_cols, fill_value=0)
-                    
                     flat_cols = []
                     for yr in ['25년 누적', '26년 누적']:
                         for val in ['이론금액', '실제금액', '수율(%)']:
-                            suffix = '수율' if val == '수율(%)' else val
-                            flat_cols.append(f"{yr[:3]} {suffix}")
+                            flat_cols.append(f"{yr[:3]} {val.replace('(%)', '수율')}")
                     pivot_df.columns = flat_cols
                     pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
-                    
                     format_dict = {}
                     for col in pivot_df.columns:
                         if '수율' in col:
@@ -148,8 +141,7 @@ if data_pool and selected_months:
                         else:
                             format_dict[col] = '{:,.0f}'
                     st.dataframe(pivot_df.style.format(format_dict), use_container_width=True)
-                else:
-                    st.caption("데이터가 없습니다.")
+                else: st.caption("데이터가 없습니다.")
                 
             with tab_col2:
                 st.markdown(f"**📈 연도별 누적 수율 비교 (YoY)**")
@@ -171,35 +163,30 @@ if data_pool and selected_months:
     with r2_col1:
         st.subheader("📊 부서별 연도 누적 수율 대조")
         mat_choice = st.selectbox("조회할 자재 유형 선택", ["원자재", "부자재", "반제품"], key="mat_opt")
-        
         filtered_r2_1 = team_df[team_df['자재 유형 내역'] == mat_choice]
         if not filtered_r2_1.empty:
             dept_sum = filtered_r2_1.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
-            
             fig1 = px.bar(
                 dept_sum, x='생산부문명', y='수율', color='연도', barmode='group', text='수율',
                 color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE}
             )
             fig1.update_layout(template='plotly_white', height=330, yaxis=dict(range=[80, 105]), xaxis_title=None)
             st.plotly_chart(fig1, use_container_width=True)
-        else:
-            st.caption("해당 자재 데이터가 없습니다.")
+        else: st.caption("해당 자재 데이터가 없습니다.")
 
     with r2_col2:
         st.subheader("🔍 연도별 누적 수율 리스크 매트릭스")
         scatter_dept = st.selectbox("부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="m_dept")
-        
         plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
         
         if not plot_df2.empty:
-            # 품목별 누적 연산 진행
             item_scatter = plot_df2.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
             
-            # 💡 [1번 수정 사항] 실제 금액 4억 원 이상, 수율 98% 이하 조건 설정
+            # 💡 [리스크 조건] 4억 이상 & 98% 이하
             def assign_risk_status(row):
                 if row['연도'] == '26년 누적' and row['actual_billion'] >= 4.0 and row['수율'] <= 98.0:
                     return '26년 핵심 관리 대상 (⚠️고위험)'
@@ -207,47 +194,26 @@ if data_pool and selected_months:
             
             item_scatter['분류'] = item_scatter.apply(assign_risk_status, axis=1)
             
-            # 버블 마커 크기 체계 동기화
-            size_map = {'25년 누적': 10, '26년 누적': 11, '26년 핵심 관리 대상 (⚠️고위험)': 18}
+            # ⚡ [1번 수정] 버블 크기 대폭 축소 (10, 11, 18 -> 6, 7, 12)
+            size_map = {'25년 누적': 6, '26년 누적': 7, '26년 핵심 관리 대상 (⚠️고위험)': 12}
             item_scatter['점크기'] = item_scatter['분류'].map(size_map)
             
-            # 💡 [3번 수정 사항] 범례명 매핑과 색상을 MAIN_BLUE로 명확히 바인딩
             fig3 = px.scatter(
                 item_scatter, x='actual_billion', y='수율', color='분류',
-                size='점크기', size_max=18,
+                size='점크기', size_max=12,  # ⚡ size_max도 12로 하향 조정
                 hover_name='하위품목 텍스트',
-                hover_data=['생산부문명', '실제금액'],
-                color_discrete_map={
-                    '25년 누적': COMP_GRAY, 
-                    '26년 누적': MAIN_BLUE, 
-                    '26년 핵심 관리 대상 (⚠️고위험)': ALERT_RED
-                },
+                color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '26년 핵심 관리 대상 (⚠️고위험)': ALERT_RED},
                 category_orders={'분류': ['25년 누적', '26년 누적', '26년 핵심 관리 대상 (⚠️고위험)']}
             )
-            
-            fig3.update_traces(
-                marker=dict(line=dict(width=1.5, color='DarkSlateGrey')),
-                selector=dict(mode='markers')
-            )
-            
+            fig3.update_traces(marker=dict(line=dict(width=1, color='DarkSlateGrey')))
             fig3.add_hline(y=100.0, line_dash="dash", line_color="#7F8C8D", opacity=0.7)
-            
-            # 💡 [2번 수정 사항] X축 이름을 '금액(억원)'으로 수정
-            fig3.update_layout(
-                template='plotly_white', 
-                height=330, 
-                xaxis_title="금액(억원)", 
-                yaxis_title="수율 (%)", 
-                legend_title=None
-            )
+            fig3.update_layout(template='plotly_white', height=330, xaxis_title="금액(억원)", yaxis_title="수율 (%)", legend_title=None)
             st.plotly_chart(fig3, use_container_width=True)
-        else:
-            st.caption("조회할 리스크 내역이 없습니다.")
+        else: st.caption("조회할 리스크 내역이 없습니다.")
 
     # 3단 - 과별 관리 대상 Top 5
     st.markdown("---")
     st.subheader("🚨 과별 핵심 관리 대상 Top 5")
-    
     tab_26, tab_25 = st.tabs(["📅 2026년 누적 관리 품목", "📅 2025년 누적 관리 품목"])
     
     for target_yr, current_tab in [("26년 누적", tab_26), ("25년 누적", tab_25)]:
@@ -256,24 +222,20 @@ if data_pool and selected_months:
             if not yr_df.empty:
                 item_sum = yr_df[yr_df['생산부문명'] != '스프실'].groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
                 item_sum['수율'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
-                
                 r3_c1, r3_c2 = st.columns(2)
                 for idx, d in enumerate(['면 1과', '면 5과']):
                     with [r3_c1, r3_c2][idx]:
                         st.markdown(f"**📍 {d} ({target_yr})**")
                         m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
                         
+                        # ⚡ [2번 수정] 높이를 240에서 360으로 1.5배 상향하여 막대 두께 보강
                         if not m_data.empty:
                             m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
                             fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
-                            
-                            color_val = MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY
-                            fig_m.update_traces(marker_color=color_val, textposition='inside')
-                            fig_m.update_layout(template='plotly_white', height=240, xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
+                            fig_m.update_traces(marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, textposition='inside')
+                            fig_m.update_layout(template='plotly_white', height=360, xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
                             st.plotly_chart(fig_m, use_container_width=True)
-                        else:
-                            st.caption("🔍 리스크 추출 대상 품목이 없습니다.")
-            else:
-                st.caption(f"ℹ️ 선택한 달 중 {target_yr} 데이터가 존재하지 않습니다.")
+                        else: st.caption("🔍 대상 품목이 없습니다.")
+            else: st.caption(f"ℹ️ {target_yr} 데이터가 없습니다.")
 else:
-    st.warning("⚠️ 데이터를 불러올 수 없습니다. 사이드바에서 분석할 년월을 선택해 주세요.")
+    st.warning("⚠️ 사이드바에서 분석할 년월을 선택해 주세요.")
