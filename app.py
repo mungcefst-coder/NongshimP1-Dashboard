@@ -13,7 +13,7 @@ COMP_GRAY = "#B0BEC5"       # 25년 누적 실적 (슬레이트 그레이)
 ALERT_RED = "#E74C3C"       # 핵심 관리 대상 강조 컬러 (소프트 레드)
 BG_WHITE = "#FFFFFF"
 
-# 구글 스프레딧 시트 ID 고정
+# 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = [
     "25.01", "25.02", "25.03", "25.04", "25.05", "25.06", 
@@ -167,11 +167,18 @@ if data_pool and selected_months:
         if not filtered_r2_1.empty:
             dept_sum = filtered_r2_1.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
+            
             fig1 = px.bar(
                 dept_sum, x='생산부문명', y='수율', color='연도', barmode='group', text='수율',
                 color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE}
             )
-            fig1.update_layout(template='plotly_white', height=330, yaxis=dict(range=[80, 105]), xaxis_title=None)
+            # ⚡ [요청 반영] 세로 막대 위의 텍스트 포지션을 바깥쪽(outside)으로 빼고 폰트 컬러를 선명하게 교정
+            fig1.update_traces(
+                textposition='outside',
+                textfont=dict(color='#2C3E50', size=11, family='sans-serif')
+            )
+            # 숫자가 위로 튀어나오므로 그래프 상단 여백 확보를 위해 yaxis range를 105에서 108로 확장
+            fig1.update_layout(template='plotly_white', height=330, yaxis=dict(range=[80, 108]), xaxis_title=None)
             st.plotly_chart(fig1, use_container_width=True)
         else: st.caption("해당 자재 데이터가 없습니다.")
 
@@ -181,7 +188,7 @@ if data_pool and selected_months:
         plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
         
         if not plot_df2.empty:
-            item_scatter = plot_df2.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+            item_scatter = plot_df2.groupby(['연도', '生産部門명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
@@ -229,13 +236,11 @@ if data_pool and selected_months:
                             m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
                             fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
                             
-                            # ⚡ [글자 위치 고도화 패치] textposition='outside'로 빼고 글자색을 진한 회색(#2C3E50)으로 지정하여 가독성 극대화
                             fig_m.update_traces(
                                 marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, 
                                 textposition='outside',
                                 textfont=dict(color='#2C3E50', size=11, family='sans-serif')
                             )
-                            # 숫자가 밖으로 빠져나갔으므로 오른쪽 여백 버퍼 확보를 위해 range를 115에서 130으로 확장
                             fig_m.update_layout(template='plotly_white', height=360, xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'})
                             st.plotly_chart(fig_m, use_container_width=True)
                         else: st.caption("🔍 대상 품목이 없습니다.")
