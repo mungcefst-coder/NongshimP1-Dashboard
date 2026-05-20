@@ -75,7 +75,6 @@ def load_and_process_gsheet(mode, sheet_id):
             team_df[col] = team_df[col].astype(str).str.replace(',', '', regex=False).str.strip()
             team_df[col] = pd.to_numeric(team_df[col], errors='coerce').fillna(0)
             
-        # 수율 50% 미만 데이터 원천 제외
         calculated_yield = (team_df['이론금액'] / team_df['실제금액']) * 100
         team_df = team_df[~((team_df['실제금액'] > 0) & (calculated_yield < 50))]
         
@@ -104,7 +103,7 @@ if selected_month:
         st.markdown("---")
 
         # =========================================================================
-        # ⚡ [1단 - 최상단 고정] 과별 상세 수율 현황 표 + 관리 기준 한 줄 배너
+        # ⚡ [1단 - 최상단 고정] 과별 상세 수율 현황 표 + 🔴/🟢 신호등 제어 로직
         # =========================================================================
         st.subheader("📋 과별 상세 수율 현황")
         depts_list = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
@@ -128,16 +127,42 @@ if selected_month:
                 existing_order = [idx for idx in desired_order if idx in final_summ.index]
                 final_summ = final_summ.reindex(existing_order)
                 
-                def get_custom_color(val, dept_name=d):
-                    if pd.isna(val): return ''
-                    targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53, '전체 총합': 98.73}
-                    limit = targets.get(dept_name, 95.0)
-                    if val < limit: return 'color: #FF5252; font-weight: bold;'
-                    else: return 'color: #448AFF; font-weight: bold;'
+                display_df = final_summ.copy()
                 
-                styled_df = final_summ.style.format({
-                    '이론금액': '{:,.0f}', '실제금액': '{:,.0f}', '수율(%)': '{:.2f}%'
-                }).map(get_custom_color, subset=['수율(%)'])
+                # ⚡ [수정] '전체 총합' 과의 판정 기준을 98.73%로 별도 고정 처리하는 함수
+                def make_signal_text(row_idx, val, dept_name=d):
+                    if pd.isna(val) or val == 0: return "-"
+                    
+                    # 요청 사항 반영: 전체 총합 탭 및 각 개별 행 판정용 스케일 분기
+                    targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53, '전체 총합': 98.73}
+                    
+                    # 만약 전체 총합 탭 자체를 보고 있다면 무조건 98.73%로 판정하고,
+                    # 다른 과 탭 내부의 '전체 수율' 행을 보고 있다면 그 과의 고유 기준 수율로 판정
+                    if dept_name == '전체 총합':
+                        limit = 98.73
+                    else:
+                        limit = targets.get(dept_name, 95.0)
+                        
+                    formatted_val = f"{val:.2f}%"
+                    
+                    if val < limit:
+                        return f"{formatted_val} 🔴"
+                    else:
+                        return f"{formatted_val} 🟢"
+                
+                display_df['수율(%)'] = [make_signal_text(idx, display_df.loc[idx, '수율(%)']) for idx in display_df.index]
+                
+                def get_custom_color_style(val_str):
+                    if "🔴" in str(val_str):
+                        return 'color: #FF5252; font-weight: bold; font-size: 14px;'
+                    elif "🟢" in str(val_str):
+                        return 'color: #448AFF; font-weight: bold; font-size: 14px;'
+                    return ''
+                
+                styled_df = display_df.style.format({
+                    '이론금액': '{:,.0f}', '실제금액': '{:,.0f}'
+                }).map(get_custom_color_style, subset=['수율(%)'])
+                
                 st.dataframe(styled_df, use_container_width=True)
                 
         # 초슬림 한 줄 배너 가이드 라인
@@ -147,7 +172,8 @@ if selected_month:
             <span style="font-size: 13px; color: #E0E0E0; font-weight: 500;">
                 🟢 <b>1팀 면1과 :</b> 수율 98.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
                 🟢 <b>1팀 면5과 :</b> 수율 97.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
-                🟢 <b>1팀 스프 :</b> 수율 99.53% 이상
+                🟢 <b>1팀 스프 :</b> 수율 99.53% 이상 &nbsp;&nbsp;|&nbsp;&nbsp;
+                🟢 <b>전체 총합 :</b> 수율 98.73% 이상
             </span>
         </div>
         """, unsafe_allow_html=True)
@@ -190,8 +216,8 @@ if selected_month:
             item_scatter['실제 투입 금액 (억 원)'] = item_scatter['실제금액'] / 100000000
             
             def get_scatter_status(row):
-                targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53}
-                limit = targets.get(row['생산부문명'], 95.0)
+                targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53, '전체 1팀': 98.73}
+                limit = targets.get(scatter_dept, 95.0)
                 return '기준 달성' if row['수율(%)'] >= limit else '기준 미달'
                 
             if not item_scatter.empty:
@@ -203,7 +229,8 @@ if selected_month:
                 fig3.update_traces(hovertemplate="<b>%{hovertext}</b><br><br>실제 투입 금액: %{x:.2f}억 원<br>수율: %{y:.2f}%<extra></extra>",
                     marker=dict(size=10, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)')))
                 
-                targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53}
+                # ⚡ 매트릭스 하단 가이드선도 전체 1팀일 때 98.73%가 뜨도록 고도화
+                targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53, '전체 1팀': 98.73}
                 if scatter_dept in targets:
                     specific_limit = targets[scatter_dept]
                     fig3.add_hline(y=specific_limit, line_dash="dash", line_color="#FF5252", opacity=0.8, annotation_text=f"{specific_limit}%", annotation_position="top left")
@@ -218,9 +245,9 @@ if selected_month:
         st.markdown("---")
 
         # =========================================================================
-        # ⚡ [3단 - 최하단 전면 배치] 과별 리스크 최상위 집중 관리 대상 Top 5 좌우 듀얼 배치
+        # ⚡ [3단 - 최하단 전면 배치] 과별 리스크 최상위 집중 관리 대상 Top 5
         # =========================================================================
-        st.subheader("🚨 과별 핵심 관리 대상 Top 5")
+        st.subheader("🚨 과별 핵심 관리 대상 Top 5 (실제금액 상위 품목 중 수율 최저 순)")
         
         item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].copy()
         item_sum = item_sum.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
