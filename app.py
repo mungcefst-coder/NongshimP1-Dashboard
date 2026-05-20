@@ -8,8 +8,8 @@ import urllib.parse
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
 # 디자인 테마 컬러 정의
-MAIN_BLUE = "#4A90E2"       # 선택 기간 누적 실적 (밝고 선명한 블루)
-COMP_GRAY = "#B0BEC5"       # 대조군 실적 (슬레이트 그레이)
+MAIN_BLUE = "#4A90E2"       # 26년 혹은 최신년도 누적 실적 (밝고 선명한 블루)
+COMP_GRAY = "#B0BEC5"       # 25년 혹은 과거년도 누적 실적 (슬레이트 그레이)
 BG_WHITE = "#FFFFFF"
 
 # 구글 스프레드시트 ID 고정
@@ -23,13 +23,13 @@ ALL_MONTHS = [
 # 사이드바 컨트롤러
 with st.sidebar:
     st.header("📂 데이터 관제")
-    st.info("📊 실시간 데이터 분석 중")
+    st.info("📊 연도별 누적 교차 비교 기능 가동 중")
     
-    # 년월 복수 선택 바스켓
+    # 년월 복수 선택 바스켓 (기본값으로 25년 1분기와 26년 1분기를 모두 넣어 비교 예시 구성)
     selected_months = st.multiselect(
         "분석할 년월(YY.MM) 복수 선택 가능", 
         options=ALL_MONTHS, 
-        default=["26.01", "26.02", "26.03"]  # 기본값: 26년 1분기
+        default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"]
     )
     
     st.markdown("---")
@@ -41,7 +41,7 @@ st.title("⚙️ 생산1팀 통합 수율 관리 시스템")
 # 조회 기간 가독성 포맷팅
 if selected_months:
     sorted_display_months = sorted(selected_months)
-    st.markdown(f"**현재 병합 분석 기간:** `{', '.join(sorted_display_months)}` (총 {len(selected_months)}개월 실적 합산)")
+    st.markdown(f"**현재 선택 기간:** `{', '.join(sorted_display_months)}` (연도별 자동 그룹화 누적 연산)")
 else:
     st.warning("⚠️ 사이드바에서 분석할 년월을 최소 1개 이상 선택해 주세요.")
 st.markdown("---")
@@ -104,7 +104,7 @@ if data_pool and selected_months:
         if search_keyword:
             team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-        # 3. KPI 대시보드 연산 (선택된 총 기간 합산 기준)
+        # 3. KPI 대시보드 연산 (선택된 전체 기간 통합 기준)
         t_theory, t_actual = team_df['이론금액'].sum(), team_df['실제금액'].sum()
         t_yield = (t_theory / t_actual * 100) if t_actual > 0 else 0
         
@@ -148,30 +148,30 @@ if data_pool and selected_months:
                         🎯 <b>{d} 기준 :</b> { '98.92%' if d=='면 1과' else '97.92%' if d=='면 5과' else '99.53%' if d=='스프실' else '98.73%' } 이상</div>""", unsafe_allow_html=True)
 
                 with tab_col2:
-                    # ⚡ [핵심 수정 패치] X축을 원자재/부자재/반제품으로 고정하고 Y축은 선택된 월들의 전체 누적분석값을 단일 막대로 표현
-                    st.markdown(f"**📈 선택 기간 자재별 누적 수율 분석**")
+                    # ⚡ [핵심 알고리즘 수정] 선택 기간 자재별 누적 '연도 분리' 교차 대조 차트
+                    st.markdown(f"**📈 선택 기간 연도별 누적 수율 비교 (YoY)**")
                     
                     if not target_df.empty:
-                        # 1. 선택한 월들의 자재별 총합 데이터 연산
-                        agg_g = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum().reset_index()
-                        agg_g['수율'] = (agg_g['이론금액'] / agg_g['실제금액'] * 100).round(2)
-                        agg_g.rename(columns={'자재 유형 내역': '자재'}, inplace=True)
+                        # 1. 각 데이터가 어떤 연도 그룹에 속하는지 식별자 컬럼 생성 (예: '25.'로 시작하면 '2025년 누적', 아니면 '2026년 누적')
+                        chart_df = target_df.copy()
+                        chart_df['연도구분'] = chart_df['월'].apply(lambda x: '2025년 누적' if str(x).startswith('25.') else '2026년 누적')
                         
-                        # 라벨 명명법 설정 (예: "26.01, 26.02, 26.03 누적 실적")
-                        label_name = f"{', '.join(sorted(selected_months))} 누적 실적"
-                        agg_g['구분'] = label_name
+                        # 2. 연도구분 및 자재유형별로 이론금액과 실제금액을 완전히 합산(누적)
+                        agg_yoy = chart_df.groupby(['연도구분', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
+                        agg_yoy['수율'] = (agg_yoy['이론금액'] / agg_yoy['실제금액'] * 100).round(2)
+                        agg_yoy.rename(columns={'자재 유형 내역': '자재'}, inplace=True)
                         
-                        # 2. 고정된 X축 정렬 규칙을 기반으로 단일 누적 막대 그래프 생성
+                        # 3. X축은 자재로 고정하고, 연도구분으로 막대를 갈라 나란히(barmode='group') 배치
                         fig_yoy = px.bar(
-                            agg_g, x='자재', y='수율', color='구분', text='수율',
-                            category_orders={'자재': ['원자재', '부자재', '반제품']},
-                            color_discrete_map={label_name: MAIN_BLUE}
+                            agg_yoy, x='자재', y='수율', color='연도구분', barmode='group', text='수율',
+                            category_orders={'자재': ['원자재', '부자재', '반제품'], '연도구분': ['2025년 누적', '2026년 누적']},
+                            color_discrete_map={'2025년 누적': COMP_GRAY, '2026년 누적': MAIN_BLUE}
                         )
                         fig_yoy.update_layout(
                             template='plotly_white', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                             yaxis=dict(range=[85, 103], title="누적 수율 (%)"), xaxis=dict(title=None),
                             margin=dict(l=0, r=0, t=30, b=0), height=280, 
-                            legend=dict(title=None, orientation="h", y=1.1)
+                            legend=dict(title=None, orientation="h", y=1.1, xanchor="right", x=1)
                         )
                         st.plotly_chart(fig_yoy, use_container_width=True)
                     else:
