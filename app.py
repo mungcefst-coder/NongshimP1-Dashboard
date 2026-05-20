@@ -8,8 +8,8 @@ import urllib.parse
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
 # 디자인 테마 컬러 정의
-MAIN_BLUE = "#4A90E2"       # 올해 실적 (밝고 선명한 블루)
-COMP_GRAY = "#B0BEC5"       # 작년 실적 (확실한 구분이 가는 슬레이트)
+MAIN_BLUE = "#4A90E2"       # 올해/선택 기간 실적 (밝고 선명한 블루)
+COMP_GRAY = "#B0BEC5"       # 작년/대조군 실적 (슬레이트 그레이)
 BG_WHITE = "#FFFFFF"
 
 # 구글 스프레드시트 ID 고정
@@ -23,17 +23,27 @@ ALL_MONTHS = [
 # 사이드바 컨트롤러
 with st.sidebar:
     st.header("📂 데이터 관제")
-    st.info("📊 밝고 선명한 블루 테마 적용 중")
+    st.info("📊 다중 년월 복수 선택 기능 가동 중")
     
-    # ⚡ [수정] 혼선을 주던 '전체 누적 데이터'를 제거하고 연도별 누적과 개별 월만 배치
-    months_list = ["26년 전체 누적", "25년 전체 누적"] + ALL_MONTHS
-    selected_month = st.selectbox("분석할 년월(YY.MM) 선택", months_list, index=0) # 기본값을 최신 26년 누적으로 설정
+    # ⚡ [핵심 고도화 1] selectbox 대신 multiselect를 도입하여 사용자가 원하는 달을 바스켓에 담을 수 있게 변경
+    selected_months = st.multiselect(
+        "분석할 년월(YY.MM) 복수 선택 가능", 
+        options=ALL_MONTHS, 
+        default=["26.01", "26.02", "26.03"]  # 기본값으로 가장 최신인 26년 1분기를 세팅
+    )
+    
     st.markdown("---")
     search_keyword = st.text_input("🔍 세부 품목 검색", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
 st.title("⚙️ 생산1팀 통합 수율 관리 시스템")
-st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
+
+# 조회 기간 가독성 포맷팅
+if selected_months:
+    sorted_display_months = sorted(selected_months)
+    st.markdown(f"**현재 병합 분석 기간:** `{', '.join(sorted_display_months)}` (총 {len(selected_months)}개월 실적 합산)")
+else:
+    st.warning("⚠️ 사이드바에서 분석할 년월을 최소 1개 이상 선택해 주세요.")
 st.markdown("---")
 
 # 2. 데이터 처리 로직
@@ -82,31 +92,27 @@ def load_all_raw_data(sheet_id, month_list):
         except: pass
     return month_data_dict
 
+# 마스터 데이터 로드
 data_pool = load_all_raw_data(SHEET_ID, ALL_MONTHS)
 
-if data_pool:
-    trend_raw_df = pd.concat(data_pool.values(), ignore_index=True)
+if data_pool and selected_months:
+    # ⚡ [핵심 고도화 2] 사용자가 마우스로 선택한 N개의 월 데이터를 추출하여 동적 실시간 병합(Union) 처리
+    active_dfs = [data_pool[m] for m in selected_months if m in data_pool]
     
-    # ⚡ [수정] 단순화된 분기 필터링 시스템 적용
-    if selected_month == "25년 전체 누적":
-        team_df = trend_raw_df[trend_raw_df['월'].str.startswith("25.")].copy()
-    elif selected_month == "26년 전체 누적":
-        team_df = trend_raw_df[trend_raw_df['월'].str.startswith("26.")].copy()
-    else:
-        team_df = data_pool.get(selected_month, pd.DataFrame()).copy()
-    
-    if not team_df.empty:
+    if active_dfs:
+        team_df = pd.concat(active_dfs, ignore_index=True)
+        
         if search_keyword:
             team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-        # 3. KPI 대시보드
+        # 3. KPI 대시보드 연산 (선택된 총 기간 합산 기준)
         t_theory, t_actual = team_df['이론금액'].sum(), team_df['실제금액'].sum()
         t_yield = (t_theory / t_actual * 100) if t_actual > 0 else 0
         
         col1, col2, col3 = st.columns(3)
-        col1.metric("🎯 이론 금액", f"{t_theory:,.0f} 원")
-        col2.metric("💰 실제 금액", f"{t_actual:,.0f} 원")
-        col3.metric("🏆 종합 수율", f"{t_yield:.2f} %")
+        col1.metric("🎯 선택 기간 이론 금액 총합", f"{t_theory:,.0f} 원")
+        col2.metric("💰 선택 기간 실제 금액 총합", f"{t_actual:,.0f} 원")
+        col3.metric("🏆 기간 평균 종합 수율", f"{t_yield:.2f} %")
         st.markdown("---")
 
         # ⚡ 1단 - 생산1팀 수율 종합 지표
@@ -119,7 +125,7 @@ if data_pool:
                 tab_col1, tab_col2 = st.columns([50, 50])
                 
                 with tab_col1:
-                    st.markdown(f"**📊 {d} 지표 ({selected_month})**")
+                    st.markdown(f"**📊 {d} 기간 병합 지표**")
                     target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                     if not target_df.empty:
                         base_summ = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
@@ -136,55 +142,39 @@ if data_pool:
                         
                         final_summ['수율(%)'] = final_summ['수율(%)'].apply(sig)
                         st.dataframe(final_summ.style.format({'이론금액': '{:,.0f}', '실제금액': '{:,.0f}'}), use_container_width=True)
+                    else:
+                        st.caption("선택된 내역에 부서 데이터가 매칭되지 않습니다.")
                     
                     st.markdown(f"""<div style="background-color:#F0F7FF; padding:10px; border-radius:8px; border-left:5px solid {MAIN_BLUE}; font-size:12px; color:#34495E;">
                         🎯 <b>{d} 기준 :</b> { '98.92%' if d=='면 1과' else '97.92%' if d=='면 5과' else '99.53%' if d=='스프실' else '98.73%' } 이상</div>""", unsafe_allow_html=True)
 
                 with tab_col2:
-                    st.markdown(f"**📈 전년 동기대비 수율 비교**")
-                    compare_data = []
+                    # ⚡ [핵심 고도화 3] 다중 달이 선택되었으므로 단일 1:1 바 대신 기간 내 월별 추이를 대조하는 정밀 라인/바 차트로 다이내믹 렌더링 전환
+                    st.markdown(f"**📈 선택 기간 내 월별 수율 변동 추이**")
                     
-                    # 연도별 누적 모드가 아닐 때만 YoY 연산 작동
-                    if "전체 누적" not in selected_month:
-                        curr_dept_df = data_pool.get(selected_month, pd.DataFrame())
-                        if d != '전체 총합': curr_dept_df = curr_dept_df[curr_dept_df['생산부문명'] == d]
+                    if not target_df.empty:
+                        # 월별 & 자재별 실시간 세부 수율 연산
+                        monthly_g = target_df.groupby(['월', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
+                        monthly_g['수율'] = (monthly_g['이론금액'] / monthly_g['실제금액'] * 100).round(2)
+                        monthly_g.rename(columns={'자재 유형 내역': '자재'}, inplace=True)
                         
-                        if not curr_dept_df.empty:
-                            curr_g = curr_dept_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
-                            for cat in ['원자재', '부자재', '반제품']:
-                                val = (curr_g.loc[cat, '이론금액'] / curr_g.loc[cat, '실제금액'] * 100) if cat in curr_g.index else 0
-                                compare_data.append({"구분": selected_month, "자재": cat, "수율": round(val, 2)})
-                        
-                        try:
-                            yy, mm = selected_month.split('.')
-                            prev_label = f"{int(yy)-1:02d}.{mm}"
-                            if prev_label in data_pool:
-                                p_df = data_pool[prev_label]
-                                if d != '전체 총합': p_df = p_df[p_df['生産部門명'] == d if '生産部門명' in p_df.columns else p_df['생산부문명'] == d]
-                                p_g = p_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
-                                for cat in ['원자재', '부자재', '반제품']:
-                                    val = (p_g.loc[cat, '이론금액'] / p_g.loc[cat, '실제금액'] * 100) if cat in p_g.index else 0
-                                    compare_data.insert(0, {"구분": prev_label, "자재": cat, "수율": round(val, 2)})
-                        except: pass
-                    
-                    comp_df = pd.DataFrame(compare_data)
-                    if not comp_df.empty:
-                        fig_yoy = px.bar(comp_df, x='자재', y='수율', color='구분', barmode='group', text='수율',
-                                         color_discrete_map={selected_month: MAIN_BLUE, comp_df['구분'].unique()[0]: COMP_GRAY})
-                        
+                        fig_yoy = px.bar(
+                            monthly_g, x='월', y='수율', color='자재', barmode='group', text='수율',
+                            category_orders={'월': sorted(selected_months), '자재': ['원자재', '부자재', '반제품']},
+                            color_discrete_map={'원자재': '#34495E', '부자재': '#85C1E9', '반제품': '#D6EAF8'}
+                        )
                         fig_yoy.update_layout(
                             template='plotly_white', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                            yaxis=dict(range=[85, 103]), 
-                            xaxis=dict(categoryorder='array', categoryarray=['원자재', '부자재', '반제품']),
+                            yaxis=dict(range=[85, 103], title="수율 (%)"), xaxis=dict(title=None),
                             margin=dict(l=0, r=0, t=30, b=0), height=280, 
                             legend=dict(title=None, orientation="h", y=1.1)
                         )
                         st.plotly_chart(fig_yoy, use_container_width=True)
                     else:
-                        st.caption("ℹ️ 기간 누적 데이터 조회 중에는 전년 동기대비(YoY) 비교 차트가 숨김 처리됩니다.")
+                        st.caption("차트를 그릴 데이터가 없습니다.")
 
         st.markdown("---")
-        # ⚡ 2단 - 자재별 비교 & 리스크 매트릭스
+        # ⚡ 2단 - 자재별 비교 & 리스크 매트릭스 (선택 기간 자동 누적 반영)
         r2_col1, r2_col2 = st.columns([45, 55])
         with r2_col1:
             st.subheader("📊 부서/자재별 수율 비교")
@@ -210,37 +200,39 @@ if data_pool:
                 
             plot_df = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
             
-            item_scatter = plot_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
-            item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
-            item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
-            item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
-            
-            def classify_risk(row):
-                if row['수율'] < 100.0 and row['actual_billion'] >= 2.0:
-                    return '고위험 관리품목 (수율 미달 & 대형 자재)'
-                return '일반 품목'
+            if not plot_df.empty:
+                item_scatter = plot_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+                item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
+                item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
+                item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
                 
-            item_scatter['관리 등급'] = item_scatter.apply(classify_risk, axis=1)
-            
-            fig3 = px.scatter(
-                item_scatter, x='actual_billion', y='수율', 
-                hover_name='하위품목 텍스트', color='관리 등급',
-                color_discrete_map={
-                    '일반 품목': MAIN_BLUE,
-                    '고위험 관리품목 (수율 미달 & 대형 자재)': '#FF4D4D'
-                }
-            )
-            
-            fig3.add_hline(y=100.0, line_dash="dash", line_color="#7F8C8D", opacity=0.8, annotation_text="수율 100.0% 기준선")
-            
-            fig3.update_layout(
-                template='plotly_white', 
-                xaxis=dict(title="실제 투입 금액 (억원)", ticksuffix="억"), 
-                yaxis=dict(title="수율 (%)"),
-                legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                height=350
-            )
-            st.plotly_chart(fig3, use_container_width=True)
+                def classify_risk(row):
+                    # 복수 달 결합 시 투입 예산 기준 상향을 감안하여 유연한 척도 유지
+                    if row['수율'] < 100.0 and row['actual_billion'] >= (2.0 * len(selected_months)):
+                        return '고위험 관리품목 (수율 미달 & 대형 자재)'
+                    return '일반 품목'
+                    
+                item_scatter['관리 등급'] = item_scatter.apply(classify_risk, axis=1)
+                
+                fig3 = px.scatter(
+                    item_scatter, x='actual_billion', y='수율', 
+                    hover_name='하위품목 텍스트', color='관리 등급',
+                    color_discrete_map={
+                        '일반 품목': MAIN_BLUE,
+                        '고위험 관리품목 (수율 미달 & 대형 자재)': '#FF4D4D'
+                    }
+                )
+                fig3.add_hline(y=100.0, line_dash="dash", line_color="#7F8C8D", opacity=0.8, annotation_text="수율 100.0% 기준선")
+                fig3.update_layout(
+                    template='plotly_white', 
+                    xaxis=dict(title="실제 투입 금액 (억원)", ticksuffix="억"), 
+                    yaxis=dict(title="수율 (%)"),
+                    legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    height=350
+                )
+                st.plotly_chart(fig3, use_container_width=True)
+            else:
+                st.caption("조회할 자재 리스크 내역이 없습니다.")
 
         st.markdown("---")
         # ⚡ 3단 - Top 5 (채도 감쇄 그라데이션)
@@ -261,5 +253,5 @@ if data_pool:
                     fig_m.update_traces(marker_color=blue_grad, textposition='inside')
                     fig_m.update_layout(template='plotly_white', showlegend=False, xaxis=dict(range=[0, 115]), height=300, yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_m, use_container_width=True)
-else:
-    st.warning("⚠️ 데이터를 불러올 수 없습니다. 구글 시트 상태를 확인해 주세요.")
+    else:
+        st.info("선택된 월의 시트 데이터를 가져오는 중입니다. 사이드바를 확인해 주세요.")
