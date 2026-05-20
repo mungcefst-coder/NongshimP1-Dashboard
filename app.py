@@ -32,7 +32,6 @@ with st.sidebar:
 
 # 메인 화면 제목
 st.title("💎 생산1팀 통합 수율 관리 시스템")
-# ⚡ [수정] 타이틀 밑의 리스크 강화 모드 괄호 멘트를 깔끔하게 삭제하고 선택된 월 정보만 심플하게 표기
 st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
 st.markdown("---")
 
@@ -160,7 +159,7 @@ if data_pool:
                         st.plotly_chart(fig_yoy, use_container_width=True)
 
         st.markdown("---")
-        # ⚡ 2단 - 자재별 비교 & 리스크 매트릭스
+        # ⚡ 2단 - 자재별 비교 & 리스크 매트릭스 변수명 통합 수정 선행 처리 완료
         r2_col1, r2_col2 = st.columns([45, 55])
         with r2_col1:
             st.subheader("📊 부서/자재별 수율 비교")
@@ -171,7 +170,8 @@ if data_pool:
             fig1.update_layout(template='plotly_white', yaxis=dict(range=[80, 105]), height=350)
             st.plotly_chart(fig1, use_container_width=True)
 
-        with row2_col2:
+        # ⚡ [오류 해결] 변수명을 명확하게 r2_col2로 통일하여 NameError 완전 차단
+        with r2_col2:
             st.subheader("🔍 수율 리스크 매트릭스")
             
             # 부서 선택 셀렉트 박스 슬림화 패치
