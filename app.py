@@ -21,7 +21,6 @@ with st.sidebar:
     st.success("📊 구글 시트 실시간 연동 중")
     
     months_list = ["전체 누적 데이터"] + ALL_MONTHS
-    # 기본값으로 가장 최신월인 26.04 선택되도록 설정
     selected_month = st.selectbox("분석할 년월(YY.MM) 선택", months_list, index=len(months_list)-1)
     st.markdown("---")
     st.subheader("🔍 세부 품목 검색")
@@ -63,6 +62,7 @@ def preprocess_df(df, month_label):
         df['자재 유형 내역'] = df['자재 유형 내역'].astype(str).str.strip()
         df = df[df['자재 유형 내역'].isin(['원자재', '부자재', '반제품'])]
     
+    # ⚡ [오류 해결] full_df 참조 버그를 현재 데이터프레임인 df[col]로 완벽 정정
     for col in ['이론금액', '실제금액']:
         if col in df.columns:
             df[col] = df[col].astype(str).str.replace(',', '', regex=False).str.strip()
@@ -96,7 +96,7 @@ if data_pool:
     # 전체 마스터 합산 셋
     trend_raw_df = pd.concat(data_pool.values(), ignore_index=True)
     
-    # ⚡ 선택 월 독립 세팅
+    # 선택 월 독립 세팅
     if selected_month == "전체 누적 데이터":
         team_df = trend_raw_df.copy()
     else:
@@ -106,7 +106,7 @@ if data_pool:
         if search_keyword:
             team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-        # 3. KPI 대시보드 연산 (독립 데이터 기준)
+        # 3. KPI 대시보드 연산
         t_theory = team_df['이론금액'].sum()
         t_actual = team_df['실제금액'].sum()
         t_yield = (t_theory / t_actual * 100) if t_actual > 0 else 0
@@ -130,7 +130,7 @@ if data_pool:
         st.markdown("---")
 
         # =========================================================================
-        # 1단 레이아웃 - 좌우 5:5 분할 배치 (오른쪽 스크린 YoY 정밀 타격 개조)
+        # 1단 레이아웃 - 좌우 5:5 분할 배치
         # =========================================================================
         main_col1, main_col2 = st.columns([50, 50])
 
@@ -186,45 +186,38 @@ if data_pool:
             </div>
             """, unsafe_allow_html=True)
 
-        # --- [오른쪽 열: ⚡ 내가 요청한대로 전년 동월대비 딱 2개 시점만 비교하는 그래프] ---
+        # --- [오른쪽 열: 전년 동월대비 딱 2개 시점만 비교하는 그래프] ---
         with main_col2:
             st.subheader("📈 전년 동월 대비 실적 비교 (YoY 정밀 타격)")
             
             compare_data = []
             
-            # 전체 누적이 아닐 때만 작년 동월 매칭 연산 실행
             if selected_month != "전체 누적 데이터":
-                # 현재 선택월 데이터 추가
                 curr_y = team_df['이론금액'].sum()
                 curr_x = team_df['실제금액'].sum()
                 curr_yld = (curr_y / curr_x * 100) if curr_x > 0 else 0
                 compare_data.append({"시점": f"현재 ({selected_month})", "실제금액": curr_x, "수율": round(curr_yld, 2)})
                 
-                # ⚡ 전년 동월 자동 추적 계산 (예: '26.04' ➔ '25.04' 문자열 치환 연산)
                 try:
                     yy, mm = selected_month.split('.')
-                    prev_year_label = f"{int(yy)-1:02d}.{mm}" # 연도에서 1을 뺌
+                    prev_year_label = f"{int(yy)-1:02d}.{mm}"
                     
                     if prev_year_label in data_pool:
                         p_df = data_pool[prev_year_label]
                         p_y = p_df['이론금액'].sum()
                         p_x = p_df['실제금액'].sum()
                         p_yld = (p_y / p_x * 100) if p_x > 0 else 0
-                        # 작년 데이터를 배열 0번 위치에 삽입하여 시간 순서 정렬
                         compare_data.insert(0, {"시점": f"작년 동월 ({prev_year_label})", "실제금액": p_x, "수율": round(p_yld, 2)})
                 except:
                     pass
             else:
-                # '전체 누적 데이터'를 선택했을 때는 마스터 요약 데이터 표출
                 t_y = trend_raw_df['이론금액'].sum()
                 t_x = trend_raw_df['실제금액'].sum()
                 t_yl = (t_y / t_x * 100) if t_x > 0 else 0
                 compare_data.append({"시점": "전체 누적 실적", "실제금액": t_x, "수율": round(t_yl, 2)})
             
-            # 비교 프레임 생성
             comp_df = pd.DataFrame(compare_data)
             
-            # 작년 대비 갭 계산 문자 매핑
             chart_annotations = []
             for idx, r in comp_df.iterrows():
                 b_txt = f"{r['수율']:.2f}%"
@@ -234,12 +227,14 @@ if data_pool:
                     gap = r['수율'] - comp_df.loc[0, '수율']
                     if gap > 0: chart_annotations.append(f"{b_txt}<br><span style='color:#00E676; font-size:12px;'>작년비 ▲{gap:.2f}%</span>")
                     elif gap < 0: chart_annotations.append(f"{b_txt}<br><span style='color:#FF5252; font-size:12px;'>작년비 ▼{abs(gap):.2f}%</span>")
-                    else: chart_annotations.append(f"{b_text}<br><span style='color:#FFF; font-size:12px;'>동일</span>")
+                    else: chart_annotations.append(f"{b_txt}<br><span style='color:#FFF; font-size:12px;'>동일</span>")
             
             fig_yoy = go.Figure()
-            # 금액 바 그래프 (좌측 축)
-            fig_yoy.add_trace(go.Bar(x=comp_df['시점'], y=comp_df['실제금액'], name="실제 집행금액(원)", yaxis="y1", marker_color='rgba(12, 77, 162, 0.55)', hovertemplate="%{y:,.0f} 원<extra></extra>", barwidth=0.4 if len(comp_df)>1 else 0.2))
-            # 수율 꺾은선/점 그래프 (우측 축)
+            fig_yoy.add_trace(go.Bar(
+                x=comp_df['시점'], y=comp_df['실제금액'], name="실제 집행금액(원)", yaxis="y1", 
+                marker_color='rgba(12, 77, 162, 0.55)', hovertemplate="%{y:,.0f} 원<extra></extra>", 
+                width=0.4 if len(comp_df)>1 else 0.2
+            ))
             fig_yoy.add_trace(go.Scatter(
                 x=comp_df['시점'], y=comp_df['수율'], name="종합 수율(%)", yaxis="y2", 
                 line=dict(color='#00E676', width=4), mode='lines+markers+text' if len(comp_df)>1 else 'markers+text', 
