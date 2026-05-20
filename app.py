@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import urllib.parse
 
 # 1. 페이지 세팅 및 타이틀 (전체 레이아웃 밝게 유지)
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V3.7")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
 # 디자인 테마 컬러 정의
 MAIN_BLUE = "#4A90E2"       # 올해 실적 (밝고 선명한 블루)
@@ -31,7 +31,7 @@ with st.sidebar:
     search_keyword = st.text_input("🔍 세부 품목 검색", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
-st.title("💎 생산1팀 통합 수율 관리 시스템 V3.7")
+st.title("💎 생산1팀 통합 수율 관리 시스템")
 # ⚡ [수정] 타이틀 밑의 리스크 강화 모드 괄호 멘트를 깔끔하게 삭제하고 선택된 월 정보만 심플하게 표기
 st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
 st.markdown("---")
