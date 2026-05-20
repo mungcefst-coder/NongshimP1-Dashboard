@@ -145,14 +145,14 @@ if data_pool and selected_months:
                         pivot_df.columns = flat_cols
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
-                        # ⚡ [완벽 정렬 솔루션] st.dataframe을 포기하고, 100% 무조건 가운데 정렬되는 HTML 생성 엔진 빌드
                         thresh = YIELD_THRESHOLD[d]
                         
+                        # ⚡ 무조건 가운데 정렬을 강제하기 위한 고도화된 HTML/CSS 주입 방식
                         html_code = f"""
                         <style>
                             .custom-table-container {{ font-family: 'Malgun Gothic', sans-serif; width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
-                            .custom-table-container th {{ background-color: #F8FAFC; color: #1E293B; font-weight: bold; border: 1px solid #E2E8F0; padding: 10px; text-align: center !important; font-size: 13px; }}
-                            .custom-table-container td {{ border: 1px solid #E2E8F0; padding: 10px; text-align: center !important; font-size: 13px; color: #334155; }}
+                            .custom-table-container th {{ background-color: #F8FAFC; color: #1E293B; font-weight: bold; border: 1px solid #E2E8F0; padding: 10px; text-align: center !important; vertical-align: middle; font-size: 13px; }}
+                            .custom-table-container td {{ border: 1px solid #E2E8F0; padding: 10px; text-align: center !important; font-size: 13px; color: #334155; vertical-align: middle; }}
                             .custom-table-container .bg-light-blue {{ background-color: #E0F2FE !important; }}
                             .custom-table-container .text-alert {{ color: #E74C3C !important; font-weight: bold !important; }}
                             .custom-table-container .bold-row {{ font-weight: bold !important; background-color: #F8FAFC; }}
@@ -175,7 +175,7 @@ if data_pool and selected_months:
                         for row_name in ['원자재', '부자재', '반제품', '전체 수율']:
                             is_total = "bold-row" if row_name == '전체 수율' else ""
                             
-                            # 데이터 추출 및 에러 캐치 방어선
+                            # 데이터 추출 및 검증
                             v25_th = pivot_df.loc[row_name, '25년 이론금액'] if '25년 이론금액' in pivot_df.columns else 0
                             v25_ac = pivot_df.loc[row_name, '25년 실제금액'] if '25년 실제금액' in pivot_df.columns else 0
                             v25_yd = (v25_th / v25_ac * 100) if v25_ac > 0 else 0
@@ -184,11 +184,10 @@ if data_pool and selected_months:
                             v26_ac = pivot_df.loc[row_name, '26년 실제금액'] if '26년 실제금액' in pivot_df.columns else 0
                             v26_yd = (v26_th / v26_ac * 100) if v26_ac > 0 else 0
                             
-                            # 수율 미달 알림 클래스 부여 조건식
+                            # 수율 미달 알림 클래스 조건
                             c25_class = "text-alert" if v25_yd > 0 and v25_yd < thresh else ""
                             c26_class = "text-alert" if v26_yd > 0 and v26_yd < thresh else ""
                             
-                            # 포맷팅 텍스트
                             txt_25_yd = f"{v25_yd:.2f}%" if v25_yd > 0 else "-"
                             txt_26_yd = f"{v26_yd:.2f}%" if v26_yd > 0 else "-"
                             
@@ -201,7 +200,7 @@ if data_pool and selected_months:
                             """
                         html_code += "</tbody></table>"
                         
-                        # ⚡ 스트림릿의 마크다운 컴포넌트로 순수 HTML을 주입하여 강제 완벽 정렬 지향
+                        # 마크다운 컴포넌트로 순수 HTML 테이블 주입 (가운데 정렬 완벽 반영)
                         st.markdown(html_code, unsafe_allow_html=True)
                         
                     else: st.caption("조회 가능한 데이터가 없습니다.")
