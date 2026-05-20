@@ -119,8 +119,7 @@ if data_pool and selected_months:
                 target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 
                 with tab_col1:
-                    thresh = YIELD_THRESHOLD[d]
-                    st.markdown(f"**📊 {d} 수율 지표** &nbsp;&nbsp; *(🎯 관리 기준 수율: **{thresh:.2f}% 이상**)*")
+                    st.markdown(f"**📊 {d} 수율 지표**")
                     
                     if not target_df.empty:
                         base_summ = target_df.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
@@ -147,19 +146,19 @@ if data_pool and selected_months:
                         pivot_df.columns = flat_cols
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
-                        # ⚡ [최신 판다스 버전 완벽 대응 패치] applymap 대신 신형 규격인 map 함수로 안전하게 교체
-                        def style_yield_table(styler, dept_name, threshold_val):
+                        # ⚡ [1번 수정 및 고도화] 25년 수율 및 26년 수율 열에만 옅은 하늘색(#E0F2FE) 배경 입히기
+                        def style_yield_table(styler, threshold_val):
                             format_map = {}
                             for col in styler.columns:
                                 if '수율' not in col: format_map[col] = '{:,.0f}'
                             styler.format(format_map)
                             
-                            # 25년 구역 배경 음영 처리
+                            # 오직 '수율' 텍스트를 포함하는 열에만 옅은 하늘색 지정
                             for col in styler.columns:
-                                if '25년' in col:
-                                    styler.set_properties(subset=[col], **{'background-color': '#F4F6F7'})
+                                if '수율' in col:
+                                    styler.set_properties(subset=[col], **{'background-color': '#E0F2FE'})
                                     
-                            # 미달 품목 빨간색 굵게(Bold) 시각 서식 조건문
+                            # 기준 수율 미달 항목 빨간색 볼드체 경고 부여 함수
                             def apply_cell_logic(val):
                                 if isinstance(val, str) and '%' in val:
                                     try:
@@ -169,16 +168,24 @@ if data_pool and selected_months:
                                     except: pass
                                 return ''
                                 
-                            # 각 수율 수치 컬럼에 최신 map API 적용
                             for col in styler.columns:
                                 if '수율' in col:
                                     styler.data[col] = styler.data[col].apply(lambda x: f"{x:.2f}%" if x > 0 else "-")
-                                    styler.map(apply_cell_logic, subset=[col]) # ⚡ applymap -> map 변경 완료
+                                    styler.map(apply_cell_logic, subset=[col])
                             return styler
-                            
-                        styled_df = pivot_df.style.pipe(style_yield_table, dept_name=d, threshold_val=thresh)
+                        
+                        thresh = YIELD_THRESHOLD[d]
+                        styled_df = pivot_df.style.pipe(style_yield_table, threshold_val=thresh)
                         st.dataframe(styled_df, use_container_width=True)
-                    else: st.caption("조회 가능한 데이터가 없습니다.")
+                    else: 
+                        st.caption("조회 가능한 데이터가 없습니다.")
+                    
+                    # ⚡ [2번 수정] 수율 기준 범례를 표 바로 아래(하단)에 마크다운으로 배치하여 폰트 통합
+                    st.markdown(f"""
+                    <div style="font-size:13px; color:#5A6B7C; margin-top:-5px; padding-left:2px;">
+                        📌 <b>{d} 관리 기준 수율 :</b> {thresh:.2f}% 이상 기준 가동 중 (미달 품목은 <span style="color:#E74C3C; font-weight:bold;">붉은색 볼드</span> 자동 표기)
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                 with tab_col2:
                     st.markdown(f"**📈 수율 변화 추이**")
@@ -191,13 +198,20 @@ if data_pool and selected_months:
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
                         fig_line = px.line(
-                            trend_raw, x='표시월', y='누적수율', color='연도', text='누적수율',
+                            trend_raw, x='표시월', y='누적수율', color='연度' if '연度' in trend_raw.columns else '연도', text='누적수율',
                             color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE}, markers=True
                         )
-                        fig_line.update_traces(textposition='top center', textfont=dict(color='#2C3E50', size=10), line=dict(width=3), marker=dict(size=8))
-                        min_y = max(50, trend_raw['누적수율'].min() - 1.2)
-                        max_y = min(110, trend_raw['누적수율'].max() + 1.2)
-                        fig_line.update_layout(template='plotly_white', height=280, margin=dict(l=10, r=10, t=20, b=10), yaxis=dict(range=[min_y, max_y]), xaxis_title=None, yaxis_title="누적 수율 (%)", legend_title=None)
+                        
+                        # ⚡ [3번 수정] 수율 숫자가 선과 겹치지 않게 'top center' 배치 및 여백 보강
+                        fig_line.update_traces(
+                            textposition='top center', 
+                            textfont=dict(color='#2C3E50', size=10, family='sans-serif'), 
+                            line=dict(width=3), 
+                            marker=dict(size=8)
+                        )
+                        min_y = max(50, trend_raw['누적수율'].min() - 1.5)
+                        max_y = min(110, trend_raw['누적수율'].max() + 1.5)
+                        fig_line.update_layout(template='plotly_white', height=280, margin=dict(l=10, r=10, t=25, b=10), yaxis=dict(range=[min_y, max_y]), xaxis_title=None, yaxis_title="누적 수율 (%)", legend_title=None)
                         st.plotly_chart(fig_line, use_container_width=True)
                     else: st.caption("추이 데이터가 존재하지 않습니다.")
 
