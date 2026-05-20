@@ -32,7 +32,8 @@ with st.sidebar:
 
 # 메인 화면 제목
 st.title("💎 생산1팀 통합 수율 관리 시스템")
-st.markdown(f"**현재 조회 데이터:** `{selected_month}`)"
+# ⚡ [오류 해결] 따옴표 누락 구문을 정확하게 닫아 차트 엔진 복구
+st.markdown(f"**현재 조회 데이터:** `{selected_month}` (브라이트 블루 리스크 강화 모드)")
 st.markdown("---")
 
 # 2. 데이터 처리 로직
@@ -44,7 +45,7 @@ def preprocess_df(df, month_label):
         '生産部門名': '생산부문명', '生産部門명': '생산부문명',
         '資재 유형 내역': '자재 유형 내역', '資材タイプテキスト': '자재 유형 내역',
         '品목텍스트': '하위품목 텍스트', '品目テキスト': '하위품목 텍스트',
-        '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', '实际金额': '실제금액'
+        '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', '实际金額': '실제금액', '实际金额': '실제금액'
     }
     df.rename(columns=rename_map, inplace=True)
     my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
@@ -173,14 +174,13 @@ if data_pool:
         with r2_c2:
             st.subheader("🔍 수율 리스크 매트릭스")
             scatter_dept = st.selectbox("부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_filter")
-            plot_df = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
+            plot_df = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부num명'] == scatter_dept if '생산부num명' in team_df.columns else team_df['생산부문명'] == scatter_dept].copy()
             
             item_scatter = plot_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
             
-            # ⚡ [수정] 원 이모지 접두사를 과감히 탈락시키고 컴팩트한 문자열 텍스트로 치환 완료
             def classify_risk(row):
                 if row['수율'] < 100.0 and row['actual_billion'] >= 2.0:
                     return '고위험 관리품목 (수율 미달 & 대형 자재)'
