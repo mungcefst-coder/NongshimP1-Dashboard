@@ -145,27 +145,29 @@ if data_pool and selected_months:
                         pivot_df.columns = flat_cols
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
-                        # ⚡ [정렬 및 음영 개선 패치]
+                        # ⚡ [1번 수정] 테이블의 모든 헤더, 인덱스, 데이터 셀 값 전체 가운데 정렬 적용
                         def style_yield_table(styler, threshold_val):
                             format_map = {}
                             for col in styler.columns:
                                 if '수율' not in col: format_map[col] = '{:,.0f}'
                             styler.format(format_map)
                             
-                            # 1. 문자 항목(인덱스 및 행 이름) 가운데 정렬 및 숫자 우측 정렬
-                            styler.set_properties(**{'text-align': 'right'}) # 기본 우측 정렬
-                            # 인덱스(자재 유형 내역) 가운데 정렬 스타일 강제 적용
+                            # 데이터 영역 전체 일괄 가운데 정렬 강제 지정
+                            styler.set_properties(**{'text-align': 'center'}) 
+                            
+                            # 표 헤더(th) 및 좌측 인덱스 열(자재 유형 내역 등)까지 완벽히 가운데 정렬 보장 스타일 커스텀
                             styler.set_table_styles([
-                                {'selector': 'th', 'props': [('text-align', 'center')]},
-                                {'selector': 'td.index_name', 'props': [('text-align', 'center')]}
+                                {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle')]},
+                                {'selector': 'td.index_name', 'props': [('text-align', 'center')]},
+                                {'selector': 'tbody th', 'props': [('text-align', 'center')]}
                             ])
 
-                            # 2. 수율 열에만 옅은 하늘색 음영 적용
+                            # 수율 관련 열에만 연한 하늘색 배경 처리
                             for col in styler.columns:
                                 if '수율' in col:
-                                    styler.set_properties(subset=[col], **{'background-color': '#E0F2FE', 'text-align': 'center'})
+                                    styler.set_properties(subset=[col], **{'background-color': '#E0F2FE'})
                                     
-                            # 3. 기준 수율 미달 빨간색 볼드
+                            # 기준 미달 빨간색 강조 서식
                             def apply_cell_logic(val):
                                 if isinstance(val, str) and '%' in val:
                                     try:
@@ -186,10 +188,10 @@ if data_pool and selected_months:
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("조회 가능한 데이터가 없습니다.")
                     
-                    # ⚡ [1번 수정] 미달 문구 삭제 및 범례 정리
+                    # ⚡ [2번 수정] '기준 가동 중' 문구 완전 삭제
                     st.markdown(f"""
                     <div style="font-size:13px; color:#5A6B7C; margin-top:-5px; padding-left:2px; font-family: 'Malgun Gothic', sans-serif;">
-                        📌 <b>{d} 관리 기준 수율 :</b> {thresh:.2f}% 이상 기준 가동 중
+                        📌 <b>{d} 관리 기준 수율 :</b> {thresh:.2f}% 이상
                     </div>
                     """, unsafe_allow_html=True)
                     
@@ -203,13 +205,11 @@ if data_pool and selected_months:
                         trend_raw['누적수율'] = (trend_raw['누적이론'] / trend_raw['누적실제'] * 100).round(2)
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
-                        # ⚡ [3번 수정] 26년 누적은 아래로, 글자 크기는 확대(14px)
                         fig_line = go.Figure()
                         
                         for yr_label in sorted(trend_raw['연도'].unique()):
                             yr_data = trend_raw[trend_raw['연도'] == yr_label]
                             color = MAIN_BLUE if '26년' in yr_label else COMP_GRAY
-                            # 26년 누적일 때만 아래쪽(bottom center), 나머지는 위쪽(top center)
                             pos = 'bottom center' if '26년' in yr_label else 'top center'
                             
                             fig_line.add_trace(go.Scatter(
@@ -220,7 +220,7 @@ if data_pool and selected_months:
                                 textposition=pos,
                                 line=dict(color=color, width=3.5),
                                 marker=dict(size=9),
-                                textfont=dict(color='#2C3E50', size=14) # ⚡ 글자 크기 표 숫자급으로 확대
+                                textfont=dict(color='#2C3E50', size=14) 
                             ))
 
                         fig_line.update_layout(
