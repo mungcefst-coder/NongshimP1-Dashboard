@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import urllib.parse
 
 # 1. 페이지 세팅 및 타이틀
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.8")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.9")
 
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
@@ -27,7 +27,7 @@ with st.sidebar:
     search_keyword = st.text_input("검색어 입력 (예: 팜유, 포장지 등)", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
-st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.8")
+st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.9")
 st.markdown(f"**현재 조회 데이터:** `{selected_month}` (자재별 전년 동기대비 비교 모드)")
 st.markdown("---")
 
@@ -187,7 +187,7 @@ if data_pool:
                     </div>
                     """, unsafe_allow_html=True)
 
-                # --- [오른쪽 스크린: 자재별 전년 동기대비 1:1 그룹 바 차트] ---
+                # --- [오른쪽 스크린: ⚡ 1단 전년비 그래프 톤온톤 최적화 패치] ---
                 with tab_col2:
                     st.markdown(f"**📊 {d} 전년 동기대비 수율 비교**")
                     
@@ -203,7 +203,6 @@ if data_pool:
                             for cat in ['원자재', '부자재', '반제품']:
                                 if cat in curr_g.index and curr_g.loc[cat, '실제금액'] > 0:
                                     c_yld = (curr_g.loc[cat, '이론금액'] / curr_g.loc[cat, '실제금액'] * 100)
-                                    # ⚡ 컬럼명을 내부적으로 '구분'으로 변경하여 '년월' 단어가 뜨지 않게 조치
                                     compare_data.append({"구분": selected_month, "자재 유형": cat, "수율(%)": round(c_yld, 2)})
                                 else:
                                     compare_data.append({"구분": selected_month, "자재 유형": cat, "수율(%)": 0.0})
@@ -247,21 +246,19 @@ if data_pool:
                     comp_df = pd.DataFrame(compare_data)
                     
                     if not comp_df.empty and comp_df['수율(%)'].sum() > 0:
+                        # 🎨 [톤온톤 패치] 메인 컬러 #0c4da2를 강조하기 위해 작년 데이터는 차분한 블루그레이로 배치
                         color_map = {}
                         for p in comp_df['구분'].unique():
-                            if str(p).startswith('26'): color_map[p] = '#4f46e5'
-                            elif str(p).startswith('25'): color_map[p] = '#94a3b8'
-                            else: color_map[p] = '#1e3a8a'
+                            if str(p).startswith('26'): color_map[p] = '#0c4da2'  # 26년 올해 실적: 농심 메인 블루 (강조)
+                            elif str(p).startswith('25'): color_map[p] = '#94a3b8'  # 25년 작년 실적: 톤다운 블루그레이 (차분)
+                            else: color_map[p] = '#1e293b'  # 누적 데이터: 딥네이비
                                 
-                        # ⚡ [수정] color='구분'으로 지정하여 데이터에 종속된 단어를 없앰
                         fig_yoy = px.bar(
                             comp_df, x='자재 유형', y='수율(%)', color='구분', barmode='group',
                             text='수율(%)', category_orders={'자재 유형': ['원자재', '부자재', '반제품']},
                             color_discrete_map=color_map
                         )
                         fig_yoy.update_traces(texttemplate='%{text:.2f}%', textposition='inside')
-                        
-                        # ⚡ [수정] legend_title_text=None 처리로 범례 상단 타이틀 단어('년월') 완전 소거
                         fig_yoy.update_layout(
                             template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
                             yaxis=dict(range=[85, 103], title="수율 (%)", showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
@@ -286,8 +283,9 @@ if data_pool:
         dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
         dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
         
+        # 🎨 [톤온톤 패치] 메인 강조를 방해하지 않는 딥네이비, 톤다운 블루그레이, 라이트그레이 조합
         fig1 = px.bar(dept_sum, x='생산부문명', y='수율(%)', color='자재 유형 내역', barmode='group', text='수율(%)', 
-                      color_discrete_map={'원자재': '#0c4da2', '부자재': '#5a9bd5', '반제품': '#a6c8e0'})
+                      color_discrete_map={'원자재': '#1e293b', '부자재': '#475569', '반제품': '#cbd5e1'})
         fig1.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig1, use_container_width=True)
 
@@ -305,8 +303,9 @@ if data_pool:
         limit = targets.get(scatter_dept, 95.0)
         item_scatter['관리 상태'] = item_scatter['수율(%)'].apply(lambda x: '기준 달성' if x >= limit else '기준 미달')
         
-        fig3 = px.scatter(item_scatter, x='실제 투입 금액 (억 원)', y='수율(%)', hover_name='하위품목 텍스트', color='관리 상태', color_discrete_map={'기준 달성': '#448AFF', '기준 미달': '#FF5252'})
-        fig3.add_hline(y=limit, line_dash="dash", line_color="#FF5252", opacity=0.8, annotation_text=f"{limit}%")
+        # 🎨 [톤온톤 패치] 산점도 역시 차분하고 깔끔하게 톤다운된 스케일 색상 적용
+        fig3 = px.scatter(item_scatter, x='실제 투입 금액 (억 원)', y='수율(%)', hover_name='하위품목 텍스트', color='관리 상태', color_discrete_map={'기준 달성': '#334155', '기준 미달': '#ef4444'})
+        fig3.add_hline(y=limit, line_dash="dash", line_color="#ef4444", opacity=0.8, annotation_text=f"{limit}%")
         fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(ticksuffix="억"))
         st.plotly_chart(fig3, use_container_width=True)
 
@@ -326,7 +325,8 @@ if data_pool:
             m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율(%)', ascending=True).head(5)
             if not m_data.empty:
                 m_data['표시텍스트'] = m_data.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {(r['실제금액']/100000000):.2f}억", axis=1)
-                fig_m = px.bar(m_data, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color_discrete_sequence=['#1e3a8a'])
+                # 🎨 [톤온톤 패치] 하단 바 그래프는 눈이 편안한 미드나잇 차콜 딥네이비로 일관성 고정
+                fig_m = px.bar(m_data, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color_discrete_sequence=['#1e293b'])
                 fig_m.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_m, use_container_width=True)
 else:
