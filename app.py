@@ -21,10 +21,18 @@ ALL_MONTHS = [
     "26.01", "26.02", "26.03", "26.04"
 ]
 
+# 과별 관리 기준 수율 정의
+YIELD_THRESHOLD = {
+    '면 1과': 98.92,
+    '면 5과': 97.93,
+    '스프실': 99.53,
+    '전체 총합': 98.73
+}
+
 # 사이드바 컨트롤러
 with st.sidebar:
     st.header("📂 데이터 관제")
-    st.info("📊 실시간 관리 시스템 가동 중")
+    st.info("📊 연도별 누적 교차 비교 기능 가동 중")
     
     selected_months = st.multiselect(
         "분석할 년월(YY.MM) 복수 선택", 
@@ -45,7 +53,7 @@ def preprocess_df(df, month_label):
     df.columns = [str(c).strip() for c in df.columns]
     
     rename_map = {
-        '生産部門명': '생산부문명', '生産部門명': '생산부문명', '生産部門名': '생산부문명',
+        '生産部門명': '생산부문명', '生産部門名': '생산부문명',
         '資재 유형 내역': '자재 유형 내역', '資材タイプ텍스트': '자재 유형 내역',
         '品목텍스트': '하위품목 텍스트', '品목 텍스트': '하위품목 텍스트', '하위품목텍스트': '하위품목 텍스트',
         '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', 'Actual金额': '실제금액'
@@ -55,7 +63,7 @@ def preprocess_df(df, month_label):
     if '생산부문명' in df.columns:
         df['생산부문명'] = df['생산부문명'].astype(str).str.strip()
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
-        df = df[df['생산부문명'].isin(dept_map.keys())].copy()
+        df = df[df['생산부num명'].isin(dept_map.keys())].copy() if '생산부num명' in df.columns else df[df['생산부문명'].isin(dept_map.keys())].copy()
         df['생산부문명'] = df['생산부문명'].map(dept_map)
     else: 
         return pd.DataFrame()
@@ -100,19 +108,21 @@ if data_pool and selected_months:
         st.markdown(f"**분석 대상 기간:** `{', '.join(sorted_display_months)}` (연도별 누적 비교 모드)")
         st.markdown("---")
 
-        # ⚡ 1단 - 생산1팀 수율 종합 상황판
+        # 1단 - 생산1팀 수율 종합 상황판
         st.subheader("📋 생산1팀 수율 종합 상황판")
         depts_list = ['면 1과', '면 5과', '스프실', '전체 총합']
         selected_dept_tab = st.tabs(depts_list)
         
         for i, d in enumerate(depts_list):
             with selected_dept_tab[i]:
-                tab_col1, tab_col2 = st.columns([53, 47])
+                tab_col1, tab_col2 = st.columns([54, 46])
                 target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 
                 with tab_col1:
-                    # ⚡ [명칭 변경] 수율 지표
-                    st.markdown(f"**📊 {d} 수율 지표**")
+                    # ⚡ [기능 추가 1] 수율 지표 상단에 기준 범례 위젯 배치
+                    thresh = YIELD_THRESHOLD[d]
+                    st.markdown(f"**📊 {d} 수율 지표** &nbsp;&nbsp; *(🎯 관리 기준 수율: **{thresh:.2f}% 이상**)*")
+                    
                     if not target_df.empty:
                         base_summ = target_df.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
                         total_rows = []
@@ -133,22 +143,46 @@ if data_pool and selected_months:
                         flat_cols = []
                         for yr in ['25년 누적', '26년 누적']:
                             for val in ['이론금액', '실제금액', '수율(%)']:
-                                # ⚡ [오타 교정] 수율
                                 display_val = "수율" if val == "수율(%)" else val
                                 flat_cols.append(f"{yr[:3]} {display_val}")
                         pivot_df.columns = flat_cols
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
-                        format_dict = {}
-                        for col in pivot_df.columns:
-                            if '수율' in col:
-                                pivot_df[col] = pivot_df[col].apply(lambda x: f"{x:.2f}%" if x > 0 else "-")
-                            else:
-                                format_dict[col] = '{:,.0f}'
-                        st.dataframe(pivot_df.style.format(format_dict), use_container_width=True)
+                        
+                        # ⚡ [기능 추가 2 & 3] 판다스 Styler를 이용한 고급 조건부 음영 및 미달 강조 엔진
+                        def style_yield_table(styler, dept_name, threshold_val):
+                            # 기본 텍스트 및 천단위 콤마 포맷팅 기본화
+                            format_map = {}
+                            for col in styler.columns:
+                                if '수율' not in col: format_map[col] = '{:,.0f}'
+                            styler.format(format_map)
+                            
+                            # 25년 구역(이론금액, 실제금액, 수율 포함)에 옅은 음영 처리
+                            for col in styler.columns:
+                                if '25년' in col:
+                                    styler.set_properties(subset=[col], **{'background-color': '#F4F6F7'})
+                                    
+                            # 각 셀을 돌며 수율 컬럼이면서 기준치 미만일 경우 빨간색 볼드 적용
+                            def apply_cell_logic(val):
+                                if isinstance(val, str) and '%' in val:
+                                    try:
+                                        num_val = float(val.replace('%', ''))
+                                        if num_val < threshold_val:
+                                            return 'color: #E74C3C; font-weight: bold;'
+                                    except: pass
+                                return ''
+                                
+                            # 수율 수치 렌더링 후 텍스트 기반 스타일 체크 자동 매핑
+                            for col in styler.columns:
+                                if '수율' in col:
+                                    styler.data[col] = styler.data[col].apply(lambda x: f"{x:.2f}%" if x > 0 else "-")
+                                    styler.applymap(apply_cell_logic, subset=[col])
+                            return styler
+                            
+                        styled_df = pivot_df.style.pipe(style_yield_table, dept_name=d, threshold_val=thresh)
+                        st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("조회 가능한 데이터가 없습니다.")
                     
                 with tab_col2:
-                    # ⚡ [명칭 변경] 수율 변화 추이
                     st.markdown(f"**📈 수율 변화 추이**")
                     if not target_df.empty:
                         trend_raw = target_df.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index()
@@ -169,12 +203,11 @@ if data_pool and selected_months:
                         st.plotly_chart(fig_line, use_container_width=True)
                     else: st.caption("추이 데이터가 존재하지 않습니다.")
 
-        # ⚡ 2단 - 분석 지표 현황
+        # 2단 - 분석 지표 현황
         st.markdown("---")
         r2_col1, r2_col2 = st.columns([48, 52])
         
         with r2_col1:
-            # ⚡ [명칭 변경] 자재 유형별 수율 현황
             st.subheader("📊 자재 유형별 수율 현황")
             mat_choice = st.selectbox("조회 자재 선택", ["원자재", "부자재", "반제품"], key="mat_opt")
             filtered_r2_1 = team_df[team_df['자재 유형 내역'] == mat_choice]
@@ -188,7 +221,6 @@ if data_pool and selected_months:
             else: st.caption("해당 자재 내역이 없습니다.")
 
         with r2_col2:
-            # ⚡ [명칭 변경] 수율 리스크 매트릭스
             st.subheader("🔍 수율 리스크 매트릭스")
             scatter_dept = st.selectbox("조회 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="m_dept")
             plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
@@ -220,7 +252,6 @@ if data_pool and selected_months:
 
     # 3단 - 핵심 관리 자재 Top 5
     st.markdown("---")
-    # ⚡ [명칭 변경] 핵심 관리 자재 Top 5
     st.subheader("🚨 핵심 관리 자재 Top 5")
     tab_26, tab_25 = st.tabs(["📅 2026년 누적 관리 품목", "📅 2025년 누적 관리 품목"])
     
