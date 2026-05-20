@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import urllib.parse
 
 # 1. 페이지 세팅 및 타이틀 (전체 레이아웃 밝게 유지)
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V3.7")
 
 # 디자인 테마 컬러 정의
 MAIN_BLUE = "#4A90E2"       # 올해 실적 (밝고 선명한 블루)
@@ -31,7 +31,7 @@ with st.sidebar:
     search_keyword = st.text_input("🔍 세부 품목 검색", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
-st.title("💎 생산1팀 통합 수율 관리 시스템")
+st.title("💎 생산1팀 통합 수율 관리 시스템 V3.7")
 st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
 st.markdown("---")
 
@@ -44,7 +44,7 @@ def preprocess_df(df, month_label):
         '生産部門名': '생산부문명', '生産部門명': '생산부문명',
         '資재 유형 내역': '자재 유형 내역', '資材タイプテキスト': '자재 유형 내역',
         '品목텍스트': '하위품목 텍스트', '品목 텍스트': '하위품목 텍스트', '品目テキスト': '하위품목 텍스트', '하위품목텍스트': '하위품목 텍스트',
-        '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', '实际金額': '실제금액', '实际金额': '실제금액'
+        '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', '实际金額': '실제금액', 'Actual金额': '실제금액'
     }
     df.rename(columns=rename_map, inplace=True)
     my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
@@ -110,7 +110,14 @@ if data_pool:
                     st.markdown(f"**📊 {d} 지표 ({selected_month})**")
                     target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                     if not target_df.empty:
-                        final_summ = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
+                        # ⚡ [좌측 표 패치] 원자재 > 부자재 > 반제품 순으로 인덱스 정렬 강제 고정 후 요약 행 결합
+                        base_summ = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
+                        
+                        # 존재하는 카테고리만 원하는 순서대로 필터링 및 재배치
+                        order_list = [c for c in ['원자재', '부자재', '반제품'] if c in base_summ.index]
+                        final_summ = base_summ.reindex(order_list)
+                        
+                        # 요약 및 수율 계산 수행
                         final_summ.loc['전체 수율'] = [final_summ['이론금액'].sum(), final_summ['실제금액'].sum()]
                         final_summ['수율(%)'] = (final_summ['이론금액'] / final_summ['실제금액'] * 100)
                         
@@ -154,12 +161,19 @@ if data_pool:
                     if not comp_df.empty:
                         fig_yoy = px.bar(comp_df, x='자재', y='수율', color='구분', barmode='group', text='수율',
                                          color_discrete_map={selected_month: MAIN_BLUE, comp_df['구분'].unique()[0]: COMP_GRAY})
-                        fig_yoy.update_layout(template='plotly_white', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                                              yaxis=dict(range=[85, 103]), margin=dict(l=0, r=0, t=30, b=0), height=280, legend=dict(title=None, orientation="h", y=1.1))
+                        
+                        # ⚡ [우측 표 패치] X축 카테고리 순서를 원자재 > 부자재 > 반제품 순으로 강제 지정
+                        fig_yoy.update_layout(
+                            template='plotly_white', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                            yaxis=dict(range=[85, 103]), 
+                            xaxis=dict(categoryorder='array', categoryarray=['원자재', '부자재', '반제품']),
+                            margin=dict(l=0, r=0, t=30, b=0), height=280, 
+                            legend=dict(title=None, orientation="h", y=1.1)
+                        )
                         st.plotly_chart(fig_yoy, use_container_width=True)
 
         st.markdown("---")
-        # ⚡ 2단 - 자재별 비교 & 리스크 매트릭스 변수명 통합 수정 선행 처리 완료
+        # ⚡ 2단 - 자재별 비교 & 리스크 매트릭스
         r2_col1, r2_col2 = st.columns([45, 55])
         with r2_col1:
             st.subheader("📊 부서/자재별 수율 비교")
@@ -167,14 +181,18 @@ if data_pool:
             dept_sum['수율'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
             fig1 = px.bar(dept_sum, x='생산부문명', y='수율', color='자재 유형 내역', barmode='group', text='수율',
                           color_discrete_map={'원자재': '#34495E', '부자재': '#85C1E9', '반제품': '#D6EAF8'})
-            fig1.update_layout(template='plotly_white', yaxis=dict(range=[80, 105]), height=350)
+            
+            fig1.update_layout(
+                template='plotly_white', 
+                yaxis=dict(range=[80, 105]), 
+                xaxis=dict(categoryorder='array', categoryarray=['원자재', '부자재', '반제품']),
+                height=350
+            )
             st.plotly_chart(fig1, use_container_width=True)
 
-        # ⚡ [오류 해결] 변수명을 명확하게 r2_col2로 통일하여 NameError 완전 차단
         with r2_col2:
             st.subheader("🔍 수율 리스크 매트릭스")
             
-            # 부서 선택 셀렉트 박스 슬림화 패치
             select_box_col, _, _ = st.columns([30, 35, 35])
             with select_box_col:
                 scatter_dept = st.selectbox("부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_filter")
