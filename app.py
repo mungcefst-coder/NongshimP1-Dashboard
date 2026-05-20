@@ -63,7 +63,7 @@ def preprocess_df(df, month_label):
     if '생산부문명' in df.columns:
         df['생산부문명'] = df['생산부문명'].astype(str).str.strip()
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
-        df = df[df['생산부num명'].isin(dept_map.keys())].copy() if '생산부num명' in df.columns else df[df['생산부문명'].isin(dept_map.keys())].copy()
+        df = df[df['생산부문명'].isin(dept_map.keys())].copy()
         df['생산부문명'] = df['생산부문명'].map(dept_map)
     else: 
         return pd.DataFrame()
@@ -119,7 +119,6 @@ if data_pool and selected_months:
                 target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 
                 with tab_col1:
-                    # ⚡ [기능 추가 1] 수율 지표 상단에 기준 범례 위젯 배치
                     thresh = YIELD_THRESHOLD[d]
                     st.markdown(f"**📊 {d} 수율 지표** &nbsp;&nbsp; *(🎯 관리 기준 수율: **{thresh:.2f}% 이상**)*")
                     
@@ -148,20 +147,19 @@ if data_pool and selected_months:
                         pivot_df.columns = flat_cols
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
-                        # ⚡ [기능 추가 2 & 3] 판다스 Styler를 이용한 고급 조건부 음영 및 미달 강조 엔진
+                        # ⚡ [최신 판다스 버전 완벽 대응 패치] applymap 대신 신형 규격인 map 함수로 안전하게 교체
                         def style_yield_table(styler, dept_name, threshold_val):
-                            # 기본 텍스트 및 천단위 콤마 포맷팅 기본화
                             format_map = {}
                             for col in styler.columns:
                                 if '수율' not in col: format_map[col] = '{:,.0f}'
                             styler.format(format_map)
                             
-                            # 25년 구역(이론금액, 실제금액, 수율 포함)에 옅은 음영 처리
+                            # 25년 구역 배경 음영 처리
                             for col in styler.columns:
                                 if '25년' in col:
                                     styler.set_properties(subset=[col], **{'background-color': '#F4F6F7'})
                                     
-                            # 각 셀을 돌며 수율 컬럼이면서 기준치 미만일 경우 빨간색 볼드 적용
+                            # 미달 품목 빨간색 굵게(Bold) 시각 서식 조건문
                             def apply_cell_logic(val):
                                 if isinstance(val, str) and '%' in val:
                                     try:
@@ -171,11 +169,11 @@ if data_pool and selected_months:
                                     except: pass
                                 return ''
                                 
-                            # 수율 수치 렌더링 후 텍스트 기반 스타일 체크 자동 매핑
+                            # 각 수율 수치 컬럼에 최신 map API 적용
                             for col in styler.columns:
                                 if '수율' in col:
                                     styler.data[col] = styler.data[col].apply(lambda x: f"{x:.2f}%" if x > 0 else "-")
-                                    styler.applymap(apply_cell_logic, subset=[col])
+                                    styler.map(apply_cell_logic, subset=[col]) # ⚡ applymap -> map 변경 완료
                             return styler
                             
                         styled_df = pivot_df.style.pipe(style_yield_table, dept_name=d, threshold_val=thresh)
