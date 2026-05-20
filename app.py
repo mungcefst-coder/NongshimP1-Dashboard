@@ -31,8 +31,8 @@ with st.sidebar:
     search_keyword = st.text_input("🔍 세부 품목 검색", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
-st.title("💎 생산1팀 통합 수율 관리 시스템 V3.6")
-st.markdown(f"**현재 조회 데이터:** `{selected_month}` (브라이트 블루 리스크 강화 모드)")
+st.title("💎 생산1팀 통합 수율 관리 시스템")
+st.markdown(f"**현재 조회 데이터:** `{selected_month}`)
 st.markdown("---")
 
 # 2. 데이터 처리 로직
