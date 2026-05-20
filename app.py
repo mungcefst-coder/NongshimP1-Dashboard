@@ -23,7 +23,7 @@ ALL_MONTHS = [
 # 사이드바 컨트롤러
 with st.sidebar:
     st.header("📂 데이터 관제")
-    st.info("📊 밝고 선명한 블루 테마 적용 중")
+    st.info("📊 실시간 데이터 적용")
     
     # ⚡ [수정] 혼선을 주던 '전체 누적 데이터'를 제거하고 연도별 누적과 개별 월만 배치
     months_list = ["26년 전체 누적", "25년 전체 누적"] + ALL_MONTHS
