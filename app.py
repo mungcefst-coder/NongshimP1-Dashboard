@@ -97,8 +97,8 @@ if data_pool:
         col3.metric("🏆 종합 수율", f"{t_yield:.2f} %")
         st.markdown("---")
 
-        # ⚡ 1단 - 좌우 5:5 분할
-        st.subheader("📋 과별 상세 수율 실적 및 전년 대비 비교")
+        # ⚡ 1단 - [수정] 섹션 제목을 요청하신 내용으로 정규화
+        st.subheader("📋 생산1팀 수율 종합 지표")
         depts_list = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
         selected_dept_tab = st.tabs(depts_list)
         
@@ -173,7 +173,7 @@ if data_pool:
         with r2_col2:
             st.subheader("🔍 수율 리스크 매트릭스")
             
-            # ⚡ [핵심 패치] 부서 선택 셀렉트 박스의 너비를 줄이기 위해 대형 3개 컬럼 격자 구성 (30%, 35%, 35%)
+            # 부서 선택 셀렉트 박스 슬림화 패치
             select_box_col, _, _ = st.columns([30, 35, 35])
             with select_box_col:
                 scatter_dept = st.selectbox("부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_filter")
