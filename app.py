@@ -32,7 +32,7 @@ with st.sidebar:
 
 # 메인 화면 제목
 st.title("💎 생산1팀 통합 수율 관리 시스템")
-st.markdown(f"**현재 조회 데이터:** `{selected_month}`)
+st.markdown(f"**현재 조회 데이터:** `{selected_month}`)"
 st.markdown("---")
 
 # 2. 데이터 처리 로직
