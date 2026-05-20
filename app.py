@@ -145,52 +145,69 @@ if data_pool and selected_months:
                         pivot_df.columns = flat_cols
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
-                        # ⚡ [1번 수정] 테이블의 모든 헤더, 인덱스, 데이터 셀 값 전체 가운데 정렬 적용
-                        def style_yield_table(styler, threshold_val):
-                            format_map = {}
-                            for col in styler.columns:
-                                if '수율' not in col: format_map[col] = '{:,.0f}'
-                            styler.format(format_map)
-                            
-                            # 데이터 영역 전체 일괄 가운데 정렬 강제 지정
-                            styler.set_properties(**{'text-align': 'center'}) 
-                            
-                            # 표 헤더(th) 및 좌측 인덱스 열(자재 유형 내역 등)까지 완벽히 가운데 정렬 보장 스타일 커스텀
-                            styler.set_table_styles([
-                                {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle')]},
-                                {'selector': 'td.index_name', 'props': [('text-align', 'center')]},
-                                {'selector': 'tbody th', 'props': [('text-align', 'center')]}
-                            ])
-
-                            # 수율 관련 열에만 연한 하늘색 배경 처리
-                            for col in styler.columns:
-                                if '수율' in col:
-                                    styler.set_properties(subset=[col], **{'background-color': '#E0F2FE'})
-                                    
-                            # 기준 미달 빨간색 강조 서식
-                            def apply_cell_logic(val):
-                                if isinstance(val, str) and '%' in val:
-                                    try:
-                                        num_val = float(val.replace('%', ''))
-                                        if num_val < threshold_val:
-                                            return 'color: #E74C3C; font-weight: bold;'
-                                    except: pass
-                                return ''
-                                
-                            for col in styler.columns:
-                                if '수율' in col:
-                                    styler.data[col] = styler.data[col].apply(lambda x: f"{x:.2f}%" if x > 0 else "-")
-                                    styler.map(apply_cell_logic, subset=[col])
-                            return styler
-                        
+                        # ⚡ [완벽 정렬 솔루션] st.dataframe을 포기하고, 100% 무조건 가운데 정렬되는 HTML 생성 엔진 빌드
                         thresh = YIELD_THRESHOLD[d]
-                        styled_df = pivot_df.style.pipe(style_yield_table, threshold_val=thresh)
-                        st.dataframe(styled_df, use_container_width=True)
+                        
+                        html_code = f"""
+                        <style>
+                            .custom-table-container {{ font-family: 'Malgun Gothic', sans-serif; width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
+                            .custom-table-container th {{ background-color: #F8FAFC; color: #1E293B; font-weight: bold; border: 1px solid #E2E8F0; padding: 10px; text-align: center !important; font-size: 13px; }}
+                            .custom-table-container td {{ border: 1px solid #E2E8F0; padding: 10px; text-align: center !important; font-size: 13px; color: #334155; }}
+                            .custom-table-container .bg-light-blue {{ background-color: #E0F2FE !important; }}
+                            .custom-table-container .text-alert {{ color: #E74C3C !important; font-weight: bold !important; }}
+                            .custom-table-container .bold-row {{ font-weight: bold !important; background-color: #F8FAFC; }}
+                        </style>
+                        <table class="custom-table-container">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2">자재 유형 내역</th>
+                                    <th colspan="3">25년 누적</th>
+                                    <th colspan="3">26년 누적</th>
+                                </tr>
+                                <tr>
+                                    <th>이론금액</th><th>실제금액</th><th>25년 수율</th>
+                                    <th>이론금액</th><th>실제금액</th><th>26년 수율</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                        """
+                        
+                        for row_name in ['원자재', '부자재', '반제품', '전체 수율']:
+                            is_total = "bold-row" if row_name == '전체 수율' else ""
+                            
+                            # 데이터 추출 및 에러 캐치 방어선
+                            v25_th = pivot_df.loc[row_name, '25년 이론금액'] if '25년 이론금액' in pivot_df.columns else 0
+                            v25_ac = pivot_df.loc[row_name, '25년 실제금액'] if '25년 실제금액' in pivot_df.columns else 0
+                            v25_yd = (v25_th / v25_ac * 100) if v25_ac > 0 else 0
+                            
+                            v26_th = pivot_df.loc[row_name, '26년 이론금액'] if '26년 이론금액' in pivot_df.columns else 0
+                            v26_ac = pivot_df.loc[row_name, '26년 실제금액'] if '26년 실제금액' in pivot_df.columns else 0
+                            v26_yd = (v26_th / v26_ac * 100) if v26_ac > 0 else 0
+                            
+                            # 수율 미달 알림 클래스 부여 조건식
+                            c25_class = "text-alert" if v25_yd > 0 and v25_yd < thresh else ""
+                            c26_class = "text-alert" if v26_yd > 0 and v26_yd < thresh else ""
+                            
+                            # 포맷팅 텍스트
+                            txt_25_yd = f"{v25_yd:.2f}%" if v25_yd > 0 else "-"
+                            txt_26_yd = f"{v26_yd:.2f}%" if v26_yd > 0 else "-"
+                            
+                            html_code += f"""
+                                <tr class="{is_total}">
+                                    <td style="font-weight: bold; background-color: #F8FAFC;">{row_name}</td>
+                                    <td>{v25_th:,.0f}</td><td>{v25_ac:,.0f}</td><td class="bg-light-blue {c25_class}">{txt_25_yd}</td>
+                                    <td>{v26_th:,.0f}</td><td>{v26_ac:,.0f}</td><td class="bg-light-blue {c26_class}">{txt_26_yd}</td>
+                                </tr>
+                            """
+                        html_code += "</tbody></table>"
+                        
+                        # ⚡ 스트림릿의 마크다운 컴포넌트로 순수 HTML을 주입하여 강제 완벽 정렬 지향
+                        st.markdown(html_code, unsafe_allow_html=True)
+                        
                     else: st.caption("조회 가능한 데이터가 없습니다.")
                     
-                    # ⚡ [2번 수정] '기준 가동 중' 문구 완전 삭제
                     st.markdown(f"""
-                    <div style="font-size:13px; color:#5A6B7C; margin-top:-5px; padding-left:2px; font-family: 'Malgun Gothic', sans-serif;">
+                    <div style="font-size:13px; color:#5A6B7C; margin-top:2px; padding-left:2px; font-family: 'Malgun Gothic', sans-serif;">
                         📌 <b>{d} 관리 기준 수율 :</b> {thresh:.2f}% 이상
                     </div>
                     """, unsafe_allow_html=True)
