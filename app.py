@@ -44,7 +44,6 @@ def preprocess_df(df, month_label):
     df = df.copy(); df['월'] = month_label
     df.columns = [str(c).strip() for c in df.columns]
     
-    # 원본 문서의 모든 가능성 있는 인덱스명을 표준 한글 컬럼명으로 강제 맵핑
     rename_map = {
         '生産部門명': '생산부문명', '生産部門名': '생산부문명', '생산부문명': '생산부문명', '생산부num명': '생산부문명',
         '資재 유형 내역': '자재 유형 내역', '資材タイプ텍스트': '자재 유형 내역', '자재 유형 내역': '자재 유형 내역',
@@ -73,22 +72,29 @@ def preprocess_df(df, month_label):
     df = df[~((df['실제금액'] > 0) & (calc_yield < 50))]
     return df
 
-@st.cache_data(ttl=600)
+# ⚡ [진단패치 1] 구글 시트 연결 실패 시 원인을 디버깅 노출하도록 원복 및 수정
+@st.cache_data(ttl=60) # 원인 진단을 위해 임시로 캐시 타임을 1분으로 단축
 def load_all_raw_data(sheet_id, month_list):
     month_data_dict = {}
+    error_logs = []
     for m in month_list:
         try:
             encoded_sheet = urllib.parse.quote(m)
             url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
             raw_df = pd.read_csv(url)
             processed = preprocess_df(raw_df, m)
-            if not processed.empty: month_data_dict[m] = processed
-        except: pass
-    return month_data_dict
+            if not processed.empty: 
+                month_data_dict[m] = processed
+            else:
+                error_logs.append(f"'{m}' 시트: 불러왔으나 조건에 맞는 데이터(면1과/면5과/스프실)가 없음")
+        except Exception as e:
+            error_logs.append(f"'{m}' 시트 연결 실패 원인: {str(e)}")
+            pass
+    return month_data_dict, error_logs
 
-data_pool = load_all_raw_data(SHEET_ID, ALL_MONTHS)
+data_pool, system_errors = load_all_raw_data(SHEET_ID, ALL_MONTHS)
 
-# ⚡ [예외 통제 방어벽 코어] 사용자가 월을 골랐고, 데이터 풀에 실제 로드된 내역이 매칭되는지 연속 검증
+# ⚡ [진단패치 2] 데이터가 안 준비되었을 때 시스템 에러 로그를 메인 화면에 뿌려줌
 is_data_ready = False
 if data_pool and selected_months:
     active_dfs = [data_pool[m] for m in selected_months if m in data_pool]
@@ -232,7 +238,6 @@ if is_data_ready:
                 for idx, d in enumerate(['면 1과', '면 5과']):
                     with [r3_c1, r3_c2][idx]:
                         st.markdown(f"**📍 {d} ({target_yr})**")
-                        # ⚡ [오타 완전 소거] 과거의 잔재 '생산부num명'을 철저히 제거하고 무조건 '생산부문명'으로 집계
                         m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
                         
                         if not m_data.empty:
@@ -244,5 +249,8 @@ if is_data_ready:
                         else: st.caption("🔍 대상 품목이 없습니다.")
             else: st.caption(f"ℹ️ {target_yr} 데이터가 없습니다.")
 else:
-    # ⚡ 날짜를 선택했음에도 데이터베이스에 접근을 못하는 상황을 방지하기 위한 안내 문구 일원화
-    st.warning("⚠️ 사이드바에서 분석할 년월을 선택해 주세요. (만약 선택했는데도 이 창이 뜬다면 웹브라우저에서 키보드 'C' 단축키를 눌러 캐시를 초기화해 주세요.)")
+    # ⚡ [진단 장치 활성화] 데이터가 로드되지 않은 정교한 시스템적 이유를 화면에 리스트업해줌
+    st.error("❌ [시스템 데이터 추적 로그] 구글 시트 통신에 실패했거나 조건 필터 오류가 발생했습니다. 아래 내용을 확인해 주세요.")
+    for log in system_errors:
+        st.write(f"- {log}")
+    st.info("💡 해결 팁: 구글 스프레드시트 하단의 탭 이름이 정확히 '26.01', '26.02' 처럼 공백 없이 입력되어 있는지 점검해 보세요!")
