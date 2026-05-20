@@ -59,7 +59,7 @@ def preprocess_df(df, month_label):
     df.rename(columns=rename_map, inplace=True)
     
     if '생산부문명' in df.columns:
-        df['생산부문명'] = df['생산부문명'].strip() if hasattr(df['생산부문명'], 'strip') else df['생산부문명']
+        df['생산부문명'] = df['생산부문명'].strip() if hasattr(df['생산부문명'], 'strip') else df['생산부num명']
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실'}
         df = df[df['생산부문명'].isin(dept_map.keys())].copy()
         df['생산부문명'] = df['생산부문명'].map(dept_map)
@@ -128,10 +128,13 @@ if data_pool and selected_months:
                         for val in ['이론금액', '실제금액', '수율(%)']:
                             all_cols.append((val, yr))
                     pivot_df = pivot_df.reindex(columns=all_cols, fill_value=0)
+                    
                     flat_cols = []
                     for yr in ['25년 누적', '26년 누적']:
                         for val in ['이론금액', '실제금액', '수율(%)']:
-                            flat_cols.append(f"{yr[:3]} {val.replace('(%)', '수율')}")
+                            # ⚡ [오타 교정 패치] '수율수율'을 깔끔하게 '수율'로 정형화
+                            display_val = "수율" if val == "수율(%)" else val
+                            flat_cols.append(f"{yr[:3]} {display_val}")
                     pivot_df.columns = flat_cols
                     pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                     format_dict = {}
@@ -144,17 +147,44 @@ if data_pool and selected_months:
                 else: st.caption("데이터가 없습니다.")
                 
             with tab_col2:
-                st.markdown(f"**📈 연도별 누적 수율 비교 (YoY)**")
+                # ⚡ [방안 1 적용] 중복 막대 차트를 걷어내고 시간의 흐름에 따른 '월별 누적 수율 변동 추이(Line)' 신설
+                st.markdown(f"**📈 연도별 월간 누적 수율 추이 흐름 (시계열 Trend)**")
                 if not target_df.empty:
-                    agg_yoy = target_df.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
-                    agg_yoy['수율'] = (agg_yoy['이론금액'] / agg_yoy['실제금액'] * 100).round(2)
-                    fig_yoy = px.bar(
-                        agg_yoy, x='자재 유형 내역', y='수율', color='연도', barmode='group', text='수율',
-                        category_orders={'자재 유형 내역': ['원자재', '부자재', '반제품']},
-                        color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE}
+                    # 선택된 월들에 대해 월별 정렬 후 누적 연산을 위한 기본 그룹바이
+                    trend_raw = target_df.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index()
+                    trend_raw = trend_raw.sort_values(['연도', '월']).reset_index(drop=True)
+                    
+                    # 기간이 지남에 따라 분기 누적 성과가 쌓이도록 판다스 cumsum() 동적 적용
+                    trend_raw['누적이론'] = trend_raw.groupby('연도')['이론금액'].cumsum()
+                    trend_raw['누적실제'] = trend_raw.groupby('연도')['실제금액'].cumsum()
+                    trend_raw['누적수율'] = (trend_raw['누적이론'] / trend_raw['누적실제'] * 100).round(2)
+                    
+                    # 그래프 표기용 X축 포맷팅 (뒤의 월 'MM'만 추출)
+                    trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
+                    
+                    fig_line = px.line(
+                        trend_raw, x='표시월', y='누적수율', color='연도', text='누적수율',
+                        color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE},
+                        markers=True
                     )
-                    fig_yoy.update_layout(template='plotly_white', height=280, margin=dict(l=0,r=0,t=20,b=0), yaxis=dict(range=[85,103]))
-                    st.plotly_chart(fig_yoy, use_container_width=True)
+                    fig_line.update_traces(
+                        textposition='top center', 
+                        textfont=dict(color='#2C3E50', size=10),
+                        line=dict(width=3),
+                        marker=dict(size=8)
+                    )
+                    # 수율 변동의 가시성을 위해 Y축 범위를 타이트하게 최적화
+                    min_y = max(50, trend_raw['누적수율'].min() - 0.8)
+                    max_y = min(110, trend_raw['누적수율'].max() + 0.8)
+                    fig_line.update_layout(
+                        template='plotly_white', height=280, 
+                        margin=dict(l=10, r=10, t=20, b=10), 
+                        yaxis=dict(range=[min_y, max_y]),
+                        xaxis_title=None, yaxis_title="누적 수율 (%)", legend_title=None
+                    )
+                    st.plotly_chart(fig_line, use_container_width=True)
+                else: 
+                    st.caption("추이 분석 데이터가 부족합니다.")
 
     # 2단 - 자재별 비교 & 리스크 매트릭스
     st.markdown("---")
@@ -186,7 +216,6 @@ if data_pool and selected_months:
         plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
         
         if not plot_df2.empty:
-            # ⚡ [오류 해결 패치] '生産部門명' 오타를 정형화된 한글 명칭 '생산부문명'으로 수정하여 에러 원천 차단
             item_scatter = plot_df2.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
@@ -229,7 +258,7 @@ if data_pool and selected_months:
                 for idx, d in enumerate(['면 1과', '면 5과']):
                     with [r3_c1, r3_c2][idx]:
                         st.markdown(f"**📍 {d} ({target_yr})**")
-                        m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
+                        m_data = item_sum[item_sum['생산부num명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5) if '생산부num명' in item_sum.columns else item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
                         
                         if not m_data.empty:
                             m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
