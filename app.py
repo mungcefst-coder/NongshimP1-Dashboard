@@ -25,7 +25,7 @@ with st.sidebar:
     st.header("📂 데이터 관제")
     st.info("📊 연도별 누적 교차 비교 기능 가동 중")
     
-    # 년월 복수 선택 바스켓 (기본값으로 25년 1분기와 26년 1분기를 모두 넣어 비교 예시 구성)
+    # 년월 복수 선택 바스켓
     selected_months = st.multiselect(
         "분석할 년월(YY.MM) 복수 선택 가능", 
         options=ALL_MONTHS, 
@@ -121,47 +121,86 @@ if data_pool and selected_months:
         
         for i, d in enumerate(depts_list):
             with selected_dept_tab[i]:
-                tab_col1, tab_col2 = st.columns([50, 50])
+                tab_col1, tab_col2 = st.columns([53, 47]) # 테이블 가로폭 확장을 위해 비율 미세 조정 (53:47)
                 
                 with tab_col1:
-                    st.markdown(f"**📊 {d} 기간 병합 지표**")
+                    st.markdown(f"**📊 {d} 연도별 누적 지표 대조**")
                     target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                     if not target_df.empty:
-                        base_summ = target_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
-                        order_list = [c for c in ['원자재', '부자재', '반제품'] if c in base_summ.index]
-                        final_summ = base_summ.reindex(order_list)
+                        # ⚡ [테이블 고도화] 데이터를 25년과 26년 그룹으로 완전 분리 연산
+                        df_calc = target_df.copy()
+                        df_calc['연도'] = df_calc['월'].apply(lambda x: '2025년' if str(x).startswith("25.") else '2026년')
                         
-                        final_summ.loc['전체 수율'] = [final_summ['이론금액'].sum(), final_summ['실제금액'].sum()]
-                        final_summ['수율(%)'] = (final_summ['이론금액'] / final_summ['실제금액'] * 100)
+                        base_summ = df_calc.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
                         
-                        def sig(v, dn=d):
-                            trg = {'면 1과': 98.92, '면 5과': 97.92, '스프실': 99.53, '전체 총합': 98.73}
-                            limit = trg.get(dn, 98.73)
-                            return f"🟢 {v:.2f}%" if v >= limit else f"🔴 {v:.2f}%"
+                        # 연도별 전체 수율 행 생성 및 결합
+                        total_rows = []
+                        for yr in base_summ['연도'].unique():
+                            yr_df = base_summ[base_summ['연도'] == yr]
+                            t_th = yr_df['이론금액'].sum()
+                            t_ac = yr_df['실제금액'].sum()
+                            total_rows.append({'연도': yr, '자재 유형 내역': '전체 수율', '이론금액': t_th, '실제금액': t_ac})
                         
-                        final_summ['수율(%)'] = final_summ['수율(%)'].apply(sig)
-                        st.dataframe(final_summ.style.format({'이론금액': '{:,.0f}', '실제금액': '{:,.0f}'}), use_container_width=True)
+                        if total_rows:
+                            base_summ = pd.concat([base_summ, pd.DataFrame(total_rows)], ignore_index=True)
+                            
+                        base_summ['수율(%)'] = (base_summ['이론금액'] / base_summ['실제금액'] * 100)
+                        
+                        # 피벗을 이용해 25년과 26년 데이터를 하나의 행에 나란히 병렬 정렬
+                        pivot_df = base_summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율(%)'])
+                        
+                        # 25년/26년 전체 격자 구조 보장 (데이터가 없어도 컬럼 유지)
+                        all_cols = []
+                        for yr in ['2025년', '2026년']:
+                            for val in ['이론금액', '실제금액', '수율(%)']:
+                                all_cols.append((val, yr))
+                                
+                        pivot_df = pivot_df.reindex(columns=all_cols, fill_value=0)
+                        
+                        # 컴팩트한 컬럼명 레이블 부여
+                        flat_cols = []
+                        for yr in ['2025년', '2026년']:
+                            for val in ['이론금액', '실제금액', '수율(%)']:
+                                suffix = '수율' if val == '수율(%)' else val
+                                flat_cols.append(f"{yr[2:]} {suffix}")
+                        
+                        pivot_flat = pivot_df.copy()
+                        pivot_flat.columns = flat_cols
+                        
+                        # 자재 유형 요구 순서 강제 Reindex
+                        pivot_flat = pivot_flat.reindex(['원자재', '부자재', '반제품', '전체 수율'])
+                        
+                        # 연도별 개별 수율 세트에 독립 부호 규칙 스크립트 바인딩
+                        format_dict = {}
+                        for col in pivot_flat.columns:
+                            if '수율' in col:
+                                def make_sig(v, dn=d):
+                                    if pd.isna(v) or v == 0: return "-"
+                                    trg = {'면 1과': 98.92, '면 5과': 97.92, '스프실': 99.53, '전체 총합': 98.73}
+                                    limit = trg.get(dn, 98.73)
+                                    return f"🟢 {v:.2f}%" if v >= limit else f"🔴 {v:.2f}%"
+                                pivot_flat[col] = pivot_flat[col].apply(lambda x: make_sig(x, d))
+                            else:
+                                format_dict[col] = '{:,.0f}'
+                                
+                        st.dataframe(pivot_flat.style.format(format_dict), use_container_width=True)
                     else:
-                        st.caption("선택된 내역에 부서 데이터가 매칭되지 않습니다.")
+                        st.caption("선택된 내역에 데이터가 없습니다.")
                     
                     st.markdown(f"""<div style="background-color:#F0F7FF; padding:10px; border-radius:8px; border-left:5px solid {MAIN_BLUE}; font-size:12px; color:#34495E;">
                         🎯 <b>{d} 기준 :</b> { '98.92%' if d=='면 1과' else '97.92%' if d=='면 5과' else '99.53%' if d=='스프실' else '98.73%' } 이상</div>""", unsafe_allow_html=True)
 
                 with tab_col2:
-                    # ⚡ [핵심 알고리즘 수정] 선택 기간 자재별 누적 '연도 분리' 교차 대조 차트
                     st.markdown(f"**📈 선택 기간 연도별 누적 수율 비교 (YoY)**")
                     
                     if not target_df.empty:
-                        # 1. 각 데이터가 어떤 연도 그룹에 속하는지 식별자 컬럼 생성 (예: '25.'로 시작하면 '2025년 누적', 아니면 '2026년 누적')
                         chart_df = target_df.copy()
                         chart_df['연도구분'] = chart_df['월'].apply(lambda x: '2025년 누적' if str(x).startswith('25.') else '2026년 누적')
                         
-                        # 2. 연도구분 및 자재유형별로 이론금액과 실제금액을 완전히 합산(누적)
                         agg_yoy = chart_df.groupby(['연도구분', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
                         agg_yoy['수율'] = (agg_yoy['이론금액'] / agg_yoy['실제금액'] * 100).round(2)
                         agg_yoy.rename(columns={'자재 유형 내역': '자재'}, inplace=True)
                         
-                        # 3. X축은 자재로 고정하고, 연도구분으로 막대를 갈라 나란히(barmode='group') 배치
                         fig_yoy = px.bar(
                             agg_yoy, x='자재', y='수율', color='연도구분', barmode='group', text='수율',
                             category_orders={'자재': ['원자재', '부자재', '반제품'], '연도구분': ['2025년 누적', '2026년 누적']},
@@ -178,7 +217,7 @@ if data_pool and selected_months:
                         st.caption("차트를 그릴 데이터가 없습니다.")
 
         st.markdown("---")
-        # 2단 - 자재별 비교 & 리스크 매트릭스 (선택 기간 자동 누적 반영)
+        # 2단 - 자재별 비교 & 리스크 매트릭스
         r2_col1, r2_col2 = st.columns([45, 55])
         with r2_col1:
             st.subheader("📊 부서/자재별 수율 비교")
@@ -256,3 +295,5 @@ if data_pool and selected_months:
                     fig_m.update_traces(marker_color=blue_grad, textposition='inside')
                     fig_m.update_layout(template='plotly_white', showlegend=False, xaxis=dict(range=[0, 115]), height=300, yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_m, use_container_width=True)
+else:
+    st.warning("⚠️ 데이터를 불러올 수 없습니다. 구글 시트 상태를 확인해 주세요.")
