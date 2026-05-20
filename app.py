@@ -29,6 +29,24 @@ YIELD_THRESHOLD = {
     '전체 총합': 98.73
 }
 
+# ⚡ [글자 크기 통일] 대제목 제외 모든 텍스트 크기를 14px로 강제 통일하는 전역 전술 CSS 주입
+st.markdown("""
+    <style>
+        /* 탭 글자 크기 통일 */
+        .stTabs [data-baseweb="tab"] p {
+            font-size: 14px !important;
+        }
+        /* 분석 대상 기간 텍스트 크기 통일 */
+        .target-period {
+            font-size: 14px !important;
+        }
+        /* 판다스 데이터프레임 내부 텍스트 크기 통일 */
+        .dataframe, .paint-table td, .paint-table th {
+            font-size: 14px !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # 사이드바 컨트롤러
 with st.sidebar:
     st.header("📂 데이터 관제")
@@ -105,10 +123,11 @@ if data_pool and selected_months:
             team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
         sorted_display_months = sorted(selected_months)
-        st.markdown(f"**분석 대상 기간:** `{', '.join(sorted_display_months)}` (연도별 누적 비교 모드)")
+        # ⚡ 글자 크기 유지를 위해 커스텀 클래스 지정
+        st.markdown(f"<span class='target-period'><b>분석 대상 기간:</b> `{', '.join(sorted_display_months)}` (연도별 누적 비교 모드)</span>", unsafe_allow_html=True)
         st.markdown("---")
 
-        # 1단 - 생산1팀 수율 종합 상황판
+        # 🚀 큰 제목 1: 생산1팀 수율 종합 상황판
         st.subheader("📋 생산1팀 수율 종합 상황판")
         depts_list = ['면 1과', '면 5과', '스프실', '전체 총합']
         selected_dept_tab = st.tabs(depts_list)
@@ -119,7 +138,8 @@ if data_pool and selected_months:
                 target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 
                 with tab_col1:
-                    st.markdown(f"**📊 {d} 수율 지표**")
+                    # 소제목 글자 크기 14px 지정을 위해 markdown span 처리
+                    st.markdown(f"<span style='font-size:14px; font-weight:bold;'>📊 {d} 수율 지표</span>", unsafe_allow_html=True)
                     if not target_df.empty:
                         base_summ = target_df.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
                         total_rows = []
@@ -145,20 +165,17 @@ if data_pool and selected_months:
                         pivot_df.columns = flat_cols
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
-                        # ⚡ [기존 안정 코드로의 회귀 + 핵심 스타일링 안전 매핑]
+                        # 표 스타일 정의 및 글자 크기 14px 고정
                         def style_yield_table(styler, threshold_val):
-                            # 금액 콤마 포맷팅 기본화
                             format_map = {}
                             for col in styler.columns:
                                 if '수율' not in col: format_map[col] = '{:,.0f}'
                             styler.format(format_map)
                             
-                            # 1. 25년/26년 '수율' 열에만 연한 하늘색 배경색 스킨 적용 (#E0F2FE)
                             for col in styler.columns:
                                 if '수율' in col:
                                     styler.set_properties(subset=[col], **{'background-color': '#E0F2FE'})
                                     
-                            # 2. 기준 미달 빨간색 볼드체 인젝션 (가장 안전한 예외 캐치 문법)
                             def apply_cell_logic(val):
                                 if isinstance(val, str) and '%' in val:
                                     try:
@@ -179,24 +196,24 @@ if data_pool and selected_months:
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("조회 가능한 데이터가 없습니다.")
                     
-                    # ⚡ [요청 반영] 문구를 간소화하여 표 아래에 깔끔하게 배치
+                    # ⚡ 하단 범례 텍스트 크기 14px 고정
                     st.markdown(f"""
-                    <div style="font-size:13px; color:#5A6B7C; margin-top:-5px; padding-left:2px; font-family: 'Malgun Gothic', sans-serif;">
+                    <div style="font-size:14px; color:#5A6B7C; margin-top:-5px; padding-left:2px; font-family: 'Malgun Gothic', sans-serif;">
                         📌 <b>{d} 관리 기준 수율 :</b> {thresh:.2f}% 이상
                     </div>
                     """, unsafe_allow_html=True)
                     
                 with tab_col2:
-                    st.markdown(f"**📈 수율 변화 추이**")
+                    # 소제목 글자 크기 14px 통일
+                    st.markdown(f"<span style='font-size:14px; font-weight:bold;'>📈 수율 변화 추이</span>", unsafe_allow_html=True)
                     if not target_df.empty:
                         trend_raw = target_df.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index()
-                        trend_raw = trend_raw.sort_values(['연度', '월']).reset_index(drop=True) if '연度' in trend_raw.columns else trend_raw.sort_values(['연도', '월']).reset_index(drop=True)
+                        trend_raw = trend_raw.sort_values(['연도', '월']).reset_index(drop=True)
                         trend_raw['누적이론'] = trend_raw.groupby('연도')['이론금액'].cumsum()
                         trend_raw['누적실제'] = trend_raw.groupby('연도')['실제금액'].cumsum()
                         trend_raw['누적수율'] = (trend_raw['누적이론'] / trend_raw['누적실제'] * 100).round(2)
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
-                        # ⚡ 겹침 방지를 위해 선 위/아래 교차 배치 고도화
                         fig_line = go.Figure()
                         for yr_label in sorted(trend_raw['연도'].unique()):
                             yr_data = trend_raw[trend_raw['연도'] == yr_label]
@@ -211,14 +228,16 @@ if data_pool and selected_months:
                                 textposition=pos,
                                 line=dict(color=color, width=3.5),
                                 marker=dict(size=9),
-                                textfont=dict(color='#2C3E50', size=14) # ⚡ 수치 글자 크기 14px로 확대
+                                textfont=dict(color='#2C3E50', size=14) # ⚡ 그래프 수치 글자 크기 14px로 연동 통일
                             ))
 
                         fig_line.update_layout(
                             template='plotly_white', height=280, 
                             margin=dict(l=10, r=10, t=25, b=10), 
                             yaxis=dict(range=[trend_raw['누적수율'].min()-1.5, trend_raw['누적수율'].max()+1.5]),
-                            xaxis_title=None, yaxis_title="누적 수율 (%)", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                            xaxis_title=None, yaxis_title="누적 수율 (%)", 
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                            font=dict(size=14) # 축 텍스트 크기 14px 설정
                         )
                         st.plotly_chart(fig_line, use_container_width=True)
                     else: st.caption("추이 데이터가 존재하지 않습니다.")
@@ -228,6 +247,7 @@ if data_pool and selected_months:
         r2_col1, r2_col2 = st.columns([48, 52])
         
         with r2_col1:
+            # 🚀 큰 제목 2: 자재 유형별 수율 현황
             st.subheader("📊 자재 유형별 수율 현황")
             mat_choice = st.selectbox("조회 자재 선택", ["원자재", "부자재", "반제품"], key="mat_opt")
             filtered_r2_1 = team_df[team_df['자재 유형 내역'] == mat_choice]
@@ -235,12 +255,13 @@ if data_pool and selected_months:
                 dept_sum = filtered_r2_1.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                 dept_sum['수율'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
                 fig1 = px.bar(dept_sum, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
-                fig1.update_traces(textposition='outside', textfont=dict(color='#2C3E50', size=12))
-                fig1.update_layout(template='plotly_white', height=330, yaxis=dict(range=[80, 108]), xaxis_title=None)
+                fig1.update_traces(textposition='outside', textfont=dict(color='#2C3E50', size=14)) # ⚡ 막대그래프 숫자 수치 14px로 통일
+                fig1.update_layout(template='plotly_white', height=330, yaxis=dict(range=[80, 108]), xaxis_title=None, font=dict(size=14))
                 st.plotly_chart(fig1, use_container_width=True)
             else: st.caption("해당 자재 내역이 없습니다.")
 
         with r2_col2:
+            # 🚀 큰 제목 3: 수율 리스크 매트릭스
             st.subheader("🔍 수율 리스크 매트릭스")
             scatter_dept = st.selectbox("조회 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="m_dept")
             plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
@@ -266,12 +287,13 @@ if data_pool and selected_months:
                 )
                 fig3.update_traces(marker=dict(line=dict(width=1, color='DarkSlateGrey')))
                 fig3.add_hline(y=100.0, line_dash="dash", line_color="#7F8C8D", opacity=0.7)
-                fig3.update_layout(template='plotly_white', height=330, xaxis_title="금액(억원)", yaxis_title="수율 (%)", legend_title=None)
+                fig3.update_layout(template='plotly_white', height=330, xaxis_title="금액(억원)", yaxis_title="수율 (%)", legend_title=None, font=dict(size=14))
                 st.plotly_chart(fig3, use_container_width=True)
             else: st.caption("분석할 리스크 데이터가 부족합니다.")
 
     # 3단 - 핵심 관리 자재 Top 5
     st.markdown("---")
+    # 🚀 큰 제목 4: 핵심 관리 자재 Top 5
     st.subheader("🚨 핵심 관리 자재 Top 5")
     tab_26, tab_25 = st.tabs(["📅 2026년 누적 관리 품목", "📅 2025년 누적 관리 품목"])
     
@@ -284,13 +306,14 @@ if data_pool and selected_months:
                 r3_c1, r3_c2 = st.columns(2)
                 for idx, d in enumerate(['면 1과', '면 5과']):
                     with [r3_c1, r3_c2][idx]:
-                        st.markdown(f"**📍 {d} 중점 관리 품목**")
+                        # 각 소구역 지표 글자 크기 14px 세팅
+                        st.markdown(f"<span style='font-size:14px; font-weight:bold;'>📍 {d} 중점 관리 품목</span>", unsafe_allow_html=True)
                         m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
                         if not m_data.empty:
                             m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
                             fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
-                            fig_m.update_traces(marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, textposition='outside', textfont=dict(color='#2C3E50', size=12))
-                            fig_m.update_layout(template='plotly_white', height=360, xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'})
+                            fig_m.update_traces(marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, textposition='outside', textfont=dict(color='#2C3E50', size=14)) # ⚡ 가로 막대 텍스트 수치 크기 14px 통일
+                            fig_m.update_layout(template='plotly_white', height=360, xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'}, font=dict(size=14))
                             st.plotly_chart(fig_m, use_container_width=True)
                         else: st.caption("대상 품목이 존재하지 않습니다.")
             else: st.caption(f"{target_yr} 데이터가 로드되지 않았습니다.")
