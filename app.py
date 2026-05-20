@@ -124,7 +124,6 @@ if data_pool and selected_months:
                         base_summ = pd.concat([base_summ, pd.DataFrame(total_rows)], ignore_index=True)
                     base_summ['수율(%)'] = (base_summ['이론금액'] / base_summ['실제금액'] * 100)
                     
-                    # ⚡ [오류 해결 패치] 오타인 '연度'를 '연도'로 깨끗하게 정정하여 피벗 크래시 방지
                     pivot_df = base_summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율(%)'])
                     
                     all_cols = []
@@ -147,7 +146,7 @@ if data_pool and selected_months:
                             pivot_df[col] = pivot_df[col].apply(lambda x: f"{x:.2f}%" if x > 0 else "-")
                         else:
                             format_dict[col] = '{:,.0f}'
-                    st.dataframe(pivot_flat_target_styled := pivot_df.style.format(format_dict), use_container_width=True)
+                    st.dataframe(pivot_df.style.format(format_dict), use_container_width=True)
                 else:
                     st.caption("데이터가 없습니다.")
                 
@@ -164,7 +163,7 @@ if data_pool and selected_months:
                     fig_yoy.update_layout(template='plotly_white', height=280, margin=dict(l=0,r=0,t=20,b=0), yaxis=dict(range=[85,103]))
                     st.plotly_chart(fig_yoy, use_container_width=True)
 
-    # 2단 - 2열과 3열 데이터 연도 분리 및 병렬 출력 구조
+    # 2단 - 자재별 비교 & 리스크 매트릭스
     st.markdown("---")
     r2_col1, r2_col2 = st.columns([48, 52])
     
@@ -227,13 +226,20 @@ if data_pool and selected_months:
                     with [r3_c1, r3_c2][idx]:
                         st.markdown(f"**📍 {d} ({target_yr})**")
                         m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
+                        
+                        # ⚡ [오류 해결 패치] 데이터 유무를 먼저 철저히 검증하고, 안전한 update_traces 방식으로 마커 색상을 바인딩하여 크래시 방지
                         if not m_data.empty:
                             m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
-                            fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label',
-                                           marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY)
+                            fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
+                            
+                            # 데이터가 비어있지 않을 때만 안전하게 추적기 색상 지정 및 렌더링
+                            color_val = MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY
+                            fig_m.update_traces(marker_color=color_val, textposition='inside')
                             fig_m.update_layout(template='plotly_white', height=240, xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
                             st.plotly_chart(fig_m, use_container_width=True)
+                        else:
+                            st.caption("🔍 리스크 추출 대상 품목이 없습니다.")
             else:
-                st.caption(f"{target_yr} 데이터가 존재하지 않습니다.")
+                st.caption(f"ℹ️ 선택한 달 중 {target_yr} 데이터가 존재하지 않습니다.")
 else:
     st.warning("⚠️ 데이터를 불러올 수 없습니다. 사이드바에서 분석할 년월을 선택해 주세요.")
