@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import urllib.parse
 
 # 1. 페이지 세팅 및 타이틀
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.7")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.8")
 
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
@@ -27,8 +27,8 @@ with st.sidebar:
     search_keyword = st.text_input("검색어 입력 (예: 팜유, 포장지 등)", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
-st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.7")
-st.markdown(f"**현재 조회 데이터:** `{selected_month}` (과별 탭 맞춤 유기적 연동 모드)")
+st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.8")
+st.markdown(f"**현재 조회 데이터:** `{selected_month}` (자재별 전년 동월비 비교 모드)")
 st.markdown("---")
 
 # 2. 개별 년월 데이터 전처리 로직 (독립 격리)
@@ -42,7 +42,7 @@ def preprocess_df(df, month_label):
         '生産部門名': '생산부문명', '生産部門명': '생산부문명',
         '資재 유형 내역': '자재 유형 내역', '資材タイプテキスト': '자재 유형 내역',
         '品목텍스트': '하위품목 텍스트', '品目テキスト': '하위품목 텍스트',
-        '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', '实际金额': '실제금액'
+        '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', '实际金額': '실제금액'
     }
     df.rename(columns=rename_map, inplace=True)
 
@@ -129,17 +129,15 @@ if data_pool:
         st.markdown("---")
 
         # =========================================================================
-        # ⚡ 1단 레이아웃 - 좌우 5:5 분할 배치 (과별 상단 대형 탭 스크린 내재화)
+        # 1단 레이아웃 - 좌우 5:5 분할 배치 (과별 탭 스크린 구조 연동)
         # =========================================================================
         st.subheader("📋 과별 상세 수율 통제 및 전년비 비교 분석")
         
-        # 💡 [구조 변경] 메인 상단 탭을 밖으로 빼서 표와 그래프를 동시에 제어하도록 고도화
         depts_list = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
         selected_dept_tab = st.tabs(depts_list)
         
         for i, d in enumerate(depts_list):
             with selected_dept_tab[i]:
-                # 내부 공간을 좌우 5:5로 쪼개기
                 tab_col1, tab_col2 = st.columns([50, 50])
                 
                 # --- [왼쪽 스크린: 선택된 과의 순수 상세 현황 표] ---
@@ -189,24 +187,31 @@ if data_pool:
                     </div>
                     """, unsafe_allow_html=True)
 
-                # --- [오른쪽 스크린: ⚡ 클릭한 과(d)의 데이터만 추출하여 전년 동월과 1:1 비교] ---
+                # --- [오른쪽 스크린: ⚡ 원/부/반 자재별 전년 동월 대비 수율 1:1 그룹 바 차트 개조] ---
                 with tab_col2:
-                    st.markdown(f"**📈 {d} 전년 동월 대비 실적 비교 (YoY)**")
+                    st.markdown(f"**📊 {d} 원자재/부자재/반제품 전년 동월비 격차 (수율)**")
                     
                     compare_data = []
                     
                     if selected_month != "전체 누적 데이터":
-                        # 1. 현재 선택월의 '해당 과' 데이터 집계
+                        # 1. 현재 선택월 자재별 수율 마크
                         curr_dept_df = data_pool.get(selected_month, pd.DataFrame())
                         if d != '전체 총합' and not curr_dept_df.empty:
                             curr_dept_df = curr_dept_df[curr_dept_df['생산부문명'] == d]
                             
-                        c_y = curr_dept_df['이론금액'].sum()
-                        c_x = curr_dept_df['실제금액'].sum()
-                        c_yld = (c_y / c_x * 100) if c_x > 0 else 0
-                        compare_data.append({"시점": f"현재 ({selected_month})", "실제금액": c_x, "수율": round(c_yld, 2)})
+                        if not curr_dept_df.empty:
+                            curr_g = curr_dept_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
+                            for cat in ['원자재', '부자재', '반제품']:
+                                if cat in curr_g.index and curr_g.loc[cat, '실제금액'] > 0:
+                                    c_yld = (curr_g.loc[cat, '이론금액'] / curr_g.loc[cat, '실제금액'] * 100)
+                                    compare_data.append({"시점": f"현재 ({selected_month})", "자재 유형": cat, "수율(%)": round(c_yld, 2)})
+                                else:
+                                    compare_data.append({"시점": f"현재 ({selected_month})", "자재 유형": cat, "수율(%)": 0.0})
+                        else:
+                            for cat in ['원자재', '부자재', '반제품']:
+                                compare_data.append({"시점": f"현재 ({selected_month})", "자재 유형": cat, "수율(%)": 0.0})
                         
-                        # 2. 작년 동월의 '해당 과' 데이터 자동 연산 및 매핑
+                        # 2. 작년 동월 자재별 수율 마크 연산 후 역방향 삽입(작년이 무조건 그래프 왼쪽 선점)
                         try:
                             yy, mm = selected_month.split('.')
                             prev_year_label = f"{int(yy)-1:02d}.{mm}"
@@ -216,54 +221,54 @@ if data_pool:
                                 if d != '전체 총합' and not p_dept_df.empty:
                                     p_dept_df = p_dept_df[p_dept_df['생산부문명'] == d]
                                     
-                                p_y = p_dept_df['이론금액'].sum()
-                                p_x = p_dept_df['실제금액'].sum()
-                                p_yld = (p_y / p_x * 100) if p_x > 0 else 0
-                                compare_data.insert(0, {"시점": f"작년 동월 ({prev_year_label})", "실제금액": p_x, "수율": round(p_yld, 2)})
+                                if not p_dept_df.empty:
+                                    p_g = p_dept_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
+                                    for cat in ['원자재', '부자재', '반제품']:
+                                        if cat in p_g.index and p_g.loc[cat, '실제금액'] > 0:
+                                            p_yld = (p_g.loc[cat, '이론금액'] / p_g.loc[cat, '실제금액'] * 100)
+                                            compare_data.insert(0, {"시점": f"작년 동월 ({prev_year_label})", "자재 유형": cat, "수율(%)": round(p_yld, 2)})
+                                        else:
+                                            compare_data.insert(0, {"시점": f"작년 동월 ({prev_year_label})", "자재 유형": cat, "수율(%)": 0.0})
                         except:
                             pass
                     else:
-                        # 전체 누적일 때 해당 과의 누적치 요약
+                        # 전체 누적 선택 시 자재별 누적 요약
                         t_dept_df = trend_raw_df if d == '전체 총합' else trend_raw_df[trend_raw_df['생산부문명'] == d]
-                        t_y = t_dept_df['이론금액'].sum()
-                        t_x = t_dept_df['실제금액'].sum()
-                        t_yl = (t_y / t_x * 100) if t_x > 0 else 0
-                        compare_data.append({"시점": f"{d} 누적 실적", "실제금액": t_x, "수율": round(t_yl, 2)})
+                        if not t_dept_df.empty:
+                            t_g = t_dept_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
+                            for cat in ['원자재', '부자재', '반제품']:
+                                if cat in t_g.index and t_g.loc[cat, '실제금액'] > 0:
+                                    t_yld = (t_g.loc[cat, '이론금액'] / t_g.loc[cat, '실제금액'] * 100)
+                                    compare_data.append({"시점": f"{d} 누적 실적", "자재 유형": cat, "수율(%)": round(t_yld, 2)})
+                                else:
+                                    compare_data.append({"시점": f"{d} 누적 실적", "자재 유형": cat, "수율(%)": 0.0})
                     
                     comp_df = pd.DataFrame(compare_data)
                     
-                    # 작년비 증감 텍스트 어노테이션 생성
-                    chart_annotations = []
-                    for idx, r in comp_df.iterrows():
-                        b_txt = f"{r['수율']:.2f}%"
-                        if idx == 0 or len(comp_df) < 2:
-                            chart_annotations.append(b_txt)
-                        else:
-                            gap = r['수율'] - comp_df.loc[0, '수율']
-                            if gap > 0: chart_annotations.append(f"{b_txt}<br><span style='color:#00E676; font-size:12px;'>작년비 ▲{gap:.2f}%</span>")
-                            elif gap < 0: chart_annotations.append(f"{b_txt}<br><span style='color:#FF5252; font-size:12px;'>작년비 ▼{abs(gap):.2f}%</span>")
-                            else: chart_annotations.append(f"{b_txt}<br><span style='color:#FFF; font-size:12px;'>동일</span>")
-                    
-                    fig_yoy = go.Figure()
-                    fig_yoy.add_trace(go.Bar(
-                        x=comp_df['시점'], y=comp_df['실제금액'], name="실제 금액(원)", yaxis="y1", 
-                        marker_color='rgba(12, 77, 162, 0.55)', hovertemplate="%{y:,.0f} 원<extra></extra>", 
-                        width=0.35 if len(comp_df)>1 else 0.18
-                    ))
-                    fig_yoy.add_trace(go.Scatter(
-                        x=comp_df['시점'], y=comp_df['수율'], name="종합 수율(%)", yaxis="y2", 
-                        line=dict(color='#00E676', width=4), mode='lines+markers+text' if len(comp_df)>1 else 'markers+text', 
-                        text=chart_annotations, textposition="top center", marker=dict(size=12)
-                    ))
-                    
-                    fig_yoy.update_layout(
-                        template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                        yaxis=dict(title="실제 투입 금액 (원)", side="left", showgrid=False),
-                        yaxis2=dict(title="수율 (%)", side="right", overlaying="y", range=[94, 102], showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
-                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                        margin=dict(l=0, r=0, t=30, b=0), height=290
-                    )
-                    st.plotly_chart(fig_yoy, use_container_width=True)
+                    if not comp_df.empty and comp_df['수율(%)'].sum() > 0:
+                        # 시점에 따른 세련된 2색 컬러 맵 바인딩
+                        unique_periods = comp_df['시점'].unique()
+                        color_map = {}
+                        for p in unique_periods:
+                            color_map[p] = "#0c4da2" if ("현재" in p or "누적" in p) else "#5a9bd5"
+                                
+                        # 📊 자재별 수율 비교를 위한 그룹화 막대 그래프 생성
+                        fig_yoy = px.bar(
+                            comp_df, x='자재 유형', y='수율(%)', color='시점', barmode='group',
+                            text='수율(%)', category_orders={'자재 유형': ['원자재', '부자재', '반제품']},
+                            color_discrete_map=color_map
+                        )
+                        fig_yoy.update_traces(texttemplate='%{text:.2f}%', textposition='inside')
+                        fig_yoy.update_layout(
+                            template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                            yaxis=dict(range=[85, 103], title="수율 (%)", showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
+                            xaxis=dict(title="자재 구분"),
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                            margin=dict(l=0, r=0, t=30, b=0), height=290
+                        )
+                        st.plotly_chart(fig_yoy, use_container_width=True)
+                    else:
+                        st.info("💡 비교 분석할 작년 데이터가 시트에 존재하지 않습니다.")
 
     st.markdown("---")
 
