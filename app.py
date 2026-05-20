@@ -172,12 +172,10 @@ if data_pool and selected_months:
                 dept_sum, x='생산부문명', y='수율', color='연도', barmode='group', text='수율',
                 color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE}
             )
-            # ⚡ [요청 반영] 세로 막대 위의 텍스트 포지션을 바깥쪽(outside)으로 빼고 폰트 컬러를 선명하게 교정
             fig1.update_traces(
                 textposition='outside',
                 textfont=dict(color='#2C3E50', size=11, family='sans-serif')
             )
-            # 숫자가 위로 튀어나오므로 그래프 상단 여백 확보를 위해 yaxis range를 105에서 108로 확장
             fig1.update_layout(template='plotly_white', height=330, yaxis=dict(range=[80, 108]), xaxis_title=None)
             st.plotly_chart(fig1, use_container_width=True)
         else: st.caption("해당 자재 데이터가 없습니다.")
@@ -188,7 +186,8 @@ if data_pool and selected_months:
         plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
         
         if not plot_df2.empty:
-            item_scatter = plot_df2.groupby(['연도', '生産部門명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+            # ⚡ [오류 해결 패치] '生産部門명' 오타를 정형화된 한글 명칭 '생산부문명'으로 수정하여 에러 원천 차단
+            item_scatter = plot_df2.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
