@@ -115,7 +115,7 @@ if data_pool and selected_months:
         
         for i, d in enumerate(depts_list):
             with selected_dept_tab[i]:
-                tab_col1, tab_col2 = st.columns([54, 46])
+                tab_col1, tab_col2 = st.columns([56, 44]) # 10자리 단위 금액 표기를 위해 테이블 열 가로폭을 54에서 56으로 미세 확장
                 target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 
                 with tab_col1:
@@ -147,12 +147,12 @@ if data_pool and selected_months:
                         
                         thresh = YIELD_THRESHOLD[d]
                         
-                        # HTML 가운데 정렬 인젝션 템플릿 가동
+                        # ⚡ [UI 최적화] 큰 자릿수 금액이 들어와도 정렬이 깨지지 않도록 white-space: nowrap 및 패딩 스케일 최적화
                         html_code = f"""
                         <style>
                             .custom-table-container {{ font-family: 'Malgun Gothic', sans-serif; width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
-                            .custom-table-container th {{ background-color: #F8FAFC; color: #1E293B; font-weight: bold; border: 1px solid #E2E8F0; padding: 10px; text-align: center !important; vertical-align: middle; font-size: 13px; }}
-                            .custom-table-container td {{ border: 1px solid #E2E8F0; padding: 10px; text-align: center !important; font-size: 13px; color: #334155; vertical-align: middle; }}
+                            .custom-table-container th {{ background-color: #F8FAFC; color: #1E293B; font-weight: bold; border: 1px solid #E2E8F0; padding: 10px 6px; text-align: center !important; vertical-align: middle; font-size: 13px; white-space: nowrap; }}
+                            .custom-table-container td {{ border: 1px solid #E2E8F0; padding: 10px 4px; text-align: center !important; font-size: 12.5px; color: #334155; vertical-align: middle; white-space: nowrap; }}
                             .custom-table-container .bg-light-blue {{ background-color: #E0F2FE !important; }}
                             .custom-table-container .text-alert {{ color: #E74C3C !important; font-weight: bold !important; }}
                             .custom-table-container .bold-row {{ font-weight: bold !important; background-color: #F8FAFC; }}
@@ -175,7 +175,6 @@ if data_pool and selected_months:
                         for row_name in ['원자재', '부자재', '반제품', '전체 수율']:
                             is_total = "bold-row" if row_name == '전체 수율' else ""
                             
-                            # ⚡ 피벗 테이블 데이터 추출 안정화 공정 설정
                             v25_th = pivot_df.loc[row_name, '25년 이론금액'] if '25년 이론금액' in pivot_df.columns else 0
                             v25_ac = pivot_df.loc[row_name, '25년 실제금액'] if '25년 실제금액' in pivot_df.columns else 0
                             v25_yd = (v25_th / v25_ac * 100) if v25_ac > 0 else 0
