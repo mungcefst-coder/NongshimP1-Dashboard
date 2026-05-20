@@ -38,29 +38,24 @@ with st.sidebar:
 # 메인 화면 제목
 st.title("⚙️ 생산1팀 통합 수율 관리 시스템")
 
-if selected_months:
-    sorted_display_months = sorted(selected_months)
-    st.markdown(f"**현재 선택 기간:** `{', '.join(sorted_display_months)}` (연도별 데이터 독립 연산 조화)")
-else:
-    st.warning("⚠️ 사이드바에서 분석할 년월을 최소 1개 이상 선택해 주세요.")
-st.markdown("---")
-
 # 2. 데이터 처리 로직
 def preprocess_df(df, month_label):
     if df.empty: return pd.DataFrame()
     df = df.copy(); df['월'] = month_label
     df.columns = [str(c).strip() for c in df.columns]
+    
+    # 원본 문서의 모든 가능성 있는 인덱스명을 표준 한글 컬럼명으로 강제 맵핑
     rename_map = {
-        '生産部門명': '생산부문명', '生産部門名': '생산부문명',
-        '資재 유형 내역': '자재 유형 내역', '資材タイプ텍스트': '자재 유형 내역',
-        '品목텍스트': '하위품목 텍스트', '品목 텍스트': '하위품목 텍스트', '하위품목텍스트': '하위품목 텍스트',
-        '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', 'Actual金额': '실제금액'
+        '生産部門명': '생산부문명', '生産部門名': '생산부문명', '생산부문명': '생산부문명', '생산부num명': '생산부문명',
+        '資재 유형 내역': '자재 유형 내역', '資材タイプ텍스트': '자재 유형 내역', '자재 유형 내역': '자재 유형 내역',
+        '品목텍스트': '하위품목 텍스트', '品목 텍스트': '하위품목 텍스트', '하위품목텍스트': '하위품목 텍스트', '하위품목 텍스트': '하위품목 텍스트',
+        '理論金額': '이론금액', '實際金額': '실제금액', 'Actual Amount': '실제금액', 'Actual金额': '실제금액', '이론금액': '이론금액', '실제금액': '실제금액'
     }
     df.rename(columns=rename_map, inplace=True)
     
     if '생산부문명' in df.columns:
-        df['생산부문명'] = df['생산부문명'].strip() if hasattr(df['생산부문명'], 'strip') else df['생산부num명']
-        dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실'}
+        df['생산부문명'] = df['생산부문명'].astype(str).str.strip()
+        dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
         df = df[df['생산부문명'].isin(dept_map.keys())].copy()
         df['생산부문명'] = df['생산부문명'].map(dept_map)
     else: 
@@ -93,13 +88,23 @@ def load_all_raw_data(sheet_id, month_list):
 
 data_pool = load_all_raw_data(SHEET_ID, ALL_MONTHS)
 
+# ⚡ [예외 통제 방어벽 코어] 사용자가 월을 골랐고, 데이터 풀에 실제 로드된 내역이 매칭되는지 연속 검증
+is_data_ready = False
 if data_pool and selected_months:
     active_dfs = [data_pool[m] for m in selected_months if m in data_pool]
-    team_df = pd.concat(active_dfs, ignore_index=True)
+    if active_dfs:
+        team_df = pd.concat(active_dfs, ignore_index=True)
+        if not team_df.empty:
+            is_data_ready = True
+
+if is_data_ready:
     team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
-    
     if search_keyword:
         team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
+
+    sorted_display_months = sorted(selected_months)
+    st.markdown(f"**현재 선택 기간:** `{', '.join(sorted_display_months)}` (연도별 데이터 독립 연산 조화)")
+    st.markdown("---")
 
     # 1단 - 수율 종합 지표
     st.subheader("📋 생산1팀 수율 종합 지표")
@@ -128,11 +133,9 @@ if data_pool and selected_months:
                         for val in ['이론금액', '실제금액', '수율(%)']:
                             all_cols.append((val, yr))
                     pivot_df = pivot_df.reindex(columns=all_cols, fill_value=0)
-                    
                     flat_cols = []
                     for yr in ['25년 누적', '26년 누적']:
                         for val in ['이론금액', '실제금액', '수율(%)']:
-                            # ⚡ [오타 교정 패치] '수율수율'을 깔끔하게 '수율'로 정형화
                             display_val = "수율" if val == "수율(%)" else val
                             flat_cols.append(f"{yr[:3]} {display_val}")
                     pivot_df.columns = flat_cols
@@ -147,44 +150,25 @@ if data_pool and selected_months:
                 else: st.caption("데이터가 없습니다.")
                 
             with tab_col2:
-                # ⚡ [방안 1 적용] 중복 막대 차트를 걷어내고 시간의 흐름에 따른 '월별 누적 수율 변동 추이(Line)' 신설
                 st.markdown(f"**📈 연도별 월간 누적 수율 추이 흐름 (시계열 Trend)**")
                 if not target_df.empty:
-                    # 선택된 월들에 대해 월별 정렬 후 누적 연산을 위한 기본 그룹바이
                     trend_raw = target_df.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index()
                     trend_raw = trend_raw.sort_values(['연도', '월']).reset_index(drop=True)
-                    
-                    # 기간이 지남에 따라 분기 누적 성과가 쌓이도록 판다스 cumsum() 동적 적용
                     trend_raw['누적이론'] = trend_raw.groupby('연도')['이론금액'].cumsum()
                     trend_raw['누적실제'] = trend_raw.groupby('연도')['실제금액'].cumsum()
                     trend_raw['누적수율'] = (trend_raw['누적이론'] / trend_raw['누적실제'] * 100).round(2)
-                    
-                    # 그래프 표기용 X축 포맷팅 (뒤의 월 'MM'만 추출)
                     trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                     
                     fig_line = px.line(
                         trend_raw, x='표시월', y='누적수율', color='연도', text='누적수율',
-                        color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE},
-                        markers=True
+                        color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE}, markers=True
                     )
-                    fig_line.update_traces(
-                        textposition='top center', 
-                        textfont=dict(color='#2C3E50', size=10),
-                        line=dict(width=3),
-                        marker=dict(size=8)
-                    )
-                    # 수율 변동의 가시성을 위해 Y축 범위를 타이트하게 최적화
+                    fig_line.update_traces(textposition='top center', textfont=dict(color='#2C3E50', size=10), line=dict(width=3), marker=dict(size=8))
                     min_y = max(50, trend_raw['누적수율'].min() - 0.8)
                     max_y = min(110, trend_raw['누적수율'].max() + 0.8)
-                    fig_line.update_layout(
-                        template='plotly_white', height=280, 
-                        margin=dict(l=10, r=10, t=20, b=10), 
-                        yaxis=dict(range=[min_y, max_y]),
-                        xaxis_title=None, yaxis_title="누적 수율 (%)", legend_title=None
-                    )
+                    fig_line.update_layout(template='plotly_white', height=280, margin=dict(l=10, r=10, t=20, b=10), yaxis=dict(range=[min_y, max_y]), xaxis_title=None, yaxis_title="누적 수율 (%)", legend_title=None)
                     st.plotly_chart(fig_line, use_container_width=True)
-                else: 
-                    st.caption("추이 분석 데이터가 부족합니다.")
+                else: st.caption("추이 분석 데이터가 부족합니다.")
 
     # 2단 - 자재별 비교 & 리스크 매트릭스
     st.markdown("---")
@@ -197,15 +181,8 @@ if data_pool and selected_months:
         if not filtered_r2_1.empty:
             dept_sum = filtered_r2_1.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
-            
-            fig1 = px.bar(
-                dept_sum, x='생산부문명', y='수율', color='연도', barmode='group', text='수율',
-                color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE}
-            )
-            fig1.update_traces(
-                textposition='outside',
-                textfont=dict(color='#2C3E50', size=11, family='sans-serif')
-            )
+            fig1 = px.bar(dept_sum, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
+            fig1.update_traces(textposition='outside', textfont=dict(color='#2C3E50', size=11, family='sans-serif'))
             fig1.update_layout(template='plotly_white', height=330, yaxis=dict(range=[80, 108]), xaxis_title=None)
             st.plotly_chart(fig1, use_container_width=True)
         else: st.caption("해당 자재 데이터가 없습니다.")
@@ -225,15 +202,12 @@ if data_pool and selected_months:
                 if row['연도'] == '26년 누적' and row['actual_billion'] >= 4.0 and row['수율'] <= 98.0:
                     return '26년 핵심 관리 대상 (⚠️고위험)'
                 return row['연도']
-            
             item_scatter['분류'] = item_scatter.apply(assign_risk_status, axis=1)
             size_map = {'25년 누적': 6, '26년 누적': 7, '26년 핵심 관리 대상 (⚠️고위험)': 12}
             item_scatter['점크기'] = item_scatter['분류'].map(size_map)
             
             fig3 = px.scatter(
-                item_scatter, x='actual_billion', y='수율', color='분류',
-                size='점크기', size_max=12,
-                hover_name='하위품목 텍스트',
+                item_scatter, x='actual_billion', y='수율', color='분류', size='점크기', size_max=12, hover_name='하위품목 텍스트',
                 color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '26년 핵심 관리 대상 (⚠️고위험)': ALERT_RED},
                 category_orders={'분류': ['25년 누적', '26년 누적', '26년 핵심 관리 대상 (⚠️고위험)']}
             )
@@ -258,20 +232,17 @@ if data_pool and selected_months:
                 for idx, d in enumerate(['면 1과', '면 5과']):
                     with [r3_c1, r3_c2][idx]:
                         st.markdown(f"**📍 {d} ({target_yr})**")
-                        m_data = item_sum[item_sum['생산부num명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5) if '생산부num명' in item_sum.columns else item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
+                        # ⚡ [오타 완전 소거] 과거의 잔재 '생산부num명'을 철저히 제거하고 무조건 '생산부문명'으로 집계
+                        m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
                         
                         if not m_data.empty:
                             m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
                             fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
-                            
-                            fig_m.update_traces(
-                                marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, 
-                                textposition='outside',
-                                textfont=dict(color='#2C3E50', size=11, family='sans-serif')
-                            )
+                            fig_m.update_traces(marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, textposition='outside', textfont=dict(color='#2C3E50', size=11, family='sans-serif'))
                             fig_m.update_layout(template='plotly_white', height=360, xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'})
                             st.plotly_chart(fig_m, use_container_width=True)
                         else: st.caption("🔍 대상 품목이 없습니다.")
             else: st.caption(f"ℹ️ {target_yr} 데이터가 없습니다.")
 else:
-    st.warning("⚠️ 사이드바에서 분석할 년월을 선택해 주세요.")
+    # ⚡ 날짜를 선택했음에도 데이터베이스에 접근을 못하는 상황을 방지하기 위한 안내 문구 일원화
+    st.warning("⚠️ 사이드바에서 분석할 년월을 선택해 주세요. (만약 선택했는데도 이 창이 뜬다면 웹브라우저에서 키보드 'C' 단축키를 눌러 캐시를 초기화해 주세요.)")
