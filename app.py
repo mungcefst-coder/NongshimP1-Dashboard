@@ -124,7 +124,8 @@ if data_pool and selected_months:
                         base_summ = pd.concat([base_summ, pd.DataFrame(total_rows)], ignore_index=True)
                     base_summ['수율(%)'] = (base_summ['이론금액'] / base_summ['실제금액'] * 100)
                     
-                    pivot_df = base_summ.pivot(index='자재 유형 내역', columns='연度', values=['이론금액', '실제금액', '수율(%)'])
+                    # ⚡ [오류 해결 패치] 오타인 '연度'를 '연도'로 깨끗하게 정정하여 피벗 크래시 방지
+                    pivot_df = base_summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율(%)'])
                     
                     all_cols = []
                     for yr in ['25년 누적', '26년 누적']:
@@ -146,7 +147,7 @@ if data_pool and selected_months:
                             pivot_df[col] = pivot_df[col].apply(lambda x: f"{x:.2f}%" if x > 0 else "-")
                         else:
                             format_dict[col] = '{:,.0f}'
-                    st.dataframe(pivot_df.style.format(format_dict), use_container_width=True)
+                    st.dataframe(pivot_flat_target_styled := pivot_df.style.format(format_dict), use_container_width=True)
                 else:
                     st.caption("데이터가 없습니다.")
                 
@@ -163,22 +164,19 @@ if data_pool and selected_months:
                     fig_yoy.update_layout(template='plotly_white', height=280, margin=dict(l=0,r=0,t=20,b=0), yaxis=dict(range=[85,103]))
                     st.plotly_chart(fig_yoy, use_container_width=True)
 
-    # ⚡ 2단 - 2열과 3열 데이터 연도 분리 및 병렬 출력 구조 개조
+    # 2단 - 2열과 3열 데이터 연도 분리 및 병렬 출력 구조
     st.markdown("---")
     r2_col1, r2_col2 = st.columns([48, 52])
     
     with r2_col1:
         st.subheader("📊 부서별 연도 누적 수율 대조")
-        # 자재 유형 필터 세팅
         mat_choice = st.selectbox("조회할 자재 유형 선택", ["원자재", "부자재", "반제품"], key="mat_opt")
         
         filtered_r2_1 = team_df[team_df['자재 유형 내역'] == mat_choice]
         if not filtered_r2_1.empty:
-            # 부서별 + 연도별 그룹 연산 (합산 방지)
             dept_sum = filtered_r2_1.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
             
-            # 💡 연도(연도)를 Color로 지정하여 25년/26년 막대를 나란히 분리 출력
             fig1 = px.bar(
                 dept_sum, x='생산부문명', y='수율', color='연도', barmode='group', text='수율',
                 color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE}
@@ -195,13 +193,11 @@ if data_pool and selected_months:
         plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
         
         if not plot_df2.empty:
-            # 💡 하위품목별로 묶을 때 '연도'를 그룹 기준에 포함하여 데이터가 병합되는 것을 원천 차단!
             item_scatter = plot_df2.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
             
-            # 💡 연도 구분을 Color와 Symbol에 반영하여 25년 점과 26년 점이 따로 찍히도록 구성
             fig3 = px.scatter(
                 item_scatter, x='actual_billion', y='수율', color='연도', symbol='연도',
                 hover_name='하위품목 텍스트',
@@ -213,7 +209,7 @@ if data_pool and selected_months:
         else:
             st.caption("조회할 리스크 내역이 없습니다.")
 
-    # 3단 - 과별 관리 대상 Top 5 (연도별 분리 탭 적용)
+    # 3단 - 과별 관리 대상 Top 5
     st.markdown("---")
     st.subheader("🚨 과별 핵심 관리 대상 Top 5")
     
