@@ -4,8 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import urllib.parse
 
-# 1. 페이지 세팅 및 타이틀 (전체 화면을 넓게 쓰기 위해 와이드 모드 유지)
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.2")
+# 1. 페이지 세팅 및 타이틀
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.3")
 
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
@@ -22,8 +22,8 @@ with st.sidebar:
     search_keyword = st.text_input("검색어 입력 (예: 팜유, 포장지 등)", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
-st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.2")
-st.markdown(f"**현재 조회 데이터:** `{selected_month}` (좌우 분할 모니터링)")
+st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.3")
+st.markdown(f"**현재 조회 데이터:** `{selected_month}` (전월 대비 수율 비교 모드)")
 st.markdown("---")
 
 # 2. 데이터 로드 및 정제 로직
@@ -55,7 +55,6 @@ def load_and_process_gsheet(mode, sheet_id):
         my_team = ['1팀 면1과', '1팀 면5과', '1팀 스프']
         full_df = full_df[full_df['생산부문명'].isin(my_team)].copy()
         
-        # 품목 정제 및 숫자 변환
         if '하위품목 텍스트' in full_df.columns:
             full_df['하위품목 텍스트'] = full_df['하위품목 텍스트'].astype(str).str.strip()
             exclude_keywords = ['소계', '합계', '총합', '총계', '결과', '부문명']
@@ -88,21 +87,21 @@ if not team_df.empty:
     if search_keyword:
         team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-    # 3. 최상단 KPI 대시보드 및 전월 대비 증감 표시
+    # 3. 최상단 KPI 대시보드 및 전월 대비 증감 계산
     t_theory = team_df['이론금액'].sum()
     t_actual = team_df['실제금액'].sum()
     t_yield = (t_theory / t_actual * 100) if t_actual > 0 else 0
     
-    prev_yield = 0
+    prev_yield_kpi = 0
     if "월" in selected_month:
         curr_idx = months_list.index(selected_month)
         if curr_idx > 1:
             prev_m = months_list[curr_idx - 1]
             prev_df = trend_raw_df[trend_raw_df['월'] == prev_m]
             if not prev_df.empty:
-                prev_yield = (prev_df['이론금액'].sum() / prev_df['실제금액'].sum() * 100)
+                prev_yield_kpi = (prev_df['이론금액'].sum() / prev_df['실제금액'].sum() * 100)
     
-    delta_val = f"{t_yield - prev_yield:.2f}% (전월비)" if prev_yield > 0 else None
+    delta_val = f"{t_yield - prev_yield_kpi:.2f}% (전월비)" if prev_yield_kpi > 0 else None
 
     col1, col2, col3 = st.columns(3)
     col1.metric("🎯 이론 금액", f"{t_theory:,.0f} 원")
@@ -111,7 +110,7 @@ if not team_df.empty:
     st.markdown("---")
 
     # =========================================================================
-    # ⚡ [핵심] 1단 레이아웃 - 좌우 5:5 분할 배치
+    # ⚡ 1단 레이아웃 - 좌우 5:5 분할 배치 (전월비 수율 직접 매핑)
     # =========================================================================
     main_col1, main_col2 = st.columns([50, 50])
 
@@ -155,7 +154,6 @@ if not team_df.empty:
                 
                 st.dataframe(styled_df, use_container_width=True)
                 
-        # 수율 가이드 배너
         st.markdown("""
         <div style="background-color: #262730; padding: 10px 14px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 5px;">
             <span style="font-size: 12px; color: #E0E0E0; font-weight: 500;">
@@ -164,23 +162,47 @@ if not team_df.empty:
         </div>
         """, unsafe_allow_html=True)
 
-    # --- [오른쪽 열: 전월비 종합 실적 추이 그래프] ---
+    # --- [오른쪽 열: 전월 대비 수율 격차 자동 연산 그래프] ---
     with main_col2:
-        st.subheader("📈 월별 실적 추이 분석")
+        st.subheader("📈 월별 실적 추이 및 전월비 비교")
         
+        # 월별 전체 트렌드 데이터 집계
         monthly_trend = trend_raw_df.groupby('월')[['이론금액', '실제금액']].sum().reset_index()
         monthly_trend['월순서'] = monthly_trend['월'].str.replace('월','').astype(int)
-        monthly_trend = monthly_trend.sort_values('월순서')
+        monthly_trend = monthly_trend.sort_values('월순서').reset_index(drop=True)
         monthly_trend['수율(%)'] = (monthly_trend['이론금액'] / monthly_trend['실제금액'] * 100).round(2)
         
+        # ⚡ 핵심 연산: 전월 대비 수율 차이(MoM Delta) 구하기
+        chart_labels = []
+        for idx, row in monthly_trend.iterrows():
+            base_text = f"{row['수율(%)']:.2f}%"
+            if idx == 0:
+                # 첫 달(1월)은 대조군이 없으므로 수율만 표시
+                chart_labels.append(base_text)
+            else:
+                prev_val = monthly_trend.loc[idx - 1, '수율(%)']
+                diff = row['수율(%)'] - prev_val
+                if diff > 0:
+                    chart_labels.append(f"{base_text}<br><span style='color:#00E676; font-size:11px;'>▲{diff:.2f}%</span>")
+                elif diff < 0:
+                    chart_labels.append(f"{base_text}<br><span style='color:#FF5252; font-size:11px;'>▼{abs(diff):.2f}%</span>")
+                else:
+                    chart_labels.append(f"{base_text}<br><span style='color:#FFF; font-size:11px;'>-</span>")
+        
         fig_trend = go.Figure()
-        fig_trend.add_trace(go.Bar(x=monthly_trend['월'], y=monthly_trend['실제금액'], name="실제 금액(원)", yaxis="y1", marker_color='rgba(12, 77, 162, 0.5)'))
-        fig_trend.add_trace(go.Scatter(x=monthly_trend['월'], y=monthly_trend['수율(%)'], name="종합 수율(%)", yaxis="y2", line=dict(color='#00E676', width=4), mode='lines+markers+text', text=monthly_trend['수율(%)'], textposition="top center"))
+        # 배경 집행금액 바
+        fig_trend.add_trace(go.Bar(x=monthly_trend['월'], y=monthly_trend['실제금액'], name="실제 금액(원)", yaxis="y1", marker_color='rgba(12, 77, 162, 0.4)', hovertemplate="%{y:,.0f} 원<extra></extra>"))
+        # 수율 꺾은선 + 전월 대비 증감(chart_labels) 어노테이션 텍스트 결합
+        fig_trend.add_trace(go.Scatter(
+            x=monthly_trend['월'], y=monthly_trend['수율(%)'], name="종합 수율(%)", yaxis="y2", 
+            line=dict(color='#00E676', width=4), mode='lines+markers+text', 
+            text=chart_labels, textposition="top center", hovertemplate="수율: %{y:.2f}%<extra></extra>"
+        ))
         
         fig_trend.update_layout(
             template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            yaxis=dict(title="실제 투입 금액 (원)", side="left"),
-            yaxis2=dict(title="수율 (%)", side="right", overlaying="y", range=[95, 101]),
+            yaxis=dict(title="실제 투입 금액 (원)", side="left", showgrid=False),
+            yaxis2=dict(title="수율 (%)", side="right", overlaying="y", range=[95, 102], showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             margin=dict(l=0, r=0, t=30, b=0), height=310
         )
@@ -189,7 +211,7 @@ if not team_df.empty:
     st.markdown("---")
 
     # =========================================================================
-    # ⚡ [2단 레이아웃] 부서별 수율 비교 바 차트(좌) & 리스크 매트릭스(우)
+    # 2단 레이아웃 (부서별 수율 비교 & 리스크 매트릭스)
     # =========================================================================
     row2_col1, row2_col2 = st.columns([45, 55])
     
@@ -225,7 +247,7 @@ if not team_df.empty:
     st.markdown("---")
 
     # =========================================================================
-    # ⚡ [3단 레이아웃] 과별 리스크 최상위 집중 관리 대상 Top 5
+    # 3단 레이아웃 (과별 핵심 관리 대상 Top 5)
     # =========================================================================
     st.subheader("🚨 과별 핵심 관리 대상 Top 5 (실제금액 상위 품목 중 수율 최저 순)")
     item_sum = team_df[team_df['생산부문명'] != '1팀 스프'].groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
