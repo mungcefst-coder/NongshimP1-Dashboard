@@ -9,11 +9,12 @@ st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 �
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 
-# 1. 사이드바 설정
+# 1. 사이드바 설정 (월별 / 전체 누적 데이터 선택 컨트롤러)
 with st.sidebar:
     st.header("📂 데이터 관리")
     st.success("📊 구글 시트 실시간 연동 중")
     
+    # 여기서 선택하는 값에 따라 하단의 모든 표와 그래프가 '월별' 또는 '누적'으로 동적 전환됩니다.
     months = ["전체 누적 데이터", "1월", "2월", "3월", "4월"]
     selected_month = st.selectbox("분석할 월 선택", months)
     
@@ -103,7 +104,7 @@ if selected_month:
         st.markdown("---")
 
         # =========================================================================
-        # ⚡ [1단 - 최상단 고정] 과별 상세 수율 현황 표 + 🔴/🟢 신호등 제어 로직
+        # ⚡ [1단 - 최상단 고정] 과별 상세 수율 현황 표 (선택한 월/누적에 따라 실시간 변경)
         # =========================================================================
         st.subheader("📋 과별 상세 수율 현황")
         depts_list = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
@@ -129,15 +130,12 @@ if selected_month:
                 
                 display_df = final_summ.copy()
                 
-                # ⚡ [수정] '전체 총합' 과의 판정 기준을 98.73%로 별도 고정 처리하는 함수
+                # 신호등 및 판정 함수 (월별/누적 통합 적용)
                 def make_signal_text(row_idx, val, dept_name=d):
                     if pd.isna(val) or val == 0: return "-"
                     
-                    # 요청 사항 반영: 전체 총합 탭 및 각 개별 행 판정용 스케일 분기
                     targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53, '전체 총합': 98.73}
                     
-                    # 만약 전체 총합 탭 자체를 보고 있다면 무조건 98.73%로 판정하고,
-                    # 다른 과 탭 내부의 '전체 수율' 행을 보고 있다면 그 과의 고유 기준 수율로 판정
                     if dept_name == '전체 총합':
                         limit = 98.73
                     else:
@@ -181,13 +179,14 @@ if selected_month:
         st.markdown("---")
 
         # =========================================================================
-        # ⚡ [2단 - 중간 좌우 배치] 부서별 수율 비교 바 차트(좌) & 수율 리스크 매트릭스(우)
+        # ⚡ [2단] 부서별 수율 비교 바 차트(좌) & 수율 리스크 매트릭스(우)
         # =========================================================================
         row2_col1, row2_col2 = st.columns([45, 55])
         
         with row2_col1:
             st.subheader("📊 부서 및 자재별 수율 비교")
-            dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
+            dept_sum = team_df.groupby(['生産部門名' if '生産部門名' in team_df.columns else '생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
+            if '生産部門名' in dept_sum.columns: dept_sum.rename(columns={'生産部門名': '생산부문명'}, inplace=True)
             dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
             
             custom_colors = {'원자재': '#0c4da2', '부자재': '#5a9bd5', '반제품': '#a6c8e0'}
@@ -229,7 +228,6 @@ if selected_month:
                 fig3.update_traces(hovertemplate="<b>%{hovertext}</b><br><br>실제 투입 금액: %{x:.2f}억 원<br>수율: %{y:.2f}%<extra></extra>",
                     marker=dict(size=10, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)')))
                 
-                # ⚡ 매트릭스 하단 가이드선도 전체 1팀일 때 98.73%가 뜨도록 고도화
                 targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53, '전체 1팀': 98.73}
                 if scatter_dept in targets:
                     specific_limit = targets[scatter_dept]
@@ -245,7 +243,7 @@ if selected_month:
         st.markdown("---")
 
         # =========================================================================
-        # ⚡ [3단 - 최하단 전면 배치] 과별 리스크 최상위 집중 관리 대상 Top 5
+        # ⚡ [3단] 과별 리스크 최상위 집중 관리 대상 Top 5
         # =========================================================================
         st.subheader("🚨 과별 핵심 관리 대상 Top 5 (실제금액 상위 품목 중 수율 최저 순)")
         
