@@ -9,12 +9,11 @@ st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 �
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 
-# 1. 사이드바 설정 (월별 / 전체 누적 데이터 선택 컨트롤러)
+# 1. 사이드바 설정
 with st.sidebar:
     st.header("📂 데이터 관리")
     st.success("📊 구글 시트 실시간 연동 중")
     
-    # 여기서 선택하는 값에 따라 하단의 모든 표와 그래프가 '월별' 또는 '누적'으로 동적 전환됩니다.
     months = ["전체 누적 데이터", "1월", "2월", "3월", "4월"]
     selected_month = st.selectbox("분석할 월 선택", months)
     
@@ -104,7 +103,7 @@ if selected_month:
         st.markdown("---")
 
         # =========================================================================
-        # ⚡ [1단 - 최상단 고정] 과별 상세 수율 현황 표 (선택한 월/누적에 따라 실시간 변경)
+        # ⚡ [1단] 과별 상세 수율 현황 표 + 🔴/🟢 신호등 왼쪽 전치 배치 완료
         # =========================================================================
         st.subheader("📋 과별 상세 수율 현황")
         depts_list = ['1팀 면1과', '1팀 면5과', '1팀 스프', '전체 총합']
@@ -130,23 +129,20 @@ if selected_month:
                 
                 display_df = final_summ.copy()
                 
-                # 신호등 및 판정 함수 (월별/누적 통합 적용)
+                # ⚡ [수정] 신호등 원을 숫자 앞으로 오도록 문자열 조립 순서 변경
                 def make_signal_text(row_idx, val, dept_name=d):
                     if pd.isna(val) or val == 0: return "-"
                     
                     targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53, '전체 총합': 98.73}
-                    
-                    if dept_name == '전체 총합':
-                        limit = 98.73
-                    else:
-                        limit = targets.get(dept_name, 95.0)
+                    limit = 98.73 if dept_name == '전체 총합' else targets.get(dept_name, 95.0)
                         
                     formatted_val = f"{val:.2f}%"
                     
+                    # 신호등 이모지를 텍스트 맨 앞으로 배치
                     if val < limit:
-                        return f"{formatted_val} 🔴"
+                        return f"🔴 {formatted_val}"
                     else:
-                        return f"{formatted_val} 🟢"
+                        return f"🟢 {formatted_val}"
                 
                 display_df['수율(%)'] = [make_signal_text(idx, display_df.loc[idx, '수율(%)']) for idx in display_df.index]
                 
@@ -163,15 +159,15 @@ if selected_month:
                 
                 st.dataframe(styled_df, use_container_width=True)
                 
-        # 초슬림 한 줄 배너 가이드 라인
+        # ⚡ [수정] 신호등과 간섭이 생기지 않도록 가이드 불빛을 파란색 다이아몬드(🔹)로 전면 교체
         st.markdown("""
         <div style="background-color: #262730; padding: 12px 18px; border-radius: 8px; border-left: 5px solid #448AFF; margin-top: 10px; margin-bottom: 25px;">
             <span style="font-size: 14px; color: #B9F6CA; font-weight: bold; margin-right: 15px;">🎯 생산1팀 과별 수율 관리 기준 :</span>
             <span style="font-size: 13px; color: #E0E0E0; font-weight: 500;">
-                🟢 <b>1팀 면1과 :</b> 수율 98.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
-                🟢 <b>1팀 면5과 :</b> 수율 97.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
-                🟢 <b>1팀 스프 :</b> 수율 99.53% 이상 &nbsp;&nbsp;|&nbsp;&nbsp;
-                🟢 <b>전체 총합 :</b> 수율 98.73% 이상
+                🔹 <b>1팀 면1과 :</b> 수율 98.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
+                🔹 <b>1팀 면5과 :</b> 수율 97.92% 이상 &nbsp;&nbsp;|&nbsp;&nbsp; 
+                🔹 <b>1팀 스프 :</b> 수율 99.53% 이상 &nbsp;&nbsp;|&nbsp;&nbsp;
+                🔹 <b>전체 총합 :</b> 수율 98.73% 이상
             </span>
         </div>
         """, unsafe_allow_html=True)
@@ -185,8 +181,7 @@ if selected_month:
         
         with row2_col1:
             st.subheader("📊 부서 및 자재별 수율 비교")
-            dept_sum = team_df.groupby(['生産部門名' if '生産部門名' in team_df.columns else '생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
-            if '生産部門名' in dept_sum.columns: dept_sum.rename(columns={'生産部門名': '생산부문명'}, inplace=True)
+            dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
             dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
             
             custom_colors = {'원자재': '#0c4da2', '부자재': '#5a9bd5', '반제품': '#a6c8e0'}
@@ -220,11 +215,11 @@ if selected_month:
                 return '기준 달성' if row['수율(%)'] >= limit else '기준 미달'
                 
             if not item_scatter.empty:
-                item_scatter['관리 상태'] = item_scatter.apply(get_scatter_status, axis=1)
+                item_scatter['bold 상태'] = item_scatter.apply(get_scatter_status, axis=1)
                 scatter_colors = {'기준 달성': '#448AFF', '기준 미달': '#FF5252'}
                 
                 fig3 = px.scatter(item_scatter, x='실제 투입 금액 (억 원)', y='수율(%)', hover_name='하위품목 텍스트',
-                    color='관리 상태', color_discrete_map=scatter_colors, category_orders={'관리 상태': ['기준 미달', '기준 달성']})
+                    color='bold 상태', color_discrete_map=scatter_colors, category_orders={'bold 상태': ['기준 미달', '기준 달성']})
                 fig3.update_traces(hovertemplate="<b>%{hovertext}</b><br><br>실제 투입 금액: %{x:.2f}억 원<br>수율: %{y:.2f}%<extra></extra>",
                     marker=dict(size=10, opacity=0.9, line=dict(width=1, color='rgba(255,255,255,0.4)')))
                 
