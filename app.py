@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import urllib.parse
 
-# 1. 페이지 세팅 및 타이틀 (브라우저 탭 제목에 기어 이모티콘 및 버전 정보 제거)
+# 1. 페이지 세팅 및 타이틀 
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
 # 디자인 테마 컬러 정의
@@ -25,9 +25,9 @@ with st.sidebar:
     st.header("📂 데이터 관제")
     st.info("📊 밝고 선명한 블루 테마 적용 중")
     
-    # ⚡ [옵션 패치] 연도별 누적 데이터 선택지 추가
-    months_list = ["전체 누적 데이터", "25년 전체 누적", "26년 전체 누적"] + ALL_MONTHS
-    selected_month = st.selectbox("분석할 년월(YY.MM) 선택", months_list, index=len(months_list)-1)
+    # ⚡ [수정] 혼선을 주던 '전체 누적 데이터'를 제거하고 연도별 누적과 개별 월만 배치
+    months_list = ["26년 전체 누적", "25년 전체 누적"] + ALL_MONTHS
+    selected_month = st.selectbox("분석할 년월(YY.MM) 선택", months_list, index=0) # 기본값을 최신 26년 누적으로 설정
     st.markdown("---")
     search_keyword = st.text_input("🔍 세부 품목 검색", placeholder="비워두면 전체 조회")
 
@@ -87,10 +87,8 @@ data_pool = load_all_raw_data(SHEET_ID, ALL_MONTHS)
 if data_pool:
     trend_raw_df = pd.concat(data_pool.values(), ignore_index=True)
     
-    # ⚡ [필터링 패치] 선택한 누적 조건에 맞춰 테이블 데이터 바인딩 분기 처리
-    if selected_month == "전체 누적 데이터":
-        team_df = trend_raw_df.copy()
-    elif selected_month == "25년 전체 누적":
+    # ⚡ [수정] 단순화된 분기 필터링 시스템 적용
+    if selected_month == "25년 전체 누적":
         team_df = trend_raw_df[trend_raw_df['월'].str.startswith("25.")].copy()
     elif selected_month == "26년 전체 누적":
         team_df = trend_raw_df[trend_raw_df['월'].str.startswith("26.")].copy()
@@ -146,8 +144,8 @@ if data_pool:
                     st.markdown(f"**📈 전년 동기대비 수율 비교**")
                     compare_data = []
                     
-                    # 단일 월 데이터가 선택되었을 때만 YoY 비교 차트 렌더링 활성화
-                    if selected_month not in ["전체 누적 데이터", "25년 전체 누적", "26년 전체 누적"]:
+                    # 연도별 누적 모드가 아닐 때만 YoY 연산 작동
+                    if "전체 누적" not in selected_month:
                         curr_dept_df = data_pool.get(selected_month, pd.DataFrame())
                         if d != '전체 총합': curr_dept_df = curr_dept_df[curr_dept_df['생산부문명'] == d]
                         
@@ -162,7 +160,7 @@ if data_pool:
                             prev_label = f"{int(yy)-1:02d}.{mm}"
                             if prev_label in data_pool:
                                 p_df = data_pool[prev_label]
-                                if d != '전체 총합': p_df = p_df[p_df['생산부문명'] == d]
+                                if d != '전체 총합': p_df = p_df[p_df['生産部門명'] == d if '生産部門명' in p_df.columns else p_df['생산부문명'] == d]
                                 p_g = p_df.groupby('자재 유형 내역')[['이론금액', '실제금액']].sum()
                                 for cat in ['원자재', '부자재', '반제품']:
                                     val = (p_g.loc[cat, '이론금액'] / p_g.loc[cat, '실제금액'] * 100) if cat in p_g.index else 0
