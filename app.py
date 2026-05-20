@@ -23,7 +23,7 @@ ALL_MONTHS = [
 # 사이드바 컨트롤러
 with st.sidebar:
     st.header("📂 데이터 관제")
-    st.info("📊 밝고 선명한 블루 테마 적용 중")
+    st.info("📊 실시간 데이터 반영 중")
     
     months_list = ["전체 누적 데이터"] + ALL_MONTHS
     selected_month = st.selectbox("분석할 년월(YY.MM) 선택", months_list, index=len(months_list)-1)
