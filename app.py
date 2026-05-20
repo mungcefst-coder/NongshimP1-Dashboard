@@ -23,14 +23,15 @@ ALL_MONTHS = [
 # 사이드바 컨트롤러
 with st.sidebar:
     st.header("📂 데이터 관제")
-    st.info("📊 실시간 데이터 반영 중")
+    st.info("📊 밝고 선명한 블루 테마 적용 중")
     
-    months_list = ["전체 누적 데이터"] + ALL_MONTHS
+    # ⚡ [옵션 패치] 연도별 누적 데이터 선택지 추가
+    months_list = ["전체 누적 데이터", "25년 전체 누적", "26년 전체 누적"] + ALL_MONTHS
     selected_month = st.selectbox("분석할 년월(YY.MM) 선택", months_list, index=len(months_list)-1)
     st.markdown("---")
     search_keyword = st.text_input("🔍 세부 품목 검색", placeholder="비워두면 전체 조회")
 
-# 메인 화면 제목 (⚡ ⚙️ 기어 이모티콘 적용 및 버전 표기 완전 제거)
+# 메인 화면 제목
 st.title("⚙️ 생산1팀 통합 수율 관리 시스템")
 st.markdown(f"**현재 조회 데이터:** `{selected_month}`")
 st.markdown("---")
@@ -85,7 +86,16 @@ data_pool = load_all_raw_data(SHEET_ID, ALL_MONTHS)
 
 if data_pool:
     trend_raw_df = pd.concat(data_pool.values(), ignore_index=True)
-    team_df = trend_raw_df.copy() if selected_month == "전체 누적 데이터" else data_pool.get(selected_month, pd.DataFrame()).copy()
+    
+    # ⚡ [필터링 패치] 선택한 누적 조건에 맞춰 테이블 데이터 바인딩 분기 처리
+    if selected_month == "전체 누적 데이터":
+        team_df = trend_raw_df.copy()
+    elif selected_month == "25년 전체 누적":
+        team_df = trend_raw_df[trend_raw_df['월'].str.startswith("25.")].copy()
+    elif selected_month == "26년 전체 누적":
+        team_df = trend_raw_df[trend_raw_df['월'].str.startswith("26.")].copy()
+    else:
+        team_df = data_pool.get(selected_month, pd.DataFrame()).copy()
     
     if not team_df.empty:
         if search_keyword:
@@ -135,7 +145,9 @@ if data_pool:
                 with tab_col2:
                     st.markdown(f"**📈 전년 동기대비 수율 비교**")
                     compare_data = []
-                    if selected_month != "전체 누적 데이터":
+                    
+                    # 단일 월 데이터가 선택되었을 때만 YoY 비교 차트 렌더링 활성화
+                    if selected_month not in ["전체 누적 데이터", "25년 전체 누적", "26년 전체 누적"]:
                         curr_dept_df = data_pool.get(selected_month, pd.DataFrame())
                         if d != '전체 총합': curr_dept_df = curr_dept_df[curr_dept_df['생산부문명'] == d]
                         
@@ -170,6 +182,8 @@ if data_pool:
                             legend=dict(title=None, orientation="h", y=1.1)
                         )
                         st.plotly_chart(fig_yoy, use_container_width=True)
+                    else:
+                        st.caption("ℹ️ 기간 누적 데이터 조회 중에는 전년 동기대비(YoY) 비교 차트가 숨김 처리됩니다.")
 
         st.markdown("---")
         # ⚡ 2단 - 자재별 비교 & 리스크 매트릭스
