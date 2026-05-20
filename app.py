@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import urllib.parse
 
 # 1. 페이지 세팅 및 타이틀 (전체 레이아웃 밝게 유지)
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V3.5")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V3.6")
 
 # 디자인 테마 컬러 정의
 MAIN_BLUE = "#4A90E2"       # 올해 실적 (밝고 선명한 블루)
@@ -31,8 +31,8 @@ with st.sidebar:
     search_keyword = st.text_input("🔍 세부 품목 검색", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
-st.title("💎 생산1팀 통합 수율 관리 시스템 V3.5")
-st.markdown(f"**현재 조회 데이터:** `{selected_month}` (브라이트 블루 파스텔 모드)")
+st.title("💎 생산1팀 통합 수율 관리 시스템 V3.6")
+st.markdown(f"**현재 조회 데이터:** `{selected_month}` (브라이트 블루 리스크 강화 모드)")
 st.markdown("---")
 
 # 2. 데이터 처리 로직
@@ -152,7 +152,6 @@ if data_pool:
                     
                     comp_df = pd.DataFrame(compare_data)
                     if not comp_df.empty:
-                        # ⚡ 디자인 - 밝은 톤온톤 블루 매핑
                         fig_yoy = px.bar(comp_df, x='자재', y='수율', color='구분', barmode='group', text='수율',
                                          color_discrete_map={selected_month: MAIN_BLUE, comp_df['구분'].unique()[0]: COMP_GRAY})
                         fig_yoy.update_layout(template='plotly_white', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
@@ -160,7 +159,7 @@ if data_pool:
                         st.plotly_chart(fig_yoy, use_container_width=True)
 
         st.markdown("---")
-        # ⚡ 2단 - 자재별 비교 (부드러운 블루 파스텔 조합)
+        # ⚡ 2단 - 자재별 비교 & 리스크 매트릭스 개조
         r2_c1, r2_c2 = st.columns([45, 55])
         with r2_c1:
             st.subheader("📊 부서/자재별 수율 비교")
@@ -175,11 +174,41 @@ if data_pool:
             st.subheader("🔍 수율 리스크 매트릭스")
             scatter_dept = st.selectbox("부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_filter")
             plot_df = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
+            
             item_scatter = plot_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+            item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
-            item_scatter['억'] = item_scatter['실제금액'] / 100000000
-            fig3 = px.scatter(item_scatter, x='억', y='수율', hover_name='하위품목 텍스트', color_discrete_sequence=[MAIN_BLUE])
-            fig3.update_layout(template='plotly_white', xaxis=dict(ticksuffix="억"), height=350)
+            item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
+            
+            # ⚡ [핵심 수정 3] 수율 100% 미만이면서 금액이 큰(2억 이상) 자재 조건 필터링 및 그룹 매핑
+            def classify_risk(row):
+                if row['수율'] < 100.0 and row['actual_billion'] >= 2.0:
+                    return '🔴 고위험 관리품목 (수율 미달 & 대형 자재)'
+                return '🔵 일반 품목'
+                
+            item_scatter['관리 등급'] = item_scatter.apply(classify_risk, axis=1)
+            
+            # 산점도 차트 구성 (색상 분리 배치)
+            fig3 = px.scatter(
+                item_scatter, x='actual_billion', y='수율', 
+                hover_name='하위품목 텍스트', color='관리 등급',
+                color_discrete_map={
+                    '🔵 일반 품목': MAIN_BLUE,
+                    '🔴 고위험 관리품목 (수율 미달 & 대형 자재)': '#FF4D4D' # 강렬하고 깨끗한 핀테크 리스크 레드
+                }
+            )
+            
+            # ⚡ [핵심 수정 1] 수율 100% 기준선 가이드 점선 추가
+            fig3.add_hline(y=100.0, line_dash="dash", line_color="#7F8C8D", opacity=0.8, annotation_text="수율 100.0% 기준선")
+            
+            # ⚡ [핵심 수정 2] 가로축 레이블 변경 및 화이트 템플릿 최적화
+            fig3.update_layout(
+                template='plotly_white', 
+                xaxis=dict(title="실제 투입 금액 (억원)", ticksuffix="억"), 
+                yaxis=dict(title="수율 (%)"),
+                legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                height=350
+            )
             st.plotly_chart(fig3, use_container_width=True)
 
         st.markdown("---")
@@ -189,8 +218,7 @@ if data_pool:
         item_sum['수율'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
         r3_c1, r3_c2 = st.columns(2)
         
-        # ⚡ 그라데이션 팔레트 (위에서 아래로 갈수록 연해짐)
-        blue_grad = ['#D6EAF8', '#AED6F1', '#85C1E9', '#5DADE2', '#2E86C1'] # Plotly는 아래부터 그리기 때문에 진한 색이 뒤로 가야함
+        blue_grad = ['#D6EAF8', '#AED6F1', '#85C1E9', '#5DADE2', '#2E86C1'] 
         
         for i, d in enumerate(['1팀 면1과', '1팀 면5과']):
             with [r3_c1, r3_c2][i]:
@@ -202,3 +230,5 @@ if data_pool:
                     fig_m.update_traces(marker_color=blue_grad, textposition='inside')
                     fig_m.update_layout(template='plotly_white', showlegend=False, xaxis=dict(range=[0, 115]), height=300, yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_m, use_container_width=True)
+else:
+    st.warning("⚠️ 데이터를 불러올 수 없습니다. 구글 시트 상태를 확인해 주세요.")
