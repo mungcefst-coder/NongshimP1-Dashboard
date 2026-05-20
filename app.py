@@ -8,8 +8,9 @@ import urllib.parse
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
 # 디자인 테마 컬러 정의
-MAIN_BLUE = "#4A90E2"       # 26년 누적 실적 (밝고 선명한 블루)
+MAIN_BLUE = "#4A90E2"       # 26년 누적 일반 실적 (선명하고 밝은 블루)
 COMP_GRAY = "#B0BEC5"       # 25년 누적 실적 (슬레이트 그레이)
+ALERT_RED = "#E74C3C"       # 핵심 관리 대상 강조 컬러 (소프트 레드)
 BG_WHITE = "#FFFFFF"
 
 # 구글 스프레드시트 ID 고정
@@ -192,18 +193,53 @@ if data_pool and selected_months:
         plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
         
         if not plot_df2.empty:
+            # 품목별 누적 연산 진행
             item_scatter = plot_df2.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
             item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
             
+            # 💡 [1번 수정 사항] 실제 금액 4억 원 이상, 수율 98% 이하 조건 설정
+            def assign_risk_status(row):
+                if row['연도'] == '26년 누적' and row['actual_billion'] >= 4.0 and row['수율'] <= 98.0:
+                    return '26년 핵심 관리 대상 (⚠️고위험)'
+                return row['연도']
+            
+            item_scatter['분류'] = item_scatter.apply(assign_risk_status, axis=1)
+            
+            # 버블 마커 크기 체계 동기화
+            size_map = {'25년 누적': 10, '26년 누적': 11, '26년 핵심 관리 대상 (⚠️고위험)': 18}
+            item_scatter['점크기'] = item_scatter['분류'].map(size_map)
+            
+            # 💡 [3번 수정 사항] 범례명 매핑과 색상을 MAIN_BLUE로 명확히 바인딩
             fig3 = px.scatter(
-                item_scatter, x='actual_billion', y='수율', color='연도', symbol='연도',
+                item_scatter, x='actual_billion', y='수율', color='분류',
+                size='점크기', size_max=18,
                 hover_name='하위품목 텍스트',
-                color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE}
+                hover_data=['생산부문명', '실제금액'],
+                color_discrete_map={
+                    '25년 누적': COMP_GRAY, 
+                    '26년 누적': MAIN_BLUE, 
+                    '26년 핵심 관리 대상 (⚠️고위험)': ALERT_RED
+                },
+                category_orders={'분류': ['25년 누적', '26년 누적', '26년 핵심 관리 대상 (⚠️고위험)']}
             )
+            
+            fig3.update_traces(
+                marker=dict(line=dict(width=1.5, color='DarkSlateGrey')),
+                selector=dict(mode='markers')
+            )
+            
             fig3.add_hline(y=100.0, line_dash="dash", line_color="#7F8C8D", opacity=0.7)
-            fig3.update_layout(template='plotly_white', height=330, xaxis_title="실제 투입 금액 (억원)", yaxis_title="수율 (%)")
+            
+            # 💡 [2번 수정 사항] X축 이름을 '금액(억원)'으로 수정
+            fig3.update_layout(
+                template='plotly_white', 
+                height=330, 
+                xaxis_title="금액(억원)", 
+                yaxis_title="수율 (%)", 
+                legend_title=None
+            )
             st.plotly_chart(fig3, use_container_width=True)
         else:
             st.caption("조회할 리스크 내역이 없습니다.")
@@ -227,12 +263,10 @@ if data_pool and selected_months:
                         st.markdown(f"**📍 {d} ({target_yr})**")
                         m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
                         
-                        # ⚡ [오류 해결 패치] 데이터 유무를 먼저 철저히 검증하고, 안전한 update_traces 방식으로 마커 색상을 바인딩하여 크래시 방지
                         if not m_data.empty:
                             m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
                             fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
                             
-                            # 데이터가 비어있지 않을 때만 안전하게 추적기 색상 지정 및 렌더링
                             color_val = MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY
                             fig_m.update_traces(marker_color=color_val, textposition='inside')
                             fig_m.update_layout(template='plotly_white', height=240, xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
