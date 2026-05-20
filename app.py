@@ -115,7 +115,7 @@ if data_pool and selected_months:
         
         for i, d in enumerate(depts_list):
             with selected_dept_tab[i]:
-                tab_col1, tab_col2 = st.columns([56, 44]) # 10자리 단위 금액 표기를 위해 테이블 열 가로폭을 54에서 56으로 미세 확장
+                tab_col1, tab_col2 = st.columns([54, 46])
                 target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 
                 with tab_col1:
@@ -145,64 +145,43 @@ if data_pool and selected_months:
                         pivot_df.columns = flat_cols
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
+                        # ⚡ [기존 안정 코드로의 회귀 + 핵심 스타일링 안전 매핑]
+                        def style_yield_table(styler, threshold_val):
+                            # 금액 콤마 포맷팅 기본화
+                            format_map = {}
+                            for col in styler.columns:
+                                if '수율' not in col: format_map[col] = '{:,.0f}'
+                            styler.format(format_map)
+                            
+                            # 1. 25년/26년 '수율' 열에만 연한 하늘색 배경색 스킨 적용 (#E0F2FE)
+                            for col in styler.columns:
+                                if '수율' in col:
+                                    styler.set_properties(subset=[col], **{'background-color': '#E0F2FE'})
+                                    
+                            # 2. 기준 미달 빨간색 볼드체 인젝션 (가장 안전한 예외 캐치 문법)
+                            def apply_cell_logic(val):
+                                if isinstance(val, str) and '%' in val:
+                                    try:
+                                        num_val = float(val.replace('%', ''))
+                                        if num_val < threshold_val:
+                                            return 'color: #E74C3C; font-weight: bold;'
+                                    except: pass
+                                return ''
+                                
+                            for col in styler.columns:
+                                if '수율' in col:
+                                    styler.data[col] = styler.data[col].apply(lambda x: f"{x:.2f}%" if x > 0 else "-")
+                                    styler.map(apply_cell_logic, subset=[col])
+                            return styler
+                        
                         thresh = YIELD_THRESHOLD[d]
-                        
-                        # ⚡ [UI 최적화] 큰 자릿수 금액이 들어와도 정렬이 깨지지 않도록 white-space: nowrap 및 패딩 스케일 최적화
-                        html_code = f"""
-                        <style>
-                            .custom-table-container {{ font-family: 'Malgun Gothic', sans-serif; width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
-                            .custom-table-container th {{ background-color: #F8FAFC; color: #1E293B; font-weight: bold; border: 1px solid #E2E8F0; padding: 10px 6px; text-align: center !important; vertical-align: middle; font-size: 13px; white-space: nowrap; }}
-                            .custom-table-container td {{ border: 1px solid #E2E8F0; padding: 10px 4px; text-align: center !important; font-size: 12.5px; color: #334155; vertical-align: middle; white-space: nowrap; }}
-                            .custom-table-container .bg-light-blue {{ background-color: #E0F2FE !important; }}
-                            .custom-table-container .text-alert {{ color: #E74C3C !important; font-weight: bold !important; }}
-                            .custom-table-container .bold-row {{ font-weight: bold !important; background-color: #F8FAFC; }}
-                        </style>
-                        <table class="custom-table-container">
-                            <thead>
-                                <tr>
-                                    <th rowspan="2">자재 유형 내역</th>
-                                    <th colspan="3">25년 누적</th>
-                                    <th colspan="3">26년 누적</th>
-                                </tr>
-                                <tr>
-                                    <th>이론금액</th><th>실제금액</th><th>25년 수율</th>
-                                    <th>이론금액</th><th>실제금액</th><th>26년 수율</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                        """
-                        
-                        for row_name in ['원자재', '부자재', '반제품', '전체 수율']:
-                            is_total = "bold-row" if row_name == '전체 수율' else ""
-                            
-                            v25_th = pivot_df.loc[row_name, '25년 이론금액'] if '25년 이론금액' in pivot_df.columns else 0
-                            v25_ac = pivot_df.loc[row_name, '25년 실제금액'] if '25년 실제금액' in pivot_df.columns else 0
-                            v25_yd = (v25_th / v25_ac * 100) if v25_ac > 0 else 0
-                            
-                            v26_th = pivot_df.loc[row_name, '26년 이론금액'] if '26년 이론금액' in pivot_df.columns else 0
-                            v26_ac = pivot_df.loc[row_name, '26년 실제금액'] if '26년 실제금액' in pivot_df.columns else 0
-                            v26_yd = (v26_th / v26_ac * 100) if v26_ac > 0 else 0
-                            
-                            c25_class = "text-alert" if v25_yd > 0 and v25_yd < thresh else ""
-                            c26_class = "text-alert" if v26_yd > 0 and v26_yd < thresh else ""
-                            
-                            txt_25_yd = f"{v25_yd:.2f}%" if v25_yd > 0 else "-"
-                            txt_26_yd = f"{v26_yd:.2f}%" if v26_yd > 0 else "-"
-                            
-                            html_code += f"""
-                                <tr class="{is_total}">
-                                    <td style="font-weight: bold; background-color: #F8FAFC;">{row_name}</td>
-                                    <td>{v25_th:,.0f}</td><td>{v25_ac:,.0f}</td><td class="bg-light-blue {c25_class}">{txt_25_yd}</td>
-                                    <td>{v26_th:,.0f}</td><td>{v26_ac:,.0f}</td><td class="bg-light-blue {c26_class}">{txt_26_yd}</td>
-                                </tr>
-                            """
-                        html_code += "</tbody></table>"
-                        st.markdown(html_code, unsafe_allow_html=True)
-                        
+                        styled_df = pivot_df.style.pipe(style_yield_table, threshold_val=thresh)
+                        st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("조회 가능한 데이터가 없습니다.")
                     
+                    # ⚡ [요청 반영] 문구를 간소화하여 표 아래에 깔끔하게 배치
                     st.markdown(f"""
-                    <div style="font-size:13px; color:#5A6B7C; margin-top:2px; padding-left:2px; font-family: 'Malgun Gothic', sans-serif;">
+                    <div style="font-size:13px; color:#5A6B7C; margin-top:-5px; padding-left:2px; font-family: 'Malgun Gothic', sans-serif;">
                         📌 <b>{d} 관리 기준 수율 :</b> {thresh:.2f}% 이상
                     </div>
                     """, unsafe_allow_html=True)
@@ -211,12 +190,13 @@ if data_pool and selected_months:
                     st.markdown(f"**📈 수율 변화 추이**")
                     if not target_df.empty:
                         trend_raw = target_df.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index()
-                        trend_raw = trend_raw.sort_values(['연도', '월']).reset_index(drop=True)
+                        trend_raw = trend_raw.sort_values(['연度', '월']).reset_index(drop=True) if '연度' in trend_raw.columns else trend_raw.sort_values(['연도', '월']).reset_index(drop=True)
                         trend_raw['누적이론'] = trend_raw.groupby('연도')['이론금액'].cumsum()
                         trend_raw['누적실제'] = trend_raw.groupby('연도')['실제금액'].cumsum()
                         trend_raw['누적수율'] = (trend_raw['누적이론'] / trend_raw['누적실제'] * 100).round(2)
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
+                        # ⚡ 겹침 방지를 위해 선 위/아래 교차 배치 고도화
                         fig_line = go.Figure()
                         for yr_label in sorted(trend_raw['연도'].unique()):
                             yr_data = trend_raw[trend_raw['연도'] == yr_label]
@@ -225,13 +205,13 @@ if data_pool and selected_months:
                             
                             fig_line.add_trace(go.Scatter(
                                 x=yr_data['표시월'], y=yr_data['누적수율'],
-                                mode='lines+markers+text',
+                                mode='markers+lines+text',
                                 name=yr_label,
                                 text=yr_data['누적수율'],
                                 textposition=pos,
                                 line=dict(color=color, width=3.5),
                                 marker=dict(size=9),
-                                textfont=dict(color='#2C3E50', size=14) 
+                                textfont=dict(color='#2C3E50', size=14) # ⚡ 수치 글자 크기 14px로 확대
                             ))
 
                         fig_line.update_layout(
