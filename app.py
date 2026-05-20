@@ -147,7 +147,7 @@ if data_pool and selected_months:
                         
                         thresh = YIELD_THRESHOLD[d]
                         
-                        # ⚡ 무조건 가운데 정렬을 강제하기 위한 고도화된 HTML/CSS 주입 방식
+                        # HTML 가운데 정렬 인젝션 템플릿 가동
                         html_code = f"""
                         <style>
                             .custom-table-container {{ font-family: 'Malgun Gothic', sans-serif; width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
@@ -175,7 +175,7 @@ if data_pool and selected_months:
                         for row_name in ['원자재', '부자재', '반제품', '전체 수율']:
                             is_total = "bold-row" if row_name == '전체 수율' else ""
                             
-                            # 데이터 추출 및 검증
+                            # ⚡ 피벗 테이블 데이터 추출 안정화 공정 설정
                             v25_th = pivot_df.loc[row_name, '25년 이론금액'] if '25년 이론금액' in pivot_df.columns else 0
                             v25_ac = pivot_df.loc[row_name, '25년 실제금액'] if '25년 실제금액' in pivot_df.columns else 0
                             v25_yd = (v25_th / v25_ac * 100) if v25_ac > 0 else 0
@@ -184,7 +184,6 @@ if data_pool and selected_months:
                             v26_ac = pivot_df.loc[row_name, '26년 실제금액'] if '26년 실제금액' in pivot_df.columns else 0
                             v26_yd = (v26_th / v26_ac * 100) if v26_ac > 0 else 0
                             
-                            # 수율 미달 알림 클래스 조건
                             c25_class = "text-alert" if v25_yd > 0 and v25_yd < thresh else ""
                             c26_class = "text-alert" if v26_yd > 0 and v26_yd < thresh else ""
                             
@@ -199,8 +198,6 @@ if data_pool and selected_months:
                                 </tr>
                             """
                         html_code += "</tbody></table>"
-                        
-                        # 마크다운 컴포넌트로 순수 HTML 테이블 주입 (가운데 정렬 완벽 반영)
                         st.markdown(html_code, unsafe_allow_html=True)
                         
                     else: st.caption("조회 가능한 데이터가 없습니다.")
@@ -222,7 +219,6 @@ if data_pool and selected_months:
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
                         fig_line = go.Figure()
-                        
                         for yr_label in sorted(trend_raw['연도'].unique()):
                             yr_data = trend_raw[trend_raw['연도'] == yr_label]
                             color = MAIN_BLUE if '26년' in yr_label else COMP_GRAY
