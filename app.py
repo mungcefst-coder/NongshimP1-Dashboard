@@ -13,7 +13,7 @@ COMP_GRAY = "#B0BEC5"       # 25년 누적 실적 (슬레이트 그레이)
 ALERT_RED = "#E74C3C"       # 핵심 관리 대상 강조 컬러 (소프트 레드)
 BG_WHITE = "#FFFFFF"
 
-# 구글 스프레드시트 ID 고정
+# 구글 스프레딧 시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = [
     "25.01", "25.02", "25.03", "25.04", "25.05", "25.06", 
@@ -186,21 +186,18 @@ if data_pool and selected_months:
             item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
             item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
             
-            # 💡 [리스크 조건] 4억 이상 & 98% 이하
             def assign_risk_status(row):
                 if row['연도'] == '26년 누적' and row['actual_billion'] >= 4.0 and row['수율'] <= 98.0:
                     return '26년 핵심 관리 대상 (⚠️고위험)'
                 return row['연도']
             
             item_scatter['분류'] = item_scatter.apply(assign_risk_status, axis=1)
-            
-            # ⚡ [1번 수정] 버블 크기 대폭 축소 (10, 11, 18 -> 6, 7, 12)
             size_map = {'25년 누적': 6, '26년 누적': 7, '26년 핵심 관리 대상 (⚠️고위험)': 12}
             item_scatter['점크기'] = item_scatter['분류'].map(size_map)
             
             fig3 = px.scatter(
                 item_scatter, x='actual_billion', y='수율', color='분류',
-                size='점크기', size_max=12,  # ⚡ size_max도 12로 하향 조정
+                size='점크기', size_max=12,
                 hover_name='하위품목 텍스트',
                 color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '26년 핵심 관리 대상 (⚠️고위험)': ALERT_RED},
                 category_orders={'분류': ['25년 누적', '26년 누적', '26년 핵심 관리 대상 (⚠️고위험)']}
@@ -228,12 +225,18 @@ if data_pool and selected_months:
                         st.markdown(f"**📍 {d} ({target_yr})**")
                         m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
                         
-                        # ⚡ [2번 수정] 높이를 240에서 360으로 1.5배 상향하여 막대 두께 보강
                         if not m_data.empty:
                             m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
                             fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
-                            fig_m.update_traces(marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, textposition='inside')
-                            fig_m.update_layout(template='plotly_white', height=360, xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
+                            
+                            # ⚡ [글자 위치 고도화 패치] textposition='outside'로 빼고 글자색을 진한 회색(#2C3E50)으로 지정하여 가독성 극대화
+                            fig_m.update_traces(
+                                marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, 
+                                textposition='outside',
+                                textfont=dict(color='#2C3E50', size=11, family='sans-serif')
+                            )
+                            # 숫자가 밖으로 빠져나갔으므로 오른쪽 여백 버퍼 확보를 위해 range를 115에서 130으로 확장
+                            fig_m.update_layout(template='plotly_white', height=360, xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'})
                             st.plotly_chart(fig_m, use_container_width=True)
                         else: st.caption("🔍 대상 품목이 없습니다.")
             else: st.caption(f"ℹ️ {target_yr} 데이터가 없습니다.")
