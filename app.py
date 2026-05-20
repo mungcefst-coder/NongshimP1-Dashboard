@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import urllib.parse
 
 # 1. 페이지 세팅 및 타이틀
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V2.9")
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템 V3.0")
 
 # 구글 스프레드시트 ID 고정
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
@@ -27,8 +27,8 @@ with st.sidebar:
     search_keyword = st.text_input("검색어 입력 (예: 팜유, 포장지 등)", placeholder="비워두면 전체 조회")
 
 # 메인 화면 제목
-st.title("🚀 생산1팀 통합 수율 관리 시스템 V2.9")
-st.markdown(f"**현재 조회 데이터:** `{selected_month}` (자재별 전년 동기대비 비교 모드)")
+st.title("🚀 생산1팀 통합 수율 관리 시스템 V3.0")
+st.markdown(f"**현재 조회 데이터:** `{selected_month}` (핀테크 뮤트 테마 적용 모드)")
 st.markdown("---")
 
 # 2. 개별 년월 데이터 전처리 로직 (독립 격리)
@@ -92,10 +92,8 @@ def load_all_raw_data(sheet_id, month_list):
 data_pool = load_all_raw_data(SHEET_ID, ALL_MONTHS)
 
 if data_pool:
-    # 전체 마스터 합산 셋
     trend_raw_df = pd.concat(data_pool.values(), ignore_index=True)
     
-    # 선택 월 독립 세팅
     if selected_month == "전체 누적 데이터":
         team_df = trend_raw_df.copy()
     else:
@@ -110,7 +108,6 @@ if data_pool:
         t_actual = team_df['실제금액'].sum()
         t_yield = (t_theory / t_actual * 100) if t_actual > 0 else 0
         
-        # 전월 대비 증감 계산 (KPI 표기용)
         prev_yield_kpi = 0
         if selected_month in ALL_MONTHS:
             curr_idx = ALL_MONTHS.index(selected_month)
@@ -129,7 +126,7 @@ if data_pool:
         st.markdown("---")
 
         # =========================================================================
-        # 1단 레이아웃 - 좌우 5:5 분할 배치 (과별 탭 스크린 구조 연동)
+        # 1단 레이아웃 - 좌우 5:5 분할 배치 (과별 탭 구조 연동)
         # =========================================================================
         st.subheader("📋 과별 상세 수율 통제 및 전년비 비교 분석")
         
@@ -140,7 +137,7 @@ if data_pool:
             with selected_dept_tab[i]:
                 tab_col1, tab_col2 = st.columns([50, 50])
                 
-                # --- [왼쪽 스크린: 선택된 과의 순수 상세 현황 표] ---
+                # --- [왼쪽 스크린: 상세 현황 표] ---
                 with tab_col1:
                     st.markdown(f"**📊 {d} 상세 지표 ({selected_month})**")
                     target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
@@ -187,7 +184,7 @@ if data_pool:
                     </div>
                     """, unsafe_allow_html=True)
 
-                # --- [오른쪽 스크린: ⚡ 1단 전년비 그래프 톤온톤 최적화 패치] ---
+                # --- [오른쪽 스크린: 자재별 1:1 전년비 바 차트 (뮤트 테마 개조)] ---
                 with tab_col2:
                     st.markdown(f"**📊 {d} 전년 동기대비 수율 비교**")
                     
@@ -246,12 +243,12 @@ if data_pool:
                     comp_df = pd.DataFrame(compare_data)
                     
                     if not comp_df.empty and comp_df['수율(%)'].sum() > 0:
-                        # 🎨 [톤온톤 패치] 메인 컬러 #0c4da2를 강조하기 위해 작년 데이터는 차분한 블루그레이로 배치
+                        # ⚡ [디자인 변경] 1단 1:1 그래프 테마 톤온톤 적용
                         color_map = {}
                         for p in comp_df['구분'].unique():
-                            if str(p).startswith('26'): color_map[p] = '#0c4da2'  # 26년 올해 실적: 농심 메인 블루 (강조)
-                            elif str(p).startswith('25'): color_map[p] = '#94a3b8'  # 25년 작년 실적: 톤다운 블루그레이 (차분)
-                            else: color_map[p] = '#1e293b'  # 누적 데이터: 딥네이비
+                            if str(p).startswith('26'): color_map[p] = '#2A5994'  # 올해 실적: 쨍함을 한 단계 낮춘 뮤트 네이비 블루
+                            elif str(p).startswith('25'): color_map[p] = '#94A3B8'  # 작년 실적: 차분한 블루그레이
+                            else: color_map[p] = '#4A5568'
                                 
                         fig_yoy = px.bar(
                             comp_df, x='자재 유형', y='수율(%)', color='구분', barmode='group',
@@ -283,29 +280,37 @@ if data_pool:
         dept_sum = team_df.groupby(['생산부문명', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
         dept_sum['수율(%)'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
         
-        # 🎨 [톤온톤 패치] 메인 강조를 방해하지 않는 딥네이비, 톤다운 블루그레이, 라이트그레이 조합
+        # ⚡ [디자인 변경] 요청하신 세이지 그린, 인디고 퍼플을 현대적인 서브 컬러로 배치 (원/부/반 분리)
         fig1 = px.bar(dept_sum, x='생산부문명', y='수율(%)', color='자재 유형 내역', barmode='group', text='수율(%)', 
-                      color_discrete_map={'원자재': '#1e293b', '부자재': '#475569', '반제품': '#cbd5e1'})
+                      color_discrete_map={
+                          '원자재': '#7A9A82',  # 차분하고 톤다운된 세이지 그린
+                          '부자재': '#5C6199',  # 채도를 뺀 차분한 인디고 퍼플
+                          '반제품': '#8A9BA8'   # 밸런스를 잡아주는 라이트 스틸 그레이
+                      })
         fig1.update_layout(yaxis=dict(range=[80, 105]), template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig1, use_container_width=True)
 
     with row2_col2:
         st.subheader("🔍 수율 리스크 매트릭스")
-        scatter_dept = st.selectbox("🎯 분석할 부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 스프"], key="matrix_dept_filter")
+        scatter_dept = st.selectbox("🎯 분석할 부서 선택", ["전체 1팀", "1팀 면1과", "1팀 면5과", "1팀 SN스프"], key="matrix_dept_filter")
         
-        plot_df = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
+        # '1팀 스프' 명칭 매핑 보정 트리거 연동
+        fixed_scatter_dept = "1팀 스프" if scatter_dept == "1팀 스프" else scatter_dept
+        plot_df = team_df.copy() if fixed_scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == fixed_scatter_dept].copy()
+        
         item_scatter = plot_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
         item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
         item_scatter['수율(%)'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
         item_scatter['실제 투입 금액 (억 원)'] = item_scatter['실제금액'] / 100000000
         
         targets = {'1팀 면1과': 98.92, '1팀 면5과': 97.92, '1팀 스프': 99.53, '전체 1팀': 98.73}
-        limit = targets.get(scatter_dept, 95.0)
+        limit = targets.get(fixed_scatter_dept, 95.0)
         item_scatter['관리 상태'] = item_scatter['수율(%)'].apply(lambda x: '기준 달성' if x >= limit else '기준 미달')
         
-        # 🎨 [톤온톤 패치] 산점도 역시 차분하고 깔끔하게 톤다운된 스케일 색상 적용
-        fig3 = px.scatter(item_scatter, x='실제 투입 금액 (억 원)', y='수율(%)', hover_name='하위품목 텍스트', color='관리 상태', color_discrete_map={'기준 달성': '#334155', '기준 미달': '#ef4444'})
-        fig3.add_hline(y=limit, line_dash="dash", line_color="#ef4444", opacity=0.8, annotation_text=f"{limit}%")
+        # ⚡ [디자인 변경] 산점도 포인트도 세이지 그린과 매치되는 톤온톤 핀테크 무드로 매핑
+        fig3 = px.scatter(item_scatter, x='실제 투입 금액 (억 원)', y='수율(%)', hover_name='하위품목 텍스트', color='관리 상태', 
+                           color_discrete_map={'기준 달성': '#475569', '기준 미달': '#D1A3A3'})
+        fig3.add_hline(y=limit, line_dash="dash", line_color="#D1A3A3", opacity=0.8, annotation_text=f"{limit}%")
         fig3.update_layout(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(ticksuffix="억"))
         st.plotly_chart(fig3, use_container_width=True)
 
@@ -325,8 +330,8 @@ if data_pool:
             m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율(%)', ascending=True).head(5)
             if not m_data.empty:
                 m_data['표시텍스트'] = m_data.apply(lambda r: f"수율: {r['수율(%)']:.2f}% | 실제: {(r['실제금액']/100000000):.2f}억", axis=1)
-                # 🎨 [톤온톤 패치] 하단 바 그래프는 눈이 편안한 미드나잇 차콜 딥네이비로 일관성 고정
-                fig_m = px.bar(m_data, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color_discrete_sequence=['#1e293b'])
+                # ⚡ [디자인 변경] 하단 리스크 순위 카드는 신뢰감을 주는 뮤트 딥 인디고 테마 적용
+                fig_m = px.bar(m_data, x='수율(%)', y='하위품목 텍스트', orientation='h', text='표시텍스트', color_discrete_sequence=['#4B527E'])
                 fig_m.update_layout(showlegend=False, template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 115]), yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_m, use_container_width=True)
 else:
