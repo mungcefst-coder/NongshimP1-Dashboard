@@ -56,6 +56,29 @@ st.markdown("""
         div[data-testid="stRadio"] label span {
             font-size: 12.5px !important;
         }
+        
+        /* ⚡ [글자 크기 스위칭] 다크/라이트모드 자동 감지형 커스텀 KPI 카드 CSS 아키텍처 */
+        .custom-kpi-card {
+            border: 1px solid rgba(127, 140, 141, 0.2);
+            border-radius: 8px;
+            padding: 12px 16px;
+            background-color: rgba(127, 140, 141, 0.04);
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+        .custom-kpi-title {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+        .custom-kpi-main-desc {
+            font-size: 21px !important;
+            font-weight: bold !important;
+            margin-bottom: 2px !important;
+        }
+        .custom-kpi-value {
+            font-size: 14px !important;
+            opacity: 0.9;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -142,7 +165,7 @@ if selected_months:
         st.markdown("---")
 
         # ==============================================================================
-        # 최상단 핵심 성과 지표(KPI) 요약 메트릭 카드 배치 구역
+        # ⚡ [글자 크기 완전 맞교환 완성] 대형 HTML 매립형 카드 배치 컴포넌트
         # ==============================================================================
         kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
         
@@ -160,27 +183,35 @@ if selected_months:
             total_26_yield, total_cost_billion, risk_count = 0, 0, 0
 
         with kpi_col1:
-            st.metric(
-                label="📈 2026년 선택기간 종합 수율", 
-                value=f"{total_26_yield:.2f}%" if total_26_yield > 0 else "-", 
-                delta="목표치 대조 관리 중"
-            )
+            st.markdown(f"""
+                <div class="custom-kpi-card">
+                    <div class="custom-kpi-title">📈 2026년 선택기간 종합 수율</div>
+                    <div class="custom-kpi-main-desc" style="color: {MAIN_BLUE};">목표치 대조 관리 중</div>
+                    <div class="custom-kpi-value">현재 실적: <b>{total_26_yield:.2f}%</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+            
         with kpi_col2:
-            st.metric(
-                label="💰 2026년 누적 실제 투입 금액", 
-                value=f"{total_cost_billion:,.1f} 억 원" if total_cost_billion > 0 else "-", 
-                delta="생산 운영 스케일"
-            )
+            st.markdown(f"""
+                <div class="custom-kpi-card">
+                    <div class="custom-kpi-title">💰 2026년 누적 실제 투입 금액</div>
+                    <div class="custom-kpi-main-desc">생산 운영 스케일</div>
+                    <div class="custom-kpi-value">누적 금액: <b>{total_cost_billion:,.1f} 억 원</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+            
         with kpi_col3:
+            alert_color = "#FF5252" if risk_count > 0 else "#2ECC71"
             delta_msg = "⚠️ 집중 검토 요망" if risk_count > 0 else "✅ 안정권 유지"
-            st.metric(
-                label="🚨 4억 이상 고위험 자재 수", 
-                value=f"{risk_count} 개 품목", 
-                delta=delta_msg,
-                delta_color="inverse" if risk_count > 0 else "normal"
-            )
+            st.markdown(f"""
+                <div class="custom-kpi-card">
+                    <div class="custom-kpi-title">🚨 4억 이상 고위험 자재 수</div>
+                    <div class="custom-kpi-main-desc" style="color: {alert_color};">{delta_msg}</div>
+                    <div class="custom-kpi-value">탐지 항목: <b>{risk_count} 개 품목</b></div>
+                </div>
+            """, unsafe_allow_html=True)
         
-        st.markdown("<hr style='margin: 10px 0 20px 0; opacity: 0.2;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 15px 0 20px 0; opacity: 0.2;'>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
         # 큰 제목 1: 생산1팀 수율 종합 상황판
@@ -268,7 +299,6 @@ if selected_months:
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
                         df_25 = trend_raw[trend_raw['연도'] == '25년 누적'].set_index('표시월')
-                        # ⚡ [교정 완료] '연度' 오타를 한글 '연도'로 완벽 변환하여 KeyError 원천 차단
                         df_26 = trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
                         
                         fig_line = go.Figure()
@@ -415,7 +445,7 @@ if selected_months:
                 else: 
                     st.caption(f"선택한 조건의 {target_yr[:3]} 데이터가 로드되지 않았습니다.")
 
-        # 하단 초슬림 필터 바 
+        # 하단 초슬림 필터 바
         st.markdown("<div class='bottom-filter-label'>⚙️ 데이터 조회 범위 세부 튜닝</div>", unsafe_allow_html=True)
         top5_ctrl_col1, top5_ctrl_col2, top5_ctrl_col3 = st.columns([33, 12, 55])
         
