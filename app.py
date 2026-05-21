@@ -4,7 +4,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import urllib.parse
 
-# 변수 선언부
+# ==============================================================================
+# [버그 수정] 전역 변수 선언부 완벽 복원 (NameError 완전 해결)
+# ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = [
     "25.01", "25.02", "25.03", "25.04", "25.05", "25.06", 
@@ -19,6 +21,14 @@ YIELD_THRESHOLD = {
     '스프실': 99.53,
     '전체 총합': 98.73
 }
+
+# 디자인 테마 컬러 정의 (다크/라이트 양방향 시인성 확보 컬러)
+MAIN_BLUE = "#4A90E2"       # 26년 누적 일반 실적 (선명하고 밝은 블루)
+COMP_GRAY = "#B0BEC5"       # 25년 누적 실적 (슬레이트 그레이)
+ALERT_RED = "#E74C3C"       # 핵심 관리 대상 강조 컬러 (소프트 레드)
+
+# 1. 페이지 세팅 및 타이틀 
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
 # 전역 글자 크기 고정 및 사이드바 텍스트 한 줄 고정 CSS 패치
 st.markdown("""
@@ -90,20 +100,19 @@ def preprocess_df(df, month_label):
     df = df[~((df['실제금액'] > 0) & (calc_yield < 50))]
     return df
 
-# ⚡ [속도 최적화 코어] 무거운 전처리 엔진까지 통째로 내장 캐싱 처리 및 TTL 1시간 연장
+# 무거운 전처리 엔진까지 통째로 내장 캐싱 처리 및 TTL 1시간 연장
 @st.cache_data(ttl=3600)
 def load_single_month_cached(sheet_id, m):
     try:
         encoded_sheet = urllib.parse.quote(m)
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
         raw_df = pd.read_csv(url)
-        # 구글에서 긁어온 즉시 무거운 정제 연산을 수행 후, 이 가공 완료본을 메모리에 영구 압축 보관
         processed = preprocess_df(raw_df, m)
         return processed
     except:
         return pd.DataFrame()
 
-# 전체 월을 무지성으로 다 도는 게 아니라, 선택된 월만 조준 타격하여 병목현상 원천 제거
+# 선택된 월만 추적 연산하여 속도 극대화
 if selected_months:
     active_dfs = []
     for m in selected_months:
@@ -264,7 +273,7 @@ if selected_months:
             plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
             
             if not plot_df2.empty:
-                item_scatter = plot_df2.groupby(['연度', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index() if '연度' in plot_df2.columns else plot_df2.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+                item_scatter = plot_df2.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
                 item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
                 item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
                 item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
