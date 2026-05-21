@@ -134,7 +134,7 @@ if selected_months:
         # ----------------------------------------------------------------------
         # 큰 제목 1: 생산1팀 수율 종합 상황판
         # ----------------------------------------------------------------------
-        st.subheader("📋 수율 종합 상황판")
+        st.subheader("📋 생산1팀 수율 종합 상황판")
         depts_list = ['면 1과', '면 5과', '스프실', '전체 총합']
         selected_dept_tab = st.tabs(depts_list)
         
@@ -176,7 +176,6 @@ if selected_months:
                                 if '수율' not in col: format_map[col] = '{:,.0f}'
                             styler.format(format_map)
                             
-                            # 수율 열 투명 배경 음영 주입 (다크모드 가독성 확보용)
                             for col in styler.columns:
                                 if '수율' in col:
                                     styler.set_properties(subset=[col], **{'background-color': 'rgba(74, 144, 226, 0.18)'})
@@ -217,7 +216,6 @@ if selected_months:
                         trend_raw['누적수율'] = (trend_raw['누적이론'] / trend_raw['누적실제'] * 100).round(2)
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
-                        # ⚡ [알고리즘 주입] 월별 수치 크기를 비교하여 겹치지 않게 레이블을 위아래로 강제 스위칭
                         df_25 = trend_raw[trend_raw['연도'] == '25년 누적'].set_index('표시월')
                         df_26 = trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
                         
@@ -259,11 +257,12 @@ if selected_months:
                             hovermode="x unified",
                             font=dict(size=14)
                         )
-                        st.plotly_chart(fig_line, use_container_width=True)
+                        # ⚡ [버그 수정 완료] key 값을 탭 이름(d)과 동적으로 연동하여 1개 월 선택 시의 중복 생성 충돌 버그 완벽 제어
+                        st.plotly_chart(fig_line, use_container_width=True, key=f"trend_chart_{d}")
                     else: st.caption("추이 데이터가 존재하지 않습니다.")
 
         # ----------------------------------------------------------------------
-        # 큰 제목 2: 자재 유형별 수율 현황 & 큰 제목 3: 수율 리스크 매트릭스
+        # 2단 - 분석 지표 현황 (자재 유형별 수율 현황 / 수율 리스크 매트릭스)
         # ----------------------------------------------------------------------
         st.markdown("---")
         r2_col1, r2_col2 = st.columns([48, 52])
@@ -271,7 +270,6 @@ if selected_months:
         with r2_col1:
             st.subheader("📊 자재 유형별 수율 현황")
             
-            # 셀렉트 박스 컴팩트 크기 조절 (35% 할당)
             sub_col_box1, sub_col_space1 = st.columns([35, 65])
             with sub_col_box1:
                 mat_choice = st.selectbox("조회 자재 선택", ["원자재", "부자재", "반제품"], key="mat_opt")
@@ -289,7 +287,6 @@ if selected_months:
         with r2_col2:
             st.subheader("🔍 수율 리스크 매트릭스")
             
-            # 부서 선택 박스 컴팩트 크기 조절 (35% 할당)
             sub_col_box2, sub_col_space2 = st.columns([35, 65])
             with sub_col_box2:
                 scatter_dept = st.selectbox("조회 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="m_dept")
@@ -322,7 +319,7 @@ if selected_months:
             else: st.caption("분석할 리스크 데이터가 부족합니다.")
 
         # ----------------------------------------------------------------------
-        # 큰 제목 4: 핵심 관리 자재 Top 5
+        # 3단 - 핵심 관리 자재 Top 5
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.subheader("🚨 핵심 관리 자재 Top 5")
