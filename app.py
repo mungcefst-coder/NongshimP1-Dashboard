@@ -216,6 +216,7 @@ if selected_months:
                         trend_raw['누적수율'] = (trend_raw['누적이론'] / trend_raw['누적실제'] * 100).round(2)
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
+                        # 우열 비교용 기저 딕셔너리 연산
                         df_25 = trend_raw[trend_raw['연도'] == '25년 누적'].set_index('표시월')
                         df_26 = trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
                         
@@ -223,14 +224,27 @@ if selected_months:
                         for yr_label in sorted(trend_raw['연도'].unique()):
                             yr_data = trend_raw[trend_raw['연도'] == yr_label]
                             color = MAIN_BLUE if '26년' in yr_label else COMP_GRAY
-                            pos = 'bottom center' if '26년' in yr_label else 'top center'
+                            
+                            # ⚡ [오타 및 버그 해결] 내부 로컬 스코프 안에서 position_list 배열이 완벽하게 초기화 및 적재되도록 보정
+                            position_list = []
+                            for m_lbl in yr_data['표시월']:
+                                if m_lbl in df_25.index and m_lbl in df_26.index:
+                                    val_25 = df_25.loc[m_lbl, '누적수율']
+                                    val_26 = df_26.loc[m_lbl, '누적수율']
+                                    
+                                    if '26년' in yr_label:
+                                        position_list.append('top center' if val_26 >= val_25 else 'bottom center')
+                                    else:
+                                        position_list.append('top center' if val_25 > val_26 else 'bottom center')
+                                else:
+                                    position_list.append('top center')
                             
                             fig_line.add_trace(go.Scatter(
                                 x=yr_data['표시월'], y=yr_data['누적수율'],
                                 mode='markers+lines+text',
                                 name=yr_label,
                                 text=yr_data['누적수율'].apply(lambda x: f"{x}%"),
-                                textposition=position_list,
+                                textposition=position_list, # 정확하게 변수 매핑 바인딩 완료
                                 line=dict(color=color, width=3.5),
                                 marker=dict(size=9),
                                 textfont=dict(size=13, weight='bold')
@@ -306,13 +320,11 @@ if selected_months:
             else: st.caption("분석할 리스크 데이터가 부족합니다.")
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5 (컨트롤 박스 바닥 매립형 개편)
+        # 3단 - 핵심 관리 자재 Top 5 (컨트롤러 바닥 매립 구조 유지)
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.subheader("🚨 핵심 관리 자재 Top 5")
         
-        # ⚡ [UI 최적화] 기존에 상단에 위치했던 라디오 버튼을 하단 렌더링을 위해 변수 선언만 미리 지정 (메뉴는 차트 아래에 등장)
-        # 세션 상태(st.session_state)를 활용해 하단 컨트롤러와 상단 그래프 데이터 구조를 클린 연동합니다.
         if "top5_view_mode" not in st.session_state:
             st.session_state["top5_view_mode"] = "📊 선택한 기간 전체 누적 데이터"
         if "top5_single_month_select" not in st.session_state:
@@ -353,17 +365,16 @@ if selected_months:
                 else: 
                     st.caption(f"선택한 조건의 {target_yr[:3]} 데이터가 로드되지 않았습니다.")
 
-        # ⚡ [핵심 수정] 그래프가 다 그려진 후 제일 하부 바닥면에 작고 단정하게 임베딩 스위치 배치
+        # 바닥면 임베딩 스위치 레이아웃
         st.markdown("<hr style='margin: 15px 0; opacity: 0.3;'>", unsafe_allow_html=True)
         top5_ctrl_col1, top5_ctrl_col2 = st.columns([35, 65])
         
         with top5_ctrl_col1:
-            # 상단 그래프에 데이터를 쏴줄 하단 라디오 버튼 (글자 크기 14px 룰 준수)
             st.radio(
                 "⚙️ 대시보드 하단 필터 : 데이터 분석 범위 변경", 
                 ["📊 선택한 기간 전체 누적 데이터", "🎯 특정 년월 단독 데이터"], 
                 horizontal=True,
-                key="top5_view_mode" # session_state 자동 동기화
+                key="top5_view_mode" 
             )
             
         if st.session_state["top5_view_mode"] == "🎯 특정 년월 단독 데이터":
@@ -371,7 +382,7 @@ if selected_months:
                 st.selectbox(
                     "필터 세부 분석 년월 선택", 
                     options=sorted(selected_months),
-                    key="top5_single_month_select" # session_state 자동 동기화
+                    key="top5_single_month_select" 
                 )
 else:
     st.warning("⚠️ 사이드바에서 분석할 년월을 선택해 주세요.")
