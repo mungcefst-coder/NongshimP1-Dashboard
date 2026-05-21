@@ -25,7 +25,7 @@ YIELD_THRESHOLD = {
 # 디자인 테마 컬러 정의 (라이트/다크모드 공용 소프트 컬러)
 MAIN_BLUE = "#4A90E2"       # 26년 누적 실적 (선명하고 밝은 블루)
 COMP_GRAY = "#B0BEC5"       # 25년 누적 실적 (슬레이트 그레이)
-ALERT_RED = "#E74C3C"       # 리스크 매트릭스 고위험 강조 (소프트 레드)
+ALERT_RED = "#E74C3C"       # 리스크 매트릭스 고위험 강조 (소프트 정상 레드)
 
 # 1. 페이지 세팅 및 전역 UI 스타일링 
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
@@ -189,14 +189,13 @@ if selected_months:
                 delta_color="inverse" if risk_count > 0 else "normal"
             )
         
-        # ⚡ [3단계 추가] 최상단 대시보드 직관성을 극대화하는 '부서별 목표 달성률 실시간 게이지 바' 구역
+        # 부서별 목표 달성률 실시간 게이지 바 구역 (오류 유발 폰트 문법 전면 전술 수정)
         st.markdown("<div style='font-size:14px; font-weight:bold; color:#7F8C8D; margin-top:5px; margin-bottom:10px;'>🎯 2026년 선택기간 부서별 관리 기준 수율 달성 현황 (실시간 관제)</div>", unsafe_allow_html=True)
         gauge_cols = st.columns(4)
         target_depts = ['면 1과', '면 5과', '스프실', '전체 총합']
         
         for g_idx, dept_name in enumerate(target_depts):
             with gauge_cols[g_idx]:
-                # 부서별 26년 누적 수율 계산
                 d_df = team_df if dept_name == '전체 총합' else team_df[team_df['생산부문명'] == dept_name]
                 d_df_26 = d_df[d_df['연도'] == '26년 누적']
                 
@@ -209,7 +208,6 @@ if selected_months:
                     
                 target_val = YIELD_THRESHOLD[dept_name]
                 
-                # 가로형 게이지 바(Bullet Chart 구조) 시각화 프로그래밍
                 fig_gauge = go.Figure()
                 fig_gauge.add_trace(go.Bar(
                     x=[current_yield], y=[dept_name],
@@ -217,18 +215,18 @@ if selected_months:
                     marker_color=MAIN_BLUE if current_yield >= target_val else ALERT_RED,
                     text=[f" {current_yield:.2f}% (목표: {target_val:.2f}%)"],
                     textposition='inside',
-                    textfont=dict(size=12, color='white', weight='bold'),
+                    textfont=dict(size=12, color='white'),
                     hovertemplate=f"현재 수율: {current_yield:.2f}%<br>기준 수율: {target_val:.2f}%<extra></extra>"
                 ))
                 
-                # 수율 기준선을 차트상에 시각적 점선(Vertical Line)으로 레이아웃 배치
                 fig_gauge.add_vline(x=target_val, line_dash="dash", line_color="#2C3E50", line_width=2)
                 
+                # ⚡ [오류 해결 완료] yaxis 내부의 weight='bold' 속성을 지우고 플롯리 표준 구조로 전술 변경
                 fig_gauge.update_layout(
                     height=55,
                     margin=dict(l=5, r=5, t=5, b=5),
                     xaxis=dict(range=[min(94.0, current_yield - 2.0) if current_yield > 0 else 94.0, 101.0], showgrid=False, showticklabels=False),
-                    yaxis=dict(showgrid=False, showticklabels=True, font=dict(size=13, weight='bold')),
+                    yaxis=dict(showgrid=False, showticklabels=True, font=dict(size=13)),
                     barmode='stack',
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)'
