@@ -4,9 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import urllib.parse
 
-# ==============================================================================
-# [교정 포인트] 변수 선언부를 최상단으로 이동하여 NameError 원천 차단
-# ==============================================================================
+# 변수 선언부
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = [
     "25.01", "25.02", "25.03", "25.04", "25.05", "25.06", 
@@ -30,7 +28,7 @@ ALERT_RED = "#E74C3C"       # 핵심 관리 대상 강조 컬러 (소프트 레�
 # 1. 페이지 세팅 및 타이틀 
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
-# 전역 글자 크기 14px 고정 CSS (다크모드 환경에서도 텍스트 유연성 확보)
+# 전역 글자 크기 고정 및 사이드바 텍스트 한 줄 고정 CSS 패치
 st.markdown("""
     <style>
         .stTabs [data-baseweb="tab"] p {
@@ -42,13 +40,19 @@ st.markdown("""
         .dataframe, .paint-table td, .paint-table th {
             font-size: 14px !important;
         }
+        /* ⚡ [2번 수정] 사이드바 안내 박스 텍스트가 무조건 한 줄에 적히도록 폰트 스케일 타이트하게 조정 */
+        [data-testid="stSidebar"] .stAlert p {
+            font-size: 13.5px !important;
+            white-space: nowrap !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 # 사이드바 컨트롤러
 with st.sidebar:
     st.header("📂 데이터 관제")
-    st.info("📊 연도별 누적 교차 비교 기능 가동 중")
+    # ⚡ [2번 수정] 요구 문구 전면 교체 (위 CSS로 인해 다크/라이트 무관 한 줄 고정)
+    st.info("📊 통합 수율 관리 시스템 실시간 가동")
     
     selected_months = st.multiselect(
         "분석할 년월(YY.MM) 복수 선택", 
@@ -121,7 +125,8 @@ if data_pool and selected_months:
             team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
         sorted_display_months = sorted(selected_months)
-        st.markdown(f"<span class='target-period'><b>분석 대상 기간:</b> `{', '.join(sorted_display_months)}` (연도별 누적 비교 모드)</span>", unsafe_allow_html=True)
+        # ⚡ [1번 수정] 깔끔하게 뒤쪽 모드 명칭 삭제 완료
+        st.markdown(f"<span class='target-period'><b>분석 대상 기간:</b> `{', '.join(sorted_display_months)}`</span>", unsafe_allow_html=True)
         st.markdown("---")
 
         # 큰 제목 1: 생산1팀 수율 종합 상황판
@@ -221,7 +226,7 @@ if data_pool and selected_months:
                                 textposition=pos,
                                 line=dict(color=color, width=3.5),
                                 marker=dict(size=9),
-                                textfont=dict(size=14) 
+                                textfont=dict(size=14)
                             ))
 
                         fig_line.update_layout(
