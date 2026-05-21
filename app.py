@@ -257,7 +257,6 @@ if selected_months:
                             hovermode="x unified",
                             font=dict(size=14)
                         )
-                        # ⚡ [버그 수정 완료] key 값을 탭 이름(d)과 동적으로 연동하여 1개 월 선택 시의 중복 생성 충돌 버그 완벽 제어
                         st.plotly_chart(fig_line, use_container_width=True, key=f"trend_chart_{d}")
                     else: st.caption("추이 데이터가 존재하지 않습니다.")
 
@@ -319,30 +318,64 @@ if selected_months:
             else: st.caption("분석할 리스크 데이터가 부족합니다.")
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5
+        # 3단 - 핵심 관리 자재 Top 5 (스위칭 및 단일 월 필터 기능 추가 완료)
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.subheader("🚨 핵심 관리 자재 Top 5")
-        tab_26, tab_25 = st.tabs(["📅 2026년 누적 관리 품목", "📅 2025년 누적 관리 품목"])
+        
+        # ⚡ [기능 확장] 누적 데이터로 볼지, 단일 특정월만 스위칭해서 볼지 선택하는 컨트롤 박스 배치
+        top5_ctrl_col1, top5_ctrl_col2 = st.columns([35, 65])
+        with top5_ctrl_col1:
+            view_mode = st.radio(
+                "📅 데이터 분석 기준 범위 선택", 
+                ["📊 선택한 기간 전체 누적 데이터", "🎯 특정 년월 단독 데이터"], 
+                horizontal=True,
+                key="top5_view_mode"
+            )
+            
+        # 단독 데이터를 골랐을 때만 월 선택 상자 활성화
+        target_single_month = None
+        if view_mode == "🎯 특정 년월 단독 데이터":
+            with top5_ctrl_col2:
+                sorted_months_for_select = sorted(selected_months)
+                target_single_month = st.selectbox(
+                    "상세 조회할 년월(YY.MM) 선택", 
+                    options=sorted_months_for_select,
+                    key="top5_single_month_select"
+                )
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        tab_26, tab_25 = st.tabs(["📅 2026년 실적 분석", "📅 2025년 실적 분석"])
         
         for target_yr, current_tab in [("26년 누적", tab_26), ("25년 누적", tab_25)]:
             with current_tab:
-                yr_df = team_df[team_df['연도'] == target_yr]
+                # 라디오 버튼 상태에 따른 동적 데이터 슬라이싱
+                if view_mode == "🎯 특정 년월 단독 데이터" and target_single_month:
+                    yr_df = team_df[team_df['월'] == target_single_month]
+                    chart_title_suffix = f"({target_single_month} 단독)"
+                else:
+                    yr_df = team_df[team_df['연도'] == target_yr]
+                    chart_title_suffix = f"({target_yr[:3]} 선택 기간 누적)"
+                    
                 if not yr_df.empty:
                     item_sum = yr_df[yr_df['생산부문명'] != '스프실'].groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
                     item_sum['수율'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
+                    
                     r3_c1, r3_c2 = st.columns(2)
                     for idx, d in enumerate(['면 1과', '면 5과']):
                         with [r3_c1, r3_c2][idx]:
-                            st.markdown(f"<span style='font-size:14px; font-weight:bold;'>📍 {d} 중점 관리 품목</span>", unsafe_allow_html=True)
+                            st.markdown(f"<span style='font-size:14px; font-weight:bold;'>📍 {d} 중점 관리 품목 {chart_title_suffix}</span>", unsafe_allow_html=True)
                             m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
+                            
                             if not m_data.empty:
                                 m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
                                 fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
                                 fig_m.update_traces(marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, textposition='outside', textfont=dict(size=14))
                                 fig_m.update_layout(height=360, xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'}, font=dict(size=14))
-                                st.plotly_chart(fig_m, use_container_width=True)
-                            else: st.caption("대상 품목이 존재하지 않습니다.")
-                else: st.caption(f"{target_yr} 데이터가 로드되지 않았습니다.")
+                                st.plotly_chart(fig_m, use_container_width=True, key=f"top5_bar_{target_yr}_{d}")
+                            else: 
+                                st.caption("해당 기준에 매칭되는 품목 데이터가 존재하지 않습니다.")
+                else: 
+                    st.caption(f"선택한 조건의 {target_yr[:3]} 데이터가 로드되지 않았습니다.")
 else:
     st.warning("⚠️ 사이드바에서 분석할 년월을 선택해 주세요.")
