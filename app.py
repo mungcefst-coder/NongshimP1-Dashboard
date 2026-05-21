@@ -20,14 +20,6 @@ YIELD_THRESHOLD = {
     '전체 총합': 98.73
 }
 
-# 디자인 테마 컬러 정의 (다크/라이트 양방향 시인성 확보 컬러)
-MAIN_BLUE = "#4A90E2"       # 26년 누적 일반 실적 (선명하고 밝은 블루)
-COMP_GRAY = "#B0BEC5"       # 25년 누적 실적 (슬레이트 그레이)
-ALERT_RED = "#E74C3C"       # 핵심 관리 대상 강조 컬러 (소프트 레드)
-
-# 1. 페이지 세팅 및 타이틀 
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
-
 # 전역 글자 크기 고정 및 사이드바 텍스트 한 줄 고정 CSS 패치
 st.markdown("""
     <style>
@@ -40,7 +32,6 @@ st.markdown("""
         .dataframe, .paint-table td, .paint-table th {
             font-size: 14px !important;
         }
-        /* ⚡ [2번 수정] 사이드바 안내 박스 텍스트가 무조건 한 줄에 적히도록 폰트 스케일 타이트하게 조정 */
         [data-testid="stSidebar"] .stAlert p {
             font-size: 13.5px !important;
             white-space: nowrap !important;
@@ -51,7 +42,6 @@ st.markdown("""
 # 사이드바 컨트롤러
 with st.sidebar:
     st.header("📂 데이터 관제")
-    # ⚡ [2번 수정] 요구 문구 전면 교체 (위 CSS로 인해 다크/라이트 무관 한 줄 고정)
     st.info("📊 통합 수율 관리 시스템 실시간 가동")
     
     selected_months = st.multiselect(
@@ -100,23 +90,27 @@ def preprocess_df(df, month_label):
     df = df[~((df['실제금액'] > 0) & (calc_yield < 50))]
     return df
 
-@st.cache_data(ttl=600)
-def load_all_raw_data(sheet_id, month_list):
-    month_data_dict = {}
-    for m in month_list:
-        try:
-            encoded_sheet = urllib.parse.quote(m)
-            url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
-            raw_df = pd.read_csv(url)
-            processed = preprocess_df(raw_df, m)
-            if not processed.empty: month_data_dict[m] = processed
-        except: pass
-    return month_data_dict
+# ⚡ [속도 최적화 코어] 무거운 전처리 엔진까지 통째로 내장 캐싱 처리 및 TTL 1시간 연장
+@st.cache_data(ttl=3600)
+def load_single_month_cached(sheet_id, m):
+    try:
+        encoded_sheet = urllib.parse.quote(m)
+        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
+        raw_df = pd.read_csv(url)
+        # 구글에서 긁어온 즉시 무거운 정제 연산을 수행 후, 이 가공 완료본을 메모리에 영구 압축 보관
+        processed = preprocess_df(raw_df, m)
+        return processed
+    except:
+        return pd.DataFrame()
 
-data_pool = load_all_raw_data(SHEET_ID, ALL_MONTHS)
-
-if data_pool and selected_months:
-    active_dfs = [data_pool[m] for m in selected_months if m in data_pool]
+# 전체 월을 무지성으로 다 도는 게 아니라, 선택된 월만 조준 타격하여 병목현상 원천 제거
+if selected_months:
+    active_dfs = []
+    for m in selected_months:
+        month_df = load_single_month_cached(SHEET_ID, m)
+        if not month_df.empty:
+            active_dfs.append(month_df)
+            
     if active_dfs:
         team_df = pd.concat(active_dfs, ignore_index=True)
         team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
@@ -125,7 +119,6 @@ if data_pool and selected_months:
             team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
         sorted_display_months = sorted(selected_months)
-        # ⚡ [1번 수정] 깔끔하게 뒤쪽 모드 명칭 삭제 완료
         st.markdown(f"<span class='target-period'><b>분석 대상 기간:</b> `{', '.join(sorted_display_months)}`</span>", unsafe_allow_html=True)
         st.markdown("---")
 
@@ -271,7 +264,7 @@ if data_pool and selected_months:
             plot_df2 = team_df.copy() if scatter_dept == "전체 1팀" else team_df[team_df['생산부문명'] == scatter_dept].copy()
             
             if not plot_df2.empty:
-                item_scatter = plot_df2.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+                item_scatter = plot_df2.groupby(['연度', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index() if '연度' in plot_df2.columns else plot_df2.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
                 item_scatter = item_scatter[item_scatter['실제금액'] > 0].copy()
                 item_scatter['수율'] = (item_scatter['이론금액'] / item_scatter['실제금액'] * 100).round(2)
                 item_scatter['actual_billion'] = item_scatter['실제금액'] / 100000000
