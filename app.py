@@ -57,7 +57,7 @@ st.markdown("""
             font-size: 12.5px !important;
         }
         
-        /* 상단 메트릭 카드의 세 지표 제목만 정확히 강제 확대 (18px 적용) */
+        /* ⚡ [요청 반영] 상단 메트릭 카드의 세 지표 제목만 정확히 강제 확대 (18px 적용) */
         div[data-testid="stMetricLabel"] p, 
         div[data-testid="stMetricLabel"] > div,
         .stMetric label {
@@ -280,7 +280,7 @@ if selected_months:
                         df_26 = trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
                         
                         fig_line = go.Figure()
-                        for yr_label in sorted(trend_raw['연度'].unique() if '연度' in trend_raw.columns else trend_raw['연도'].unique()):
+                        for yr_label in sorted(trend_raw['연도'].unique()):
                             yr_data = trend_raw[trend_raw['연도'] == yr_label]
                             color = MAIN_BLUE if '26년' in yr_label else COMP_GRAY
                             
@@ -321,13 +321,9 @@ if selected_months:
                     else: st.caption("추이 데이터가 존재하지 않습니다.")
 
         # ----------------------------------------------------------------------
-        # 2단 - 분석 지표 현황 (인사이트 가이드라인 안내창 탑재)
+        # 2단 - 분석 지표 현황 (자재 유형별 수율 현황 / 수율 리스크 매트릭스)
         # ----------------------------------------------------------------------
         st.markdown("---")
-        
-        # ⚡ [2단계 추가] 2단 분석 구역 전용 실시간 조치 가이드라인 박스 (라이트/다크 호환 스킨)
-        st.caption("💡 **2단 관제 가이드:** 자재유형별 추이를 확인하고, 우측 **수율 리스크 매트릭스**에서 투입금액이 큰(우측 배치) 동시에 기준 수율에 미달하는(하단 배치) 🔴고위험군 자재가 발견되면 해당 자재의 투입 공정(면과/스프실) 센서 값 조정을 생산관리 파트에 즉시 피드백하십시오.")
-        
         r2_col1, r2_col2 = st.columns([48, 52])
         
         with r2_col1:
@@ -382,13 +378,9 @@ if selected_months:
             else: st.caption("분석할 리스크 데이터가 부족합니다.")
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5 (인사이트 가이드라인 안내창 탑재)
+        # 3단 - 핵심 관리 자재 Top 5
         # ----------------------------------------------------------------------
         st.markdown("---")
-        
-        # ⚡ [2단계 추가] 3단 Top 5 구역 전용 실시간 조치 가이드라인 박스 (라이트/다크 호환 스킨)
-        st.caption("💡 **3단 관제 가이드:** 중점 관리 품목 리스트는 투입 금액 기준 상위 15개 자재 중 **수율이 가장 낮은 역순(Top 5)**으로 자동 배치됩니다. 그래프가 길게 뻗을수록(100% 초과) 과투입, 짧을수록(목표치 미달) 손실 공정이 발생 중임을 뜻합니다.")
-        
         st.subheader("🚨 핵심 관리 자재 Top 5")
         
         if "top5_view_mode" not in st.session_state:
