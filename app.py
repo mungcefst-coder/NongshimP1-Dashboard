@@ -56,6 +56,12 @@ st.markdown("""
         div[data-testid="stRadio"] label span {
             font-size: 12.5px !important;
         }
+        
+        /* ⚡ [요청 반영] 상단 메트릭 카드의 세 지표 제목만 정확히 2포인트 확대 (13px ➔ 15px 볼드 지정) */
+        div[data-testid="stMetricLabel"] p {
+            font-size: 15px !important;
+            font-weight: 600 !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -142,7 +148,7 @@ if selected_months:
         st.markdown("---")
 
         # ==============================================================================
-        # 🤝 [원복 완료] 순수 스트림릿 표준 st.metric UI 복구 구역
+        # 최상단 핵심 성과 지표(KPI) 요약 메트릭 카드 배치 구역 (CSS 반영 완료)
         # ==============================================================================
         kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
         
