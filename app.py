@@ -57,10 +57,13 @@ st.markdown("""
             font-size: 12.5px !important;
         }
         
-        /* ⚡ [요청 반영] 상단 메트릭 카드의 세 지표 제목만 정확히 2포인트 확대 (17px ➔ 19px 볼드 지정) */
-        div[data-testid="stMetricLabel"] p {
-            font-size: 19px !important;
-            font-weight: 600 !important;
+        /* ⚡ [요청 반영] 상단 메트릭 카드의 세 지표 제목만 정확히 강제 확대 (18px 적용) */
+        div[data-testid="stMetricLabel"] p, 
+        div[data-testid="stMetricLabel"] > div,
+        .stMetric label {
+            font-size: 18px !important;
+            font-weight: bold !important;
+            line-height: 1.5 !important;
         }
     </style>
 """, unsafe_allow_html=True)
