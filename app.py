@@ -46,12 +46,17 @@ st.markdown("""
             font-size: 13.5px !important;
             white-space: nowrap !important;
         }
-        /* ⚡ [1번 수정] 하단 라디오 필터 영역 레이블 글자가 붕 뜨지 않게 크기 및 여백 커스텀 조절 */
+        /* ⚙️ 하단 필터 레이블 안내 폰트 정돈 */
         .bottom-filter-label {
-            font-size: 13px !important;
+            font-size: 12.5px !important;
             color: #7F8C8D;
-            margin-bottom: -8px !important;
+            margin-bottom: -12px !important;
             padding-left: 2px;
+            font-weight: bold;
+        }
+        /* ⚡ [요청 반영] 하단 라디오 버튼 내부의 개별 선택지 글자 크기를 강제로 축소(12.5px) */
+        div[data-testid="stRadio"] label span {
+            font-size: 12.5px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -230,6 +235,7 @@ if selected_months:
                         for yr_label in sorted(trend_raw['연도'].unique()):
                             yr_data = trend_raw[trend_raw['연도'] == yr_label]
                             color = MAIN_BLUE if '26년' in yr_label else COMP_GRAY
+                            pos = 'bottom center' if '26년' in yr_label else 'top center'
                             
                             position_list = []
                             for m_lbl in yr_data['표시월']:
@@ -314,18 +320,21 @@ if selected_months:
                 item_scatter['점크기'] = item_scatter['분류'].map(size_map)
                 
                 fig3 = px.scatter(
-                    item_scatter, x='actual_billion', y='수율', color='분류', size='점크기', size_max=12, hover_name='하위품목 텍스트',
+                    item_scatter, x='actual_billion', y='actual_billion' if 'actual_billion' in item_scatter.columns else '수율', color='분류', size='점크기', size_max=12, hover_name='하위품목 텍스트',
                     color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '26년 핵심 관리 대상 (⚠️고위험)': ALERT_RED},
                     category_orders={'분류': ['25년 누적', '26년 누적', '26년 핵심 관리 대상 (⚠️고위험)']}
                 )
+                # 바인딩 축 교정 수식 보강
                 fig3.update_traces(marker=dict(line=dict(width=1, color='DarkSlateGrey')))
+                if 'actual_billion' in item_scatter.columns:
+                    fig3.update_traces(y=item_scatter['수율'])
                 fig3.add_hline(y=100.0, line_dash="dash", line_color="rgba(127, 140, 141, 0.6)", opacity=0.7)
                 fig3.update_layout(height=330, xaxis_title="금액(억원)", yaxis_title="수율 (%)", legend_title=None, font=dict(size=14))
                 st.plotly_chart(fig3, use_container_width=True)
             else: st.caption("분석할 리스크 데이터가 부족합니다.")
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5 (바닥 임베딩 고도화 패치)
+        # 3단 - 핵심 관리 자재 Top 5 (바닥 초슬림 압축 매립형)
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.subheader("🚨 핵심 관리 자재 Top 5")
@@ -370,13 +379,13 @@ if selected_months:
                 else: 
                     st.caption(f"선택한 조건의 {target_yr[:3]} 데이터가 로드되지 않았습니다.")
 
-        # ⚡ [1번 & 2번 통합 개편 전술] 3분할 콤보 컬럼 레이아웃으로 부피 축소 및 밀착
+        # ⚡ [레이아웃 대혁신] [33, 12, 55] 정밀 초슬림 배치를 통한 라디오 텍스트 축소 및 가로 정렬 고도화
         st.markdown("<div class='bottom-filter-label'>⚙️ 데이터 조회 범위 세부 튜닝</div>", unsafe_allow_html=True)
-        top5_ctrl_col1, top5_ctrl_col2, top5_ctrl_col3 = st.columns([30, 20, 50])
+        top5_ctrl_col1, top5_ctrl_col2, top5_ctrl_col3 = st.columns([33, 12, 55])
         
         with top5_ctrl_col1:
             st.radio(
-                "label_hidden", # 레이블 숨김 처리로 여백 최소화
+                "label_hidden",
                 ["📊 선택한 기간 전체 누적 데이터", "🎯 특정 년월 단독 데이터"], 
                 horizontal=True,
                 key="top5_view_mode",
@@ -384,7 +393,7 @@ if selected_months:
             )
             
         with top5_ctrl_col2:
-            # 단독 데이터 모드일 때만 20% 크기의 미니 셀렉트 박스 노출
+            # 단독 조건 가동 시, 오직 가로폭 12%짜리 초소형 미니 셀렉트박스로 제한 노출
             if st.session_state["top5_view_mode"] == "🎯 특정 년월 단독 데이터":
                 st.selectbox(
                     "month_hidden", 
@@ -393,6 +402,6 @@ if selected_months:
                     label_visibility="collapsed"
                 )
             else:
-                st.empty() # 누적 모드일 때는 자리만 차지하도록 투명 처리
+                st.empty()
 else:
     st.warning("⚠️ 사이드바에서 분석할 년월을 선택해 주세요.")
