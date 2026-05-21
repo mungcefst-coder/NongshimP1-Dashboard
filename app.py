@@ -46,6 +46,13 @@ st.markdown("""
             font-size: 13.5px !important;
             white-space: nowrap !important;
         }
+        /* ⚡ [1번 수정] 하단 라디오 필터 영역 레이블 글자가 붕 뜨지 않게 크기 및 여백 커스텀 조절 */
+        .bottom-filter-label {
+            font-size: 13px !important;
+            color: #7F8C8D;
+            margin-bottom: -8px !important;
+            padding-left: 2px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -216,7 +223,6 @@ if selected_months:
                         trend_raw['누적수율'] = (trend_raw['누적이론'] / trend_raw['누적실제'] * 100).round(2)
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
-                        # 우열 비교용 기저 딕셔너리 연산
                         df_25 = trend_raw[trend_raw['연도'] == '25년 누적'].set_index('표시월')
                         df_26 = trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
                         
@@ -225,7 +231,6 @@ if selected_months:
                             yr_data = trend_raw[trend_raw['연도'] == yr_label]
                             color = MAIN_BLUE if '26년' in yr_label else COMP_GRAY
                             
-                            # ⚡ [오타 및 버그 해결] 내부 로컬 스코프 안에서 position_list 배열이 완벽하게 초기화 및 적재되도록 보정
                             position_list = []
                             for m_lbl in yr_data['표시월']:
                                 if m_lbl in df_25.index and m_lbl in df_26.index:
@@ -244,7 +249,7 @@ if selected_months:
                                 mode='markers+lines+text',
                                 name=yr_label,
                                 text=yr_data['누적수율'].apply(lambda x: f"{x}%"),
-                                textposition=position_list, # 정확하게 변수 매핑 바인딩 완료
+                                textposition=position_list,
                                 line=dict(color=color, width=3.5),
                                 marker=dict(size=9),
                                 textfont=dict(size=13, weight='bold')
@@ -320,7 +325,7 @@ if selected_months:
             else: st.caption("분석할 리스크 데이터가 부족합니다.")
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5 (컨트롤러 바닥 매립 구조 유지)
+        # 3단 - 핵심 관리 자재 Top 5 (바닥 임베딩 고도화 패치)
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.subheader("🚨 핵심 관리 자재 Top 5")
@@ -365,24 +370,29 @@ if selected_months:
                 else: 
                     st.caption(f"선택한 조건의 {target_yr[:3]} 데이터가 로드되지 않았습니다.")
 
-        # 바닥면 임베딩 스위치 레이아웃
-        st.markdown("<hr style='margin: 15px 0; opacity: 0.3;'>", unsafe_allow_html=True)
-        top5_ctrl_col1, top5_ctrl_col2 = st.columns([35, 65])
+        # ⚡ [1번 & 2번 통합 개편 전술] 3분할 콤보 컬럼 레이아웃으로 부피 축소 및 밀착
+        st.markdown("<div class='bottom-filter-label'>⚙️ 데이터 조회 범위 세부 튜닝</div>", unsafe_allow_html=True)
+        top5_ctrl_col1, top5_ctrl_col2, top5_ctrl_col3 = st.columns([30, 20, 50])
         
         with top5_ctrl_col1:
             st.radio(
-                "⚙️ 대시보드 하단 필터 : 데이터 분석 범위 변경", 
+                "label_hidden", # 레이블 숨김 처리로 여백 최소화
                 ["📊 선택한 기간 전체 누적 데이터", "🎯 특정 년월 단독 데이터"], 
                 horizontal=True,
-                key="top5_view_mode" 
+                key="top5_view_mode",
+                label_visibility="collapsed"
             )
             
-        if st.session_state["top5_view_mode"] == "🎯 특정 년월 단독 데이터":
-            with top5_ctrl_col2:
+        with top5_ctrl_col2:
+            # 단독 데이터 모드일 때만 20% 크기의 미니 셀렉트 박스 노출
+            if st.session_state["top5_view_mode"] == "🎯 특정 년월 단독 데이터":
                 st.selectbox(
-                    "필터 세부 분석 년월 선택", 
+                    "month_hidden", 
                     options=sorted(selected_months),
-                    key="top5_single_month_select" 
+                    key="top5_single_month_select",
+                    label_visibility="collapsed"
                 )
+            else:
+                st.empty() # 누적 모드일 때는 자리만 차지하도록 투명 처리
 else:
     st.warning("⚠️ 사이드바에서 분석할 년월을 선택해 주세요.")
