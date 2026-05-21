@@ -46,7 +46,6 @@ st.markdown("""
             font-size: 13.5px !important;
             white-space: nowrap !important;
         }
-        /* ⚙️ 하단 필터 레이블 안내 폰트 정돈 */
         .bottom-filter-label {
             font-size: 12.5px !important;
             color: #7F8C8D;
@@ -54,7 +53,6 @@ st.markdown("""
             padding-left: 2px;
             font-weight: bold;
         }
-        /* ⚡ [요청 반영] 하단 라디오 버튼 내부의 개별 선택지 글자 크기를 강제로 축소(12.5px) */
         div[data-testid="stRadio"] label span {
             font-size: 12.5px !important;
         }
@@ -112,7 +110,6 @@ def preprocess_df(df, month_label):
     df = df[~((df['실제금액'] > 0) & (calc_yield < 50))]
     return df
 
-# 가공 완료된 데이터프레임 자체를 메모리에 캐싱하여 병목현상 제거 (TTL 1시간)
 @st.cache_data(ttl=3600)
 def load_single_month_cached(sheet_id, m):
     try:
@@ -124,7 +121,7 @@ def load_single_month_cached(sheet_id, m):
     except:
         return pd.DataFrame()
 
-# 선택된 년월 데이터 빌드 프로세스
+# 데이터 가동 분기점
 if selected_months:
     active_dfs = []
     for m in selected_months:
@@ -142,6 +139,50 @@ if selected_months:
         sorted_display_months = sorted(selected_months)
         st.markdown(f"<span class='target-period'><b>분석 대상 기간:</b> `{', '.join(sorted_display_months)}`</span>", unsafe_allow_html=True)
         st.markdown("---")
+
+        # ==============================================================================
+        # ⚡ [허전함 해소 치트키] 최상단 핵심 성과 지표(KPI) 요약 메트릭 카드 배치 구역
+        # ==============================================================================
+        kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
+        
+        # 데이터가 존재할 때 상단 대형 요약 수치 사전 연산
+        df_26_kpi = team_df[team_df['연도'] == '26년 누적']
+        if not df_26_kpi.empty:
+            kpi_th = df_26_kpi['이론금액'].sum()
+            kpi_ac = df_26_kpi['실제금액'].sum()
+            total_26_yield = (kpi_th / kpi_ac * 100) if kpi_ac > 0 else 0
+            total_cost_billion = kpi_ac / 100000000 # 억 원 단위 변환
+            
+            # 리스크 품목 수 연산 (실제 금액 4억 이상이면서 수율 98% 이하인 고위험 자재 개수 추적)
+            risk_item_df = df_26_kpi.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
+            risk_item_df['items_yd'] = (risk_item_df['이론금액'] / risk_item_df['실제금액'] * 100)
+            risk_count = len(risk_item_df[(risk_item_df['실제금액'] >= 400000000) & (risk_item_df['items_yd'] <= 98.0)])
+        else:
+            total_26_yield, total_cost_billion, risk_count = 0, 0, 0
+
+        with kpi_col1:
+            st.metric(
+                label="📈 2026년 선택기간 종합 수율", 
+                value=f"{total_26_yield:.2f}%" if total_26_yield > 0 else "-", 
+                delta="목표치 대조 관리 중"
+            )
+        with kpi_col2:
+            st.metric(
+                label="💰 2026년 누적 실제 투입 금액", 
+                value=f"{total_cost_billion:,.1f} 억 원" if total_cost_billion > 0 else "-", 
+                delta="생산 운영 스케일"
+            )
+        with kpi_col3:
+            # 위험 자재가 있으면 붉은 경고 기호 매핑
+            delta_msg = "⚠️ 집중 검토 요망" if risk_count > 0 else "✅ 안정권 유지"
+            st.metric(
+                label="🚨 4억 이상 고위험 자재 수", 
+                value=f"{risk_count} 개 품목", 
+                delta=delta_msg,
+                delta_color="inverse" if risk_count > 0 else "normal"
+            )
+        
+        st.markdown("<hr style='margin: 10px 0 20px 0; opacity: 0.2;'>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
         # 큰 제목 1: 생산1팀 수율 종합 상황판
@@ -229,7 +270,7 @@ if selected_months:
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
                         df_25 = trend_raw[trend_raw['연도'] == '25년 누적'].set_index('표시월')
-                        df_26 = trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
+                        df_26 = trend_raw[trend_raw['연度'] == '26년 누적'].set_index('표시월') if '26년 누적' in trend_raw['연도'].values else trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
                         
                         fig_line = go.Figure()
                         for yr_label in sorted(trend_raw['연도'].unique()):
@@ -324,7 +365,6 @@ if selected_months:
                     color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '26년 핵심 관리 대상 (⚠️고위험)': ALERT_RED},
                     category_orders={'분류': ['25년 누적', '26년 누적', '26년 핵심 관리 대상 (⚠️고위험)']}
                 )
-                # 바인딩 축 교정 수식 보강
                 fig3.update_traces(marker=dict(line=dict(width=1, color='DarkSlateGrey')))
                 if 'actual_billion' in item_scatter.columns:
                     fig3.update_traces(y=item_scatter['수율'])
@@ -334,7 +374,7 @@ if selected_months:
             else: st.caption("분석할 리스크 데이터가 부족합니다.")
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5 (바닥 초슬림 압축 매립형)
+        # 3단 - 핵심 관리 자재 Top 5
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.subheader("🚨 핵심 관리 자재 Top 5")
@@ -379,8 +419,8 @@ if selected_months:
                 else: 
                     st.caption(f"선택한 조건의 {target_yr[:3]} 데이터가 로드되지 않았습니다.")
 
-        # ⚡ [레이아웃 대혁신] [33, 12, 55] 정밀 초슬림 배치를 통한 라디오 텍스트 축소 및 가로 정렬 고도화
-        st.markdown("<div class='bottom-filter-label'>⚙️ 데이터 조회 범위 세부 튜닝</div>", unsafe_allow_html=True)
+        # 바닥면 임베딩 스위치 레이아웃
+        st.markdown("<hr style='margin: 15px 0; opacity: 0.3;'>", unsafe_allow_html=True)
         top5_ctrl_col1, top5_ctrl_col2, top5_ctrl_col3 = st.columns([33, 12, 55])
         
         with top5_ctrl_col1:
@@ -393,7 +433,6 @@ if selected_months:
             )
             
         with top5_ctrl_col2:
-            # 단독 조건 가동 시, 오직 가로폭 12%짜리 초소형 미니 셀렉트박스로 제한 노출
             if st.session_state["top5_view_mode"] == "🎯 특정 년월 단독 데이터":
                 st.selectbox(
                     "month_hidden", 
