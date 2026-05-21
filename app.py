@@ -57,7 +57,7 @@ st.markdown("""
             font-size: 12.5px !important;
         }
         
-        /* ⚡ [요청 반영] 상단 메트릭 카드의 세 지표 제목만 정확히 강제 확대 (18px 적용) */
+        /* 상단 메트릭 카드의 세 지표 제목만 정확히 강제 확대 (18px 적용) */
         div[data-testid="stMetricLabel"] p, 
         div[data-testid="stMetricLabel"] > div,
         .stMetric label {
@@ -151,7 +151,7 @@ if selected_months:
         st.markdown("---")
 
         # ==============================================================================
-        # 최상단 핵심 성과 지표(KPI) 요약 메트릭 카드 배치 구역 (CSS 반영 완료)
+        # 최상단 핵심 성과 지표(KPI) 요약 메트릭 카드 배치 구역
         # ==============================================================================
         kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
         
@@ -189,6 +189,52 @@ if selected_months:
                 delta_color="inverse" if risk_count > 0 else "normal"
             )
         
+        # ⚡ [3단계 추가] 최상단 대시보드 직관성을 극대화하는 '부서별 목표 달성률 실시간 게이지 바' 구역
+        st.markdown("<div style='font-size:14px; font-weight:bold; color:#7F8C8D; margin-top:5px; margin-bottom:10px;'>🎯 2026년 선택기간 부서별 관리 기준 수율 달성 현황 (실시간 관제)</div>", unsafe_allow_html=True)
+        gauge_cols = st.columns(4)
+        target_depts = ['면 1과', '면 5과', '스프실', '전체 총합']
+        
+        for g_idx, dept_name in enumerate(target_depts):
+            with gauge_cols[g_idx]:
+                # 부서별 26년 누적 수율 계산
+                d_df = team_df if dept_name == '전체 총합' else team_df[team_df['생산부문명'] == dept_name]
+                d_df_26 = d_df[d_df['연도'] == '26년 누적']
+                
+                if not d_df_26.empty:
+                    d_th = d_df_26['이론금액'].sum()
+                    d_ac = d_df_26['실제금액'].sum()
+                    current_yield = (d_th / d_ac * 100) if d_ac > 0 else 0
+                else:
+                    current_yield = 0
+                    
+                target_val = YIELD_THRESHOLD[dept_name]
+                
+                # 가로형 게이지 바(Bullet Chart 구조) 시각화 프로그래밍
+                fig_gauge = go.Figure()
+                fig_gauge.add_trace(go.Bar(
+                    x=[current_yield], y=[dept_name],
+                    orientation='h',
+                    marker_color=MAIN_BLUE if current_yield >= target_val else ALERT_RED,
+                    text=[f" {current_yield:.2f}% (목표: {target_val:.2f}%)"],
+                    textposition='inside',
+                    textfont=dict(size=12, color='white', weight='bold'),
+                    hovertemplate=f"현재 수율: {current_yield:.2f}%<br>기준 수율: {target_val:.2f}%<extra></extra>"
+                ))
+                
+                # 수율 기준선을 차트상에 시각적 점선(Vertical Line)으로 레이아웃 배치
+                fig_gauge.add_vline(x=target_val, line_dash="dash", line_color="#2C3E50", line_width=2)
+                
+                fig_gauge.update_layout(
+                    height=55,
+                    margin=dict(l=5, r=5, t=5, b=5),
+                    xaxis=dict(range=[min(94.0, current_yield - 2.0) if current_yield > 0 else 94.0, 101.0], showgrid=False, showticklabels=False),
+                    yaxis=dict(showgrid=False, showticklabels=True, font=dict(size=13, weight='bold')),
+                    barmode='stack',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)'
+                )
+                st.plotly_chart(fig_gauge, use_container_width=True, key=f"top_gauge_{dept_name}")
+                
         st.markdown("<hr style='margin: 10px 0 20px 0; opacity: 0.2;'>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
@@ -321,9 +367,11 @@ if selected_months:
                     else: st.caption("추이 데이터가 존재하지 않습니다.")
 
         # ----------------------------------------------------------------------
-        # 2단 - 분석 지표 현황 (자재 유형별 수율 현황 / 수율 리스크 매트릭스)
+        # 2단 - 분석 지표 현황
         # ----------------------------------------------------------------------
         st.markdown("---")
+        st.caption("💡 **2단 관제 가이드:** 자재유형별 추이를 확인하고, 우측 **수율 리스크 매트릭스**에서 투입금액이 큰(우측 배치) 동시에 기준 수율에 미달하는(하단 배치) 🔴고위험군 자재가 발견되면 해당 자재의 투입 공정(면과/스프실) 센서 값 조정을 생산관리 파트에 즉시 피드백하십시오.")
+        
         r2_col1, r2_col2 = st.columns([48, 52])
         
         with r2_col1:
@@ -381,6 +429,8 @@ if selected_months:
         # 3단 - 핵심 관리 자재 Top 5
         # ----------------------------------------------------------------------
         st.markdown("---")
+        st.caption("💡 **3단 관제 가이드:** 중점 관리 품목 리스트는 투입 금액 기준 상위 15개 자재 중 **수율이 가장 낮은 역순(Top 5)**으로 자동 배치됩니다. 그래프가 길게 뻗을수록(100% 초과) 과투입, 짧을수록(목표치 미달) 손실 공정이 발생 중임을 뜻합니다.")
+        
         st.subheader("🚨 핵심 관리 자재 Top 5")
         
         if "top5_view_mode" not in st.session_state:
