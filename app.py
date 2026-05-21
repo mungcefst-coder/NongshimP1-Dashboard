@@ -4,13 +4,31 @@ import plotly.express as px
 import plotly.graph_objects as go
 import urllib.parse
 
-# 1. 페이지 세팅 및 타이틀 
-st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
+# ==============================================================================
+# [교정 포인트] 변수 선언부를 최상단으로 이동하여 NameError 원천 차단
+# ==============================================================================
+SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
+ALL_MONTHS = [
+    "25.01", "25.02", "25.03", "25.04", "25.05", "25.06", 
+    "25.07", "25.08", "25.09", "25.10", "25.11", "25.12",
+    "26.01", "26.02", "26.03", "26.04"
+]
 
-# 디자인 테마 컬러 정의 (다크/라이트 양방향 시인성 확보 컬러로 재조정)
+# 과별 관리 기준 수율 정의
+YIELD_THRESHOLD = {
+    '면 1과': 98.92,
+    '면 5과': 97.93,
+    '스프실': 99.53,
+    '전체 총합': 98.73
+}
+
+# 디자인 테마 컬러 정의 (다크/라이트 양방향 시인성 확보 컬러)
 MAIN_BLUE = "#4A90E2"       # 26년 누적 일반 실적 (선명하고 밝은 블루)
 COMP_GRAY = "#B0BEC5"       # 25년 누적 실적 (슬레이트 그레이)
 ALERT_RED = "#E74C3C"       # 핵심 관리 대상 강조 컬러 (소프트 레드)
+
+# 1. 페이지 세팅 및 타이틀 
+st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
 # 전역 글자 크기 14px 고정 CSS (다크모드 환경에서도 텍스트 유연성 확보)
 st.markdown("""
@@ -143,14 +161,12 @@ if data_pool and selected_months:
                         pivot_df.columns = flat_cols
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
-                        # ⚡ [다크모드 테이블 보정] 색상 반전 환경에서도 텍스트가 묻히지 않도록 투명도 테마 적용
                         def style_yield_table(styler, threshold_val):
                             format_map = {}
                             for col in styler.columns:
                                 if '수율' not in col: format_map[col] = '{:,.0f}'
                             styler.format(format_map)
                             
-                            # 라이트/다크에 모두 안성맞춤인 투명 반사 레이어 수율 음영 지정
                             for col in styler.columns:
                                 if '수율' in col:
                                     styler.set_properties(subset=[col], **{'background-color': 'rgba(74, 144, 226, 0.18)'})
@@ -160,7 +176,7 @@ if data_pool and selected_months:
                                     try:
                                         num_val = float(val.replace('%', ''))
                                         if num_val < threshold_val:
-                                            return 'color: #FF5252; font-weight: bold;' # 다크모드에서도 선명한 고휘도 소프트 레드로 선회
+                                            return 'color: #FF5252; font-weight: bold;'
                                     except: pass
                                 return ''
                                 
@@ -205,11 +221,9 @@ if data_pool and selected_months:
                                 textposition=pos,
                                 line=dict(color=color, width=3.5),
                                 marker=dict(size=9),
-                                # ⚡ 다크모드 대응: 고정 글자색(#2C3E50)을 제거하여 시스템 반전 색상이 자동으로 매핑되도록 처리
                                 textfont=dict(size=14) 
                             ))
 
-                        # ⚡ 다크모드 대응: template='plotly_white' 설정을 과감히 삭제하여 Streamlit 자체 스위칭 엔진에 위임
                         fig_line.update_layout(
                             height=280, 
                             margin=dict(l=10, r=10, t=25, b=10), 
@@ -237,8 +251,6 @@ if data_pool and selected_months:
                 dept_sum = filtered_r2_1.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                 dept_sum['수율'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
                 fig1 = px.bar(dept_sum, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
-                
-                # ⚡ 다크모드 대응: 템플릿 제거 및 폰트 컬러 최적화
                 fig1.update_traces(textposition='outside', textfont=dict(size=12))
                 fig1.update_layout(height=330, yaxis=dict(range=[80, 108]), xaxis_title=None, font=dict(size=14))
                 st.plotly_chart(fig1, use_container_width=True)
@@ -273,8 +285,6 @@ if data_pool and selected_months:
                     category_orders={'분류': ['25년 누적', '26년 누적', '26년 핵심 관리 대상 (⚠️고위험)']}
                 )
                 fig3.update_traces(marker=dict(line=dict(width=1, color='DarkSlateGrey')))
-                
-                # ⚡ 다크모드 대응: 그리드 및 가이드 라인 투명화 매핑
                 fig3.add_hline(y=100.0, line_dash="dash", line_color="rgba(127, 140, 141, 0.6)", opacity=0.7)
                 fig3.update_layout(height=330, xaxis_title="금액(억원)", yaxis_title="수율 (%)", legend_title=None, font=dict(size=14))
                 st.plotly_chart(fig3, use_container_width=True)
@@ -299,8 +309,6 @@ if data_pool and selected_months:
                         if not m_data.empty:
                             m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
                             fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
-                            
-                            # ⚡ 다크모드 대응: 텍스트 컬러 유연화 적용
                             fig_m.update_traces(marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, textposition='outside', textfont=dict(size=14))
                             fig_m.update_layout(height=360, xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'}, font=dict(size=14))
                             st.plotly_chart(fig_m, use_container_width=True)
