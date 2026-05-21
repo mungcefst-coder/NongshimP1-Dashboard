@@ -57,9 +57,9 @@ st.markdown("""
             font-size: 12.5px !important;
         }
         
-        /* ⚡ [요청 반영] 상단 메트릭 카드의 세 지표 제목만 정확히 2포인트 확대 (15px ➔ 17px 볼드 지정) */
+        /* ⚡ [요청 반영] 상단 메트릭 카드의 세 지표 제목만 정확히 2포인트 확대 (17px ➔ 19px 볼드 지정) */
         div[data-testid="stMetricLabel"] p {
-            font-size: 17px !important;
+            font-size: 19px !important;
             font-weight: 600 !important;
         }
     </style>
