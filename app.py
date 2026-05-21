@@ -176,54 +176,10 @@ if selected_months:
             delta_msg = "⚠️ 집중 검토 요망" if risk_count > 0 else "✅ 안정권 유지"
             st.metric(label="🚨 4억 이상 고위험 자재 수", value=f"{risk_count} 개 품목", delta=delta_msg, delta_color="inverse" if risk_count > 0 else "normal")
         
-        # 부서별 목표 달성률 실시간 게이지 바 구역
-        st.markdown("<div style='font-size:14px; font-weight:bold; color:#7F8C8D; margin-top:5px; margin-bottom:10px;'>🎯 2026년 선택기간 부서별 관리 기준 수율 달성 현황 (실시간 관제)</div>", unsafe_allow_html=True)
-        gauge_cols = st.columns(4)
-        target_depts = ['면 1과', '면 5과', '스프실', '전체 총합']
-        
-        for g_idx, dept_name in enumerate(target_depts):
-            with gauge_cols[g_idx]:
-                d_df = team_df if dept_name == '전체 총합' else team_df[team_df['생산부문명'] == dept_name]
-                d_df_26 = d_df[d_df['연도'] == '26년 누적']
-                
-                if not d_df_26.empty:
-                    d_th = d_df_26['이론금액'].sum()
-                    d_ac = d_df_26['실제금액'].sum()
-                    current_yield = (d_th / d_ac * 100) if d_ac > 0 else 0
-                else:
-                    current_yield = 0
-                    
-                target_val = YIELD_THRESHOLD[dept_name]
-                
-                fig_gauge = go.Figure()
-                fig_gauge.add_trace(go.Bar(
-                    x=[current_yield], y=[dept_name],
-                    orientation='h',
-                    marker_color=MAIN_BLUE if current_yield >= target_val else ALERT_RED,
-                    text=[f" {current_yield:.2f}% (목표: {target_val:.2f}%)"],
-                    textposition='inside',
-                    textfont=dict(size=12, color='white'),
-                    hovertemplate=f"현재 수율: {current_yield:.2f}%<br>기준 수율: {target_val:.2f}%<extra></extra>"
-                ))
-                
-                fig_gauge.add_vline(x=target_val, line_dash="dash", line_color="#2C3E50", line_width=2)
-                
-                fig_gauge.update_layout(
-                    height=55,
-                    margin=dict(l=5, r=5, t=5, b=5),
-                    xaxis=dict(range=[min(94.0, current_yield - 2.0) if current_yield > 0 else 94.0, 101.0], showgrid=False, showticklabels=False),
-                    yaxis=dict(showgrid=False, showticklabels=True),
-                    barmode='stack',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(size=13)
-                )
-                st.plotly_chart(fig_gauge, use_container_width=True, key=f"top_gauge_{dept_name}")
-                
-        st.markdown("<hr style='margin: 10px 0 20px 0; opacity: 0.2;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 15px 0 20px 0; opacity: 0.2;'>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 큰 제목 1: 생산1팀 수율 종합 상황판 (정밀 분할 매칭)
+        # 큰 제목 1: 생산1팀 수율 종합 상황판 (5:5 대칭 정렬)
         # ----------------------------------------------------------------------
         st.subheader("📋 생산1팀 수율 종합 상황판")
         depts_list = ['면 1과', '면 5과', '스프실', '전체 총합']
@@ -231,7 +187,7 @@ if selected_months:
         
         for i, d in enumerate(depts_list):
             with selected_dept_tab[i]:
-                # ⚡ 상단의 표와 선 그래프 배치 역시 정확히 [50, 50] 대칭 구조로 칼정렬 일치
+                # 상단 구역 표와 선 그래프의 열 격차 정렬 [50, 50]
                 tab_col1, tab_col2 = st.columns([50, 50])
                 target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 
@@ -353,12 +309,11 @@ if selected_months:
                     else: st.caption("추이 데이터가 존재하지 않습니다.")
 
         # ----------------------------------------------------------------------
-        # 2단 - 분석 지표 현황 (칼대칭 5:5 비율 개편)
+        # 2단 - 분석 지표 현황 (5:5 완벽 대칭 격자 일치)
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.caption("💡 **2단 관제 가이드:** 자재유형별 추이를 확인하고, 우측 **수율 리스크 매트릭스**에서 투입금액이 큰(우측 배치) 동시에 기준 수율에 미달하는(하단 배치) 🔴고위험군 자재가 발견되면 해당 자재의 투입 공정(면과/스프실) 센서 값 조정을 생산관리 파트에 즉시 피드백하십시오.")
         
-        # ⚡ [요청 반영] 기존 [48, 52] 분할을 정확히 반반 대칭인 [50, 50]으로 칼정렬 통일
         r2_col1, r2_col2 = st.columns([50, 50])
         
         with r2_col1:
@@ -413,7 +368,7 @@ if selected_months:
             else: st.caption("분석할 리스크 데이터가 부족합니다.")
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5 (칼대칭 5:5 비율 고수)
+        # 3단 - 핵심 관리 자재 Top 5 (5:5 완벽 대칭 격자 일치)
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.caption("💡 **3단 관제 가이드:** 중점 관리 품목 리스트는 투입 금액 기준 상위 15개 자재 중 **수율이 가장 낮은 역순(Top 5)**으로 자동 배치됩니다. 그래프가 길게 뻗을수록(100% 초과) 과투입, 짧을수록(목표치 미달) 손실 공정이 발생 중임을 뜻합니다.")
@@ -440,10 +395,10 @@ if selected_months:
                     chart_title_suffix = f"({target_yr[:3]} 선택 기간 누적)"
                     
                 if not yr_df.empty:
-                    item_sum = yr_df[yr_df['생산부문명'] != '스프실'].groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+                    item_sum = yr_df[yr_df['생산부문명'] != '스프실'].groupby(['生産部門명' if '生産部門명' in yr_df.columns else '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+                    item_sum.rename(columns={'生産部門명': '생산부문명'}, errors='ignore', inplace=True)
                     item_sum['수율'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
                     
-                    # 면 1과와 면 5과의 좌우 정렬을 위해 50:50 분할 고수
                     r3_c1, r3_c2 = st.columns([50, 50])
                     for idx, d in enumerate(['면 1과', '면 5과']):
                         with [r3_c1, r3_c2][idx]:
