@@ -20,6 +20,7 @@ YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '�
 MAIN_BLUE = "#3B82F6"       
 COMP_GRAY = "#94A3B8"       
 ALERT_RED = "#EF4444"       
+SUCCESS_GREEN = "#10B981"   # 목표 달성 시 사용할 청록/녹색 테마 
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
@@ -63,7 +64,11 @@ st.markdown(f"""
             background-color: white; color: #1E293B; border: 1px solid #E2E8F0;
             border-radius: 12px; padding: 18px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
         }}
+        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #64748B; margin-bottom: 6px; }}
+        .mes-kpi-value-box {{ display: flex; align-items: baseline; }}
         .mes-kpi-value {{ font-size: 32px; font-weight: 800; line-height: 1.1; }}
+        .mes-kpi-unit {{ font-size: 15px; font-weight: 600; color: #64748B; margin-left: 5px; }}
+        .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 8px; }}
 
         /* 안내 문구 슬림 박스 */
         .custom-threshold-info {{
@@ -72,13 +77,13 @@ st.markdown(f"""
             border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }}
 
-        /* [★초강력 해결책★] Streamlit 고유 위젯 격벽 해제 커스텀 CSS */
+        /* Streamlit 고유 위젯 격벽 해제 커스텀 CSS */
         div[data-testid="stRadio"] {{
-            margin-top: -55px !important;   /* 마진을 더 과감하게 위로 끌어올림 */
+            margin-top: -55px !important;   
             padding-top: 0 !important;
         }}
         div[data-testid="stRadio"] > label {{
-            margin-bottom: 2px !important; /* 위젯 자체의 문구 하단 공백 축소 */
+            margin-bottom: 2px !important; 
         }}
 
         /* 다크모드 대응 */
@@ -162,12 +167,20 @@ if selected_months:
             risk_cnt = len(df_26_kpi.groupby('하위품목 텍스트').filter(lambda x: x['실제금액'].sum() >= 400000000 and (x['이론금액'].sum()/x['실제금액'].sum()*100) <= 98.0))
         else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
+        # --- [★개선부: 목표 달성 여부에 따른 실시간 텍스트/음영 동적 매핑 선언] ---
+        if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
+            kpi_status_text = "▲ 목표 달성"
+            kpi_status_color = SUCCESS_GREEN
+        else:
+            kpi_status_text = "▼ 목표 미달"
+            kpi_status_color = ALERT_RED
+
         st.markdown(f"""
             <div class="mes-kpi-wrapper">
-                <div class="mes-kpi-card" style="border-top: 4px solid #10B981;">
+                <div class="mes-kpi-card" style="border-top: 4px solid {kpi_status_color};">
                     <div class="mes-kpi-label">종합 수율</div>
                     <div class="mes-kpi-value-box"><span class="mes-kpi-value">{total_26_yd:.2f}</span><span class="mes-kpi-unit">%</span></div>
-                    <div class="mes-kpi-status" style="color: #10B981;">▲ 목표치 대조 관리 중</div>
+                    <div class="mes-kpi-status" style="color: {kpi_status_color};">{kpi_status_text}</div>
                 </div>
                 <div class="mes-kpi-card" style="border-top: 4px solid {MAIN_BLUE};">
                     <div class="mes-kpi-label">누적 실제 투입 금액</div>
@@ -296,17 +309,14 @@ if selected_months:
         # --- 섹션 3: 리스크 리스트 ---
         st.markdown('<div class="section-header"><h2>🚨 집중 관리 자재 리스크 Top 5</h2></div>', unsafe_allow_html=True)
         
-        # 그래프 영역 컨테이너 선언
         chart_block = st.container()
         
-        # 라디오 버튼 직접 타격 위젯 표출 구역
         v_m = st.radio("📊 데이터 조회 방식 선택", ["📊 선택 기간 전체 누적", "🎯 특정 년월 단독"], horizontal=True)
         if v_m == "🎯 특정 년월 단독":
             t_m = st.selectbox("📅 분석 대상 년월 선택", options=sorted(selected_months))
         else:
             t_m = "전체"
             
-        # 데이터 탭 및 바 차트를 상단 플레이스홀더 컨테이너에 맵핑
         with chart_block:
             t26, t25 = st.tabs(["📅 2026년 실적 분석", "📅 2025년 실적 분석"])
             for ty, tc in [("26년 누적", t26), ("25년 누적", t25)]:
