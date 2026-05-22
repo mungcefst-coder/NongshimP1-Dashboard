@@ -123,23 +123,20 @@ with st.sidebar:
     st.markdown("---")
     st.info(f"마지막 동기화: {datetime.now().strftime('%H:%M:%S')}")
 
-# --- [메인 헤더 구역: 생산1팀 Smart 수율 모니터링 Portal] ---
+# --- [메인 헤더 구역: 설명문 및 하단 여백 박스 제거 버전] ---
 st.markdown(f"""
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 35px; border-bottom: 2px solid #E2E8F0; padding-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 2px solid #E2E8F0; padding-bottom: 20px;">
         <div>
             <p style="color:#1E40AF; font-weight:700; letter-spacing:4px; margin-bottom:2px; font-size:12px;">MES INTEGRATED OPERATIONAL MONITORING</p>
-            <h1 style="font-size: 36px; font-weight: 800; color: #0F172A; margin: 0; letter-spacing: -1.2px;">
+            <h1 style="font-size: 36px; font-weight: 800; color: #0F172A; margin: 0; letter-spacing: -1.2px; line-height: 1.1;">
                 생산1팀 <span style="color:#1E40AF;">Smart 수율 모니터링</span> Portal
             </h1>
-            <p style="color: #64748B; font-size: 15px; margin-top: 6px; font-weight: 500;">
-                실시간 제조 공정 원가 분석 및 자재 유형별 수율 안정화 관제 시스템
-            </p>
         </div>
         <div style="text-align: right; padding-bottom: 3px;">
             <div style="background: #E0E7FF; color: #1E40AF; padding: 6px 16px; border-radius: 6px; font-weight: 700; font-size: 13px; border: 1px solid #C7D2FE; display: inline-block;">
                 <span style="color: #22C55E; margin-right: 6px; animation: blink 1.5s infinite;">●</span> SYSTEM LIVE
             </div>
-            <p style="color: #94A3B8; font-size: 12px; margin-top: 10px; font-weight: 600; font-family: 'Inter';">
+            <p style="color: #94A3B8; font-size: 12px; margin-top: 10px; font-weight: 600; font-family: 'Inter'; margin-bottom: 0;">
                 Synchronized: {datetime.now().strftime('%Y-%m-%d %H:%M')}
             </p>
         </div>
@@ -167,7 +164,6 @@ if selected_months:
         if not df_26.empty:
             th_sum, ac_sum = df_26['이론금액'].sum(), df_26['실제금액'].sum()
             y_val = (th_sum / ac_sum * 100) if ac_sum > 0 else 0
-            # KeyError 방지를 위해 '하위품목 텍스트' 명칭 고정
             risk_df = df_26.groupby('하위품목 텍스트')[['이론금액','실제금액']].sum().reset_index()
             risk_df['yield'] = (risk_df['이론금액'] / risk_df['실제금액'] * 100)
             risk_count = len(risk_df[(risk_df['실제금액'] >= 400000000) & (risk_df['yield'] <= 98.0)])
