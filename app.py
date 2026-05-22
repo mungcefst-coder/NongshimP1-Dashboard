@@ -188,7 +188,7 @@ if selected_months:
         st.markdown(f"<div class='portal-card' style='padding: 15px 20px; margin-bottom: 15px;'><span class='target-period'><b>📆 분석 대상 기간:</b> `{', '.join(sorted_display_months)}`</span></div>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 고해상도 전문가용 KPI 타일로 업그레이드 (데이터 소스 완벽 일치)
+        # 고해상도 전문가용 KPI 타일 (f-string 조건 서식 버그 완전 교정)
         # ----------------------------------------------------------------------
         df_26_kpi = team_df[team_df['연도'] == '26년 누적']
         if not df_26_kpi.empty:
@@ -203,13 +203,17 @@ if selected_months:
         else:
             total_26_yield, total_cost_billion, risk_count = 0, 0, 0
 
+        # ⚡ [교정 포인트] f-string 내부의 삼항연산자와 포맷 구문을 상단에서 문자열로 선행 분리 가공
+        yield_display = f"{total_26_yield:.2f}" if total_26_yield > 0 else "-"
+        cost_display = f"{total_cost_billion:,.1f}" if total_cost_billion > 0 else "-"
+
         # SaaS 전용 고해상도 수치 시각화 그리드
         st.markdown('<div class="portal-card">', unsafe_allow_html=True)
         kpi_l, kpi_c, kpi_r = st.columns(3)
         with kpi_l:
-            st.markdown(f'<div class="kpi-tile"><p class="kpi-label">📈 2026년 선택기간 종합 수율</p><div class="kpi-value">{total_26_yield:.2f if total_26_yield > 0 else "-"}<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#22C55E;">● 목표치 대조 관리 중</p></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-tile"><p class="kpi-label">📈 2026년 선택기간 종합 수율</p><div class="kpi-value">{yield_display}<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#22C55E;">● 목표치 대조 관리 중</p></div>', unsafe_allow_html=True)
         with kpi_c:
-            st.markdown(f'<div class="kpi-tile"><p class="kpi-label">💰 2026년 누적 실제 투입 금액</p><div class="kpi-value">{total_cost_billion:,.1f if total_cost_billion > 0 else "-"}<span class="kpi-unit">억 원</span></div><p class="kpi-trend" style="color:#64748B;">● 생산 운영 스케일</p></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-tile"><p class="kpi-label">💰 2026년 누적 실제 투입 금액</p><div class="kpi-value">{cost_display}<span class="kpi-unit">억 원</span></div><p class="kpi-trend" style="color:#64748B;">● 생산 운영 스케일</p></div>', unsafe_allow_html=True)
         with kpi_r:
             status_color = "#E74C3C" if risk_count > 0 else "#22C55E"
             status_msg = "⚠️ 집중 검토 요망" if risk_count > 0 else "✅ 안정권 유지"
@@ -217,7 +221,7 @@ if selected_months:
         st.markdown('</div>', unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 1단: 생산1팀 수율 종합 상황판 (정교한 카드 그리드 및 20px 통합 자립)
+        # 1단: 생산1팀 수율 종합 상황판
         # ----------------------------------------------------------------------
         st.markdown('<div class="section-header-text">📋 생산1팀 수율 종합 상황판</div>', unsafe_allow_html=True)
         
@@ -228,7 +232,7 @@ if selected_months:
         
         for i, d in enumerate(depts_list):
             with selected_dept_tab[i]:
-                tab_col1, tab_col2 = st.columns([63, 37]) # 우측 수치 잘림 방지용 완성형 비율 고정
+                tab_col1, tab_col2 = st.columns([63, 37]) 
                 target_df = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 
                 with tab_col1:
@@ -258,7 +262,6 @@ if selected_months:
                         pivot_df.columns = flat_cols
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
-                        # 오리지널 원본 스타일러 포맷 핸들러 완벽 고정 적용
                         def style_yield_table(styler, threshold_val):
                             styler.set_properties(**{'background-color': '#FFFFFF', 'color': '#0F172A'})
                             format_map = {}
@@ -308,7 +311,7 @@ if selected_months:
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
                         df_25 = trend_raw[trend_raw['연도'] == '25년 누적'].set_index('표시월')
-                        df_26 = trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
+                        df_26 = trend_raw[trend_raw['연度'] == '26년 누적'].set_index('표시월') if '연度' in trend_raw.columns else trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
                         
                         fig_line = go.Figure()
                         for yr_label in sorted(trend_raw['연도'].unique()):
@@ -354,7 +357,7 @@ if selected_months:
         st.markdown('</div>', unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 2단 - 분석 지표 현황 (5:5 완벽 칼정렬 카드형 아키텍처)
+        # 2단 - 분석 지표 현황
         # ----------------------------------------------------------------------
         r2_col1, r2_col2 = st.columns([50, 50])
         
@@ -414,7 +417,7 @@ if selected_months:
             st.markdown('</div>', unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5 (칼날 격자 고정형 아키텍처)
+        # 3단 - 핵심 관리 자재 Top 5
         # ----------------------------------------------------------------------
         st.markdown('<div class="section-header-text">🚨 핵심 관리 자재 Top 5</div>', unsafe_allow_html=True)
         
