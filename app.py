@@ -29,7 +29,7 @@ ALERT_RED = "#E74C3C"
 # 1. 페이지 세팅
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
-# [핵심 교정] 유령 박스를 유발하는 수동 div 방식을 버리고, 스트림릿 기본 블록을 카드로 변환
+# [유령 박스 완벽 차단 CSS 개편]
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -40,7 +40,7 @@ st.markdown("""
         /* 상단 헤더 고정 */
         header[data-testid="stHeader"] { background-color: #FFFFFF; border-bottom: 1px solid #E2E8F0; }
         
-        /* [중요] 유령 박스 원천 차단: 모든 수직 블록 컨테이너를 카드 스타일로 자동 변환 */
+        /* 유령 박스 방지: 스트림릿 수직 블록 요소를 정교한 하얀색 카드로 자동 변환 */
         [data-testid="stVerticalBlockBorderWrapper"] {
             background-color: #FFFFFF;
             border-radius: 8px;
@@ -66,18 +66,19 @@ st.markdown("""
         .kpi-unit { font-size: 18px; color: #94A3B8; margin-left: 3px; }
         .kpi-trend { font-size: 13px; margin-top: 10px; font-weight: 700; }
 
-        /* 오리지널 폰트 세팅 유지 */
+        /* 오리지널 폰트 세팅 및 여백 최적화 유지 */
         .stTabs [data-baseweb="tab"] p { font-size: 14px !important; }
         .target-period { font-size: 13.5px !important; color: #64748B; font-weight: 600; }
         .dataframe, .paint-table td, .paint-table th { font-size: 14px !important; }
         .threshold-info { font-size: 14px; color: #475569; margin-top: 10px; font-weight: 700; }
         
-        /* 시스템 경고/안내 박스 숨김 */
+        /* 시스템 기본 에러/안내 상자 완전 차단 */
         .stAlert, [data-testid="stNotification"] { display: none !important; }
         
-        /* 사이드바 관리자 스타일 */
+        /* 사이드바 스타일 */
         section[data-testid="stSidebar"] { background-color: #1E293B !important; color: white; }
         section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p { color: white; }
+        .stDataFrame { margin-bottom: 0px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -116,13 +117,13 @@ def load_single_month_cached(sheet_id, m):
         return preprocess_df(pd.read_csv(url), m)
     except: return pd.DataFrame()
 
-# 사이드바
+# 사이드바 컨트롤러
 with st.sidebar:
     st.markdown("<h2 style='color:white;'>📂 데이터 관제</h2>", unsafe_allow_html=True)
     selected_months = st.multiselect("분석할 년월(YY.MM) 선택", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
     search_keyword = st.text_input("🔍 세부 품목 검색")
 
-# 기간 텍스트 준비
+# 기간 텍스트 바인딩 준비
 sorted_display_months = sorted(selected_months) if selected_months else []
 period_text = f"📆 관제 기간: {', '.join(sorted_display_months)}" if sorted_display_months else ""
 
@@ -152,25 +153,29 @@ if selected_months:
         team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
         if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-        # --- [CARD 1: KPI] ---
+        # --- [CARD 1: KPI 연산 구역] ---
         df_26_kpi = team_df[team_df['연도'] == '26년 누적']
         if not df_26_kpi.empty:
-            kpi_th, kpi_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
+            kpi_th = df_26_kpi['이론금액'].sum()
+            kpi_ac = df_26_kpi['실제금액'].sum()
             total_26_yield = (kpi_th / kpi_ac * 100) if kpi_ac > 0 else 0
             risk_item_df = df_26_kpi.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
             risk_item_df['items_yd'] = (risk_item_df['이론금액'] / risk_item_df['실제금액'] * 100)
             risk_count = len(risk_item_df[(risk_item_df['실제금액'] >= 400000000) & (risk_item_df['items_yd'] <= 98.0)])
         else: total_26_yield, kpi_ac, risk_count = 0, 0, 0
 
-        # [수정] 수동 div를 제거하고 st.container()를 사용하여 CSS로 자동 카드화
+        # ⚡ [교정 패치] f-string 내 에러 원천 차단: 포맷 구문 분리 선행 가공 완료
+        yield_display = f"{total_26_yield:.2f}" if total_26_yield > 0 else "-"
+        cost_display = f"{kpi_ac/100000000:,.1f}" if kpi_ac > 0 else "-"
+
+        # 대시보드 KPI 카드 레이아웃
         with st.container():
             kpi_l, kpi_c, kpi_r = st.columns(3)
-            kpi_l.markdown(f'<div class="kpi-tile"><p class="kpi-label">📈 2026년 선택기간 종합 수율</p><div class="kpi-value">{total_26_yield:.2f if total_26_yield > 0 else "-"}<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#22C55E;">● 목표치 대조 관리 중</p></div>', unsafe_allow_html=True)
-            kpi_c.markdown(f'<div class="kpi-tile"><p class="kpi-label">💰 2026년 누적 실제 투입 금액</p><div class="kpi-value">{kpi_ac/100000000:,.1f if kpi_ac > 0 else "-"}<span class="kpi-unit">억 원</span></div><p class="kpi-trend" style="color:#64748B;">● 생산 운영 스케일</p></div>', unsafe_allow_html=True)
+            kpi_l.markdown(f'<div class="kpi-tile"><p class="kpi-label">📈 2026년 선택기간 종합 수율</p><div class="kpi-value">{yield_display}<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#22C55E;">● 목표치 대조 관리 중</p></div>', unsafe_allow_html=True)
+            kpi_c.markdown(f'<div class="kpi-tile"><p class="kpi-label">💰 2026년 누적 실제 투입 금액</p><div class="kpi-value">{cost_display}<span class="kpi-unit">억 원</span></div><p class="kpi-trend" style="color:#64748B;">● 생산 운영 스케일</p></div>', unsafe_allow_html=True)
             kpi_r.markdown(f'<div class="kpi-tile"><p class="kpi-label">🚨 4억 이상 고위험 자재 수</p><div class="kpi-value" style="color:{ALERT_RED if risk_count > 0 else "#22C55E"};">{risk_count}<span class="kpi-unit">개 품목</span></div><p class="kpi-trend" style="color:{ALERT_RED if risk_count > 0 else "#22C55E"};">{"⚠️ 집중 검토 요망" if risk_count > 0 else "✅ 안정권 유지"}</p></div>', unsafe_allow_html=True)
 
-        # --- [CARD 2: 상황판] ---
-        # [수정] 수동 div 제거, 탭 레이아웃 내부의 5:5 밸런스 유지
+        # --- [CARD 2: 상황판 구역] ---
         with st.container():
             selected_dept_tab = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
             for i, d in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
@@ -214,8 +219,7 @@ if selected_months:
                             fig.update_layout(height=250, margin=dict(l=10, r=10, t=10, b=10), yaxis=dict(range=[tr['누적수율'].min()-1.5, tr['누적수율'].max()+1.5], gridcolor='#F1F5F9'), xaxis=dict(gridcolor='#F1F5F9'), legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="right", x=1), hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                             st.plotly_chart(fig, use_container_width=True, key=f"tr_{d}")
 
-        # --- [CARD 3: 분석 그리드] ---
-        # [수정] 하단 섹션도 유령 박스 제거 및 스트림릿 표준 칼정렬
+        # --- [CARD 3: 하단 그래프/리스크 구역] ---
         low_l, low_r = st.columns(2)
         with low_l:
             with st.container():
@@ -243,7 +247,7 @@ if selected_months:
                     f3.update_layout(height=280, margin=dict(l=0, r=0, t=20, b=0), showlegend=False, xaxis_title="금액(억원)", yaxis_title=None)
                     st.plotly_chart(f3, use_container_width=True)
 
-        # --- [CARD 4: Top 5] ---
+        # --- [CARD 4: 하단 Top 5 중점 관리 구역] ---
         with st.container():
             st.markdown('<span class="sub-header-text">🚨 핵심 관리 자재 Top 5</span>', unsafe_allow_html=True)
             t26, t25 = st.tabs(["2026년 분석", "2025년 분석"])
@@ -265,4 +269,4 @@ if selected_months:
                                     fm.update_layout(height=280, margin=dict(l=0, r=10, t=10, b=10), xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'})
                                     st.plotly_chart(fm, use_container_width=True, key=f"top_{target_yr}_{d}")
 
-st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:30px;'>Integrated Production Monitoring Portal System | © 2026 Nongshim Production Team 1</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:30px;'>Integrated Production Monitoring Portal System | © 2026 Production Team 1</p>", unsafe_allow_html=True)
