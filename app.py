@@ -15,6 +15,7 @@ ALL_MONTHS = [
     "26.01", "26.02", "26.03", "26.04"
 ]
 
+# 과별 관리 기준 수율 - 이 수치 미달 시 붉은색 강조 적용
 YIELD_THRESHOLD = {
     '면 1과': 98.92, 
     '면 5과': 97.93, 
@@ -24,7 +25,7 @@ YIELD_THRESHOLD = {
 
 MAIN_BLUE = "#4A90E2"       
 COMP_GRAY = "#B0BEC5"       
-ALERT_RED = "#E74C3C"       
+ALERT_RED = "#E74C3C"       # 경고 색상
 
 # 1. 페이지 세팅 및 전역 UI 스타일링 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
@@ -49,7 +50,6 @@ st.markdown(f"""
         .stTabs [data-baseweb="tab"] p {{ font-size: 14px !important; font-weight: bold !important; }}
         .dataframe {{ font-size: 14px !important; }}
         
-        /* [개선 1] 파란색 박스 최적화 - 슬림하고 세련된 라인형으로 변경 */
         .custom-threshold-info {{
             padding: 8px 15px;
             background-color: white;
@@ -139,7 +139,7 @@ if selected_months:
             <div class="mes-kpi-wrapper">
                 <div class="mes-kpi-card" style="border-top: 5px solid #10B981;">
                     <div class="mes-kpi-label">종합 수율</div>
-                    <div class="mes-kpi-value-box"><span class="mes-kpi-value">{total_26_yd:.2f}</span><span class="mes-kpi-unit">%</span></div>
+                    <div class="mes-kpi-value-box"><span class="mes-kpi-value">{total_26_yield:.2f}</span><span class="mes-kpi-unit">%</span></div>
                     <div class="mes-kpi-status" style="color: #10B981;">▲ 목표치 대조 관리 중</div>
                 </div>
                 <div class="mes-kpi-card" style="border-top: 5px solid #3B82F6;">
@@ -166,7 +166,6 @@ if selected_months:
                 target = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 
                 with c1:
-                    # [개선 3] 타이틀 문구 간소화
                     st.markdown(f"**📊 {d} 상세 실적**")
                     if not target.empty:
                         summ = target.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
@@ -184,6 +183,7 @@ if selected_months:
                         pivot = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
                         reorder_cols = [(v, y) for y in ['25년 누적', '26년 누적'] for v in ['이론금액', '실제금액', '수율']]
                         pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
+                        
                         pivot.columns = [f"{yr[:3]} {v}" for v, yr in pivot.columns]
                         pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
                         
@@ -198,7 +198,6 @@ if selected_months:
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
                     
-                    # [개선 1] 파란색 안내 박스 -> 슬림한 커스텀 디자인으로 변경
                     st.markdown(f'<div class="custom-threshold-info">💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>', unsafe_allow_html=True)
 
                 with c2:
@@ -207,19 +206,69 @@ if selected_months:
                         trend = target.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index().sort_values(['연도', '월'])
                         trend['누적수율'] = (trend.groupby('연도')['이론금액'].cumsum() / trend.groupby('연도')['실제금액'].cumsum() * 100).round(2)
                         trend['월표시'] = trend['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
+                        
+                        # --- [고도화 반영 구역: 실시간 데이터 겹침 완전 제어 아키텍처] ---
+                        # 월별로 데이터를 재정렬하여 두 연도의 실적값 높낮이를 정밀 계산
+                        trend_piv = trend.pivot(index='월표시', columns='연도', values='누적수율').reset_index()
+                        
+                        # 월의 본래 순서 정렬을 보장하기 위해 월표시 숫자를 기준으로 매핑
+                        trend_piv['월숫자'] = trend_piv['월표시'].str.replace('월', '').astype(int)
+                        trend_piv = trend_piv.sort_values('월숫자').reset_index(drop=True)
+                        
                         fig = go.Figure()
-                        for yr_label in sorted(trend['연도'].unique()):
-                            y_data = trend[trend['연도'] == yr_label]
-                            # [개선 2] 꺾은선 그래프 숫자 글자 크기 확대 (14px) 및 여백 조정
-                            fig.add_trace(go.Scatter(x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
-                                                    text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), textposition='top center',
-                                                    textfont=dict(size=14, color='#1E293B', weight='bold'),
-                                                    line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=3.5)))
-                        # 수치가 짤리지 않도록 y축 마진 확보
-                        y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
-                        fig.update_layout(height=280, margin=dict(l=10,r=10,t=30,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                                         yaxis=dict(range=[y_min-3, y_max+3], gridcolor='#F1F5F9'), xaxis=dict(gridcolor='#F1F5F9'),
-                                         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                        
+                        for yr_label in ['25년 누적', '26년 누적']:
+                            y_data = trend[trend['연도'] == yr_label].copy()
+                            # 정렬 순서 보정
+                            y_data['월숫자'] = y_data['월표시'].str.replace('월', '').astype(int)
+                            y_data = y_data.sort_values('월숫자').reset_index(drop=True)
+                            
+                            # 각 포인트마다 겹침 유무를 추적하여 동적 텍스트 오프셋 계산
+                            text_positions = []
+                            text_offsets = []
+                            
+                            for idx, row in y_data.iterrows():
+                                m_lbl = row['월표시']
+                                current_val = row['누적수율']
+                                
+                                # 매칭되는 달의 상대 연도 데이터 검색
+                                match_row = trend_piv[trend_piv['월표시'] == m_lbl]
+                                if not match_row.empty:
+                                    val_25 = match_row['25년 누적'].values[0] if '25년 누적' in trend_piv.columns else current_val
+                                    val_26 = match_row['26년 누적'].values[0] if '26년 누적' in trend_piv.columns else current_val
+                                    
+                                    # 두 실적의 편차가 0.4%p 미만으로 좁혀져 겹칠 리스크가 발생한 경우
+                                    if abs(val_26 - val_25) < 0.4:
+                                        if yr_label == '26년 누적':
+                                            text_positions.append('top center')
+                                            text_offsets.append(7)  # 26년 수치를 선 위쪽으로 더 밀어냄
+                                        else:
+                                            text_positions.append('bottom center')
+                                            text_offsets.append(7)  # 25년 수치를 선 아래쪽으로 더 밀어냄
+                                    else:
+                                        # 기본 오프셋 상태 배치
+                                        text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
+                                        text_offsets.append(0)
+                                else:
+                                    text_positions.append('top center')
+                                    text_offsets.append(0)
+                            
+                            fig.add_trace(go.Scatter(
+                                x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
+                                text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), 
+                                textposition=text_positions,
+                                textfont=dict(size=14, color='#1E293B', weight='bold'),
+                                line=dict(color=MAIN_BLUE if yr_label == '26년 누적' else COMP_GRAY, width=3.5),
+                                marker=dict(size=8)
+                            ))
+                            
+                        y_min_val, y_max_val = trend['누적수율'].min(), trend['누적수율'].max()
+                        fig.update_layout(
+                            height=280, margin=dict(l=10,r=10,t=40,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                            yaxis=dict(range=[y_min_val-2.5, y_max_val+2.5], gridcolor='#F1F5F9', zeroline=False), 
+                            xaxis=dict(gridcolor='#F1F5F9'),
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                        )
                         st.plotly_chart(fig, use_container_width=True, key=f"trend_{d}")
 
         # --- [하단 분석 매트릭스] ---
@@ -246,25 +295,15 @@ if selected_months:
                 isc['수율'] = (isc['이론금액'] / isc['실제금액'] * 100).round(2)
                 isc['억'] = isc['실제금액'] / 100000000
                 
-                # [개선 4] 리스크 품목 자동 분류 및 점 크기 확대
                 def assign_matrix_class(row):
                     if row['연도'] == '26년 누적' and row['억'] >= 4.0 and row['수율'] <= 98.0:
                         return '🚨 집중 관리 대상 (4억↑/98%↓)'
                     return row['연도']
                 
                 isc['분류'] = isc.apply(assign_matrix_class, axis=1)
-                
-                # 범례에서 연도 ID 삭제하고 25년/26년/집중관리만 표시하도록 맵핑
-                fig3 = px.scatter(isc, x='억', y='수율', color='분류', 
-                                  hover_name='하위품목 텍스트',
-                                  color_discrete_map={
-                                      '25년 누적': COMP_GRAY, 
-                                      '26년 누적': MAIN_BLUE, 
-                                      '🚨 집중 관리 대상 (4억↑/98%↓)': ALERT_RED
-                                  },
+                fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트',
+                                  color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '🚨 집중 관리 대상 (4억↑/98%↓)': ALERT_RED},
                                   category_orders={'분류': ['25년 누적', '26년 누적', '🚨 집중 관리 대상 (4억↑/98%↓)']})
-                
-                # 점 크기 확대 및 스타일링
                 fig3.update_traces(marker=dict(size=14, line=dict(width=1, color='white'), opacity=0.8))
                 fig3.add_hline(y=100.0, line_dash="dash", line_color="#94A3B8", opacity=0.6)
                 fig3.update_layout(height=330, xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)",
