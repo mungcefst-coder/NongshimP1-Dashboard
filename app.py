@@ -50,6 +50,12 @@ st.markdown("""
         section[data-testid="stSidebar"] { background-color: #1E293B !important; }
         section[data-testid="stSidebar"] * { color: white !important; }
         .stTabs [data-baseweb="tab"] p { font-size: 15px !important; font-weight: 700 !important; }
+        
+        /* 표의 세로 높이 밸런스를 위한 강제 보정 */
+        [data-testid="stDataFrame"] {
+            height: 200px !important;
+        }
+        
         .stDataFrame { border: none !important; background-color: transparent !important; }
         div[data-testid="stNotification"], .stAlert { background-color: transparent !important; border: none !important; padding: 0 !important; }
         .block-container { padding-top: 2.5rem !important; }
@@ -159,7 +165,7 @@ if selected_months:
         tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
         for i, d_n in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
             with tabs[i]:
-                # 🚨 [수정] 표와 그래프 비율을 48:52로 조정하여 밸런스 최적화
+                # 🚨 [수정] 세로 높이 동기화를 위해 표와 그래프 높이를 200px로 고정
                 c_l, c_r = st.columns([48, 52])
                 t_df = full_df if d_n == '전체 총합' else full_df[full_df['생산부문명'] == d_n]
                 
@@ -168,7 +174,9 @@ if selected_months:
                         pv = t_df.groupby(['연도', '자재 유형 내역'])[['이론금액','실제금액']].sum().reset_index()
                         pv['수율(%)'] = (pv['이론금액']/pv['실제금액']*100).round(2)
                         pv = pv[pv['자재 유형 내역'].isin(['원자재', '부자재', '반제품'])]
-                        st.dataframe(pv.pivot(index='자재 유형 내역', columns='연도', values='수율(%)').style.format("{:.2f}%"), use_container_width=True)
+                        # height=200 설정으로 표 세로 길이를 강제 확보
+                        st.dataframe(pv.pivot(index='자재 유형 내역', columns='연도', values='수율(%)').style.format("{:.2f}%"), 
+                                     use_container_width=True, height=200)
                 
                 with c_r:
                     if not t_df.empty:
@@ -181,14 +189,14 @@ if selected_months:
                                       color_discrete_map={'25년': '#94A3B8', '26년': '#1E40AF'})
                         
                         fig.update_traces(line=dict(width=4), marker=dict(size=10), textposition='top center')
-                        # 🚨 [수정] 그래프 높이를 240으로 낮추어 표와 정렬 맞춤
+                        # height=200 설정으로 표와 세로 길이를 완벽히 일치시킴
                         fig.update_layout(
-                            height=240, margin=dict(l=10,r=10,t=30,b=10),
+                            height=200, margin=dict(l=10,r=10,t=10,b=10),
                             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
                             xaxis_title=None, yaxis_title=None,
-                            showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="right", x=1)
+                            showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="right", x=1)
                         )
-                        st.plotly_chart(fig, use_container_width=True, key=f"line_v34_{d_n}")
+                        st.plotly_chart(fig, use_container_width=True, key=f"line_v35_{d_n}")
         st.markdown('</div>', unsafe_allow_html=True)
 
         # --- [📊 자재 유형별 실적 비교 & 🔍 수율 리스크 매트릭스] ---
@@ -196,7 +204,7 @@ if selected_months:
         cl, cr = st.columns(2)
         with cl:
             st.markdown('<p class="section-header-text">📊 자재 유형별 실적 비교</p>', unsafe_allow_html=True)
-            m_o = st.selectbox("자재 유형 선택", ["원자재", "부자재", "반제품"], key="mat_filt_v34")
+            m_o = st.selectbox("자재 유형 선택", ["원자재", "부자재", "반제품"], key="mat_filt_v35")
             m_d = full_df[full_df['자재 유형 내역'] == m_o].groupby(['연도', '생산부문명'])[['이론금액','실제금액']].sum().reset_index()
             m_d['수율'] = (m_d['이론금액']/m_d['실제금액']*100).round(2)
             fig_b = px.bar(m_d, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년':'#CBD5E1', '26년':'#1E40AF'})
@@ -205,7 +213,7 @@ if selected_months:
             
         with cr:
             st.markdown('<p class="section-header-text">🔍 수율 리스크 매트릭스</p>', unsafe_allow_html=True)
-            r_p = st.selectbox("관제 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="risk_filt_v34")
+            r_p = st.selectbox("관제 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="risk_filt_v35")
             r_d = full_df.copy() if r_p == "전체 1팀" else full_df[full_df['생산부문명'] == r_p]
             if not r_d.empty:
                 r_i = r_d.groupby(['연도', '하위품목 텍스트'])[['이론금액','실제금액']].sum().reset_index()
@@ -234,10 +242,10 @@ if selected_months:
                         d_t['label'] = d_t.apply(lambda r: f"{r['수율']:.2f}% ({(r['실제금액']/100000000):.1f}억)", axis=1)
                         fig_t = px.bar(d_t, x='수율', y='하위품목 텍스트', orientation='h', text='label', color_discrete_sequence=['#1E40AF' if t_y == '26년' else '#CBD5E1'])
                         fig_t.update_layout(height=260, margin=dict(l=0,r=10,t=10,b=10), xaxis=dict(range=[0, 135]), yaxis={'categoryorder':'total ascending'}, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                        st.plotly_chart(fig_t, use_container_width=True, key=f"top_list_v34_{d_n}")
+                        st.plotly_chart(fig_t, use_container_width=True, key=f"top_list_v35_{d_n}")
         st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     st.write("분석 기간을 선택해주세요.")
 
-st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Monitoring Portal | © 2026 Production Team 1</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Monitoring Portal | © 2026 Nongshim Production Team 1</p>", unsafe_allow_html=True)
