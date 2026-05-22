@@ -129,7 +129,7 @@ st.markdown(f"""
         <div>
             <p style="color:#1E40AF; font-weight:700; letter-spacing:4px; margin-bottom:2px; font-size:12px;">MES INTEGRATED OPERATIONAL MONITORING</p>
             <h1 style="font-size: 36px; font-weight: 800; color: #0F172A; margin: 0; letter-spacing: -1.2px;">
-                생산1팀 <span style="color:#1E40AF;">Smart</span> 수율 모니터링 Portal
+                생산1팀 <span style="color:#1E40AF;">Smart 수율 모니터링</span> Portal
             </h1>
             <p style="color: #64748B; font-size: 15px; margin-top: 6px; font-weight: 500;">
                 실시간 제조 공정 원가 분석 및 자재 유형별 수율 안정화 관제 시스템
@@ -155,10 +155,11 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 if selected_months:
-    full_df = pd.concat([fetch_system_data(m) for m in selected_months], ignore_index=True)
-    full_df['연도'] = full_df['월'].apply(lambda x: '25년' if '25' in str(x) else '26년')
-
+    fetch_list = [fetch_system_data(m) for m in selected_months]
+    full_df = pd.concat([d for d in fetch_list if not d.empty], ignore_index=True)
     if not full_df.empty:
+        full_df['연도'] = full_df['월'].apply(lambda x: '25년' if '25' in str(x) else '26년')
+
         if search: full_df = full_df[full_df['하위품목 텍스트'].str.contains(search, na=False)]
 
         # --- [CARD 1: 핵심 KPI 센터] ---
@@ -166,7 +167,10 @@ if selected_months:
         if not df_26.empty:
             th_sum, ac_sum = df_26['이론금액'].sum(), df_26['실제금액'].sum()
             y_val = (th_sum / ac_sum * 100) if ac_sum > 0 else 0
-            risk_df = df_26.groupby('하위품목 텍스트')[['이론금액','실제금액']].sum().query('실제금액 >= 400000000 and (이론금액/실제금액*100) <= 98.0')
+            # KeyError 방지를 위해 '하위품목 텍스트' 명칭 고정
+            risk_df = df_26.groupby('하위품목 텍스트')[['이론금액','실제금액']].sum().reset_index()
+            risk_df['yield'] = (risk_df['이론금액'] / risk_df['실제금액'] * 100)
+            risk_count = len(risk_df[(risk_df['실제금액'] >= 400000000) & (risk_df['yield'] <= 98.0)])
             
             st.markdown('<div class="portal-card">', unsafe_allow_html=True)
             k1, k2, k3, k4 = st.columns(4)
@@ -175,7 +179,7 @@ if selected_months:
             with k2:
                 st.markdown(f'<div class="kpi-tile"><p class="kpi-label">누적 실제 투입</p><div class="kpi-value">{ac_sum/100000000:,.1f}<span class="kpi-unit">억</span></div><p class="kpi-trend" style="color:#64748B;">KRW 누적 기준</p></div>', unsafe_allow_html=True)
             with k3:
-                st.markdown(f'<div class="kpi-tile"><p class="kpi-label">고위험 자재</p><div class="kpi-value" style="color:#E74C3C;">{len(risk_df):02d}<span class="kpi-unit">건</span></div><p class="kpi-trend" style="color:#E74C3C;">⚠️ 집중 점검 필요</p></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="kpi-tile"><p class="kpi-label">고위험 자재</p><div class="kpi-value" style="color:#E74C3C;">{risk_count:02d}<span class="kpi-unit">건</span></div><p class="kpi-trend" style="color:#E74C3C;">⚠️ 집중 점검 필요</p></div>', unsafe_allow_html=True)
             with k4:
                 st.markdown(f'<div class="kpi-tile"><p class="kpi-label">데이터 신뢰도</p><div class="kpi-value" style="color:#1E40AF;">99.9<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#1E40AF;">ERP 동기화 완료</p></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -209,7 +213,7 @@ if selected_months:
             m_opt = st.selectbox("유형 필터", ["원자재", "부자재", "반제품"])
             m_df = full_df[full_df['자재 유형 내역'] == m_opt].groupby(['연도', '생산부문명'])[['이론금액','실제금액']].sum().reset_index()
             m_df['수율'] = (m_df['이론금액']/m_df['실제금액']*100).round(2)
-            fig_bar = px.bar(m_df, x='생산부문명', y='수율', color='연度' if '연度' in m_df.columns else '연도', barmode='group', text='수율', color_discrete_map={'25년':'#CBD5E1', '26년':'#1E40AF'})
+            fig_bar = px.bar(m_df, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년':'#CBD5E1', '26년':'#1E40AF'})
             fig_bar.update_layout(height=300, margin=dict(l=0,r=0,t=20,b=0), yaxis=dict(range=[85, 105]), showlegend=False)
             st.plotly_chart(fig_bar, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
