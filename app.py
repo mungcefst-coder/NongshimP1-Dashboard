@@ -15,7 +15,6 @@ ALL_MONTHS = [
     "26.01", "26.02", "26.03", "26.04"
 ]
 
-# 과별 관리 기준 수율 - 이 수치 미달 시 붉은색 강조 적용
 YIELD_THRESHOLD = {
     '면 1과': 98.92, 
     '면 5과': 97.93, 
@@ -25,7 +24,7 @@ YIELD_THRESHOLD = {
 
 MAIN_BLUE = "#4A90E2"       
 COMP_GRAY = "#B0BEC5"       
-ALERT_RED = "#E74C3C"       # 경고 색상
+ALERT_RED = "#E74C3C"       
 
 # 1. 페이지 세팅 및 전역 UI 스타일링 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
@@ -91,7 +90,7 @@ with h_right:
 
 st.markdown("<div style='margin-bottom: 25px;'></div>", unsafe_allow_html=True)
 
-# 2. 데이터 연산 및 로드 함수
+# 2. 데이터 처리 함수
 def preprocess_df(df, month_label):
     if df.empty: return pd.DataFrame()
     df = df.copy(); df['월'] = month_label
@@ -124,7 +123,7 @@ if selected_months:
         team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
         if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-        # --- [상단 KPI 섹션] ---
+        # --- [KPI 섹션] ---
         df_26_kpi = team_df[team_df['연도'] == '26년 누적']
         if not df_26_kpi.empty:
             k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
@@ -135,7 +134,6 @@ if selected_months:
             risk_cnt = len(risk_item_df[(risk_item_df['실제금액'] >= 400000000) & (risk_item_df['yd'] <= 98.0)])
         else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-        # [교정 완료 지점] total_26_yield 변수를 연산 명칭인 total_26_yd로 통일
         st.markdown(f"""
             <div class="mes-kpi-wrapper">
                 <div class="mes-kpi-card" style="border-top: 5px solid #10B981;">
@@ -156,8 +154,6 @@ if selected_months:
             </div>
         """, unsafe_allow_html=True)
         
-        st.markdown("<hr style='margin: 15px 0 20px 0; opacity: 0.2;'>", unsafe_allow_html=True)
-
         # --- [1단: 종합 상황판] ---
         st.subheader("📋 생산1팀 수율 종합 상황판")
         depts_nav = ['면 1과', '면 5과', '스프실', '전체 총합']
@@ -193,10 +189,8 @@ if selected_months:
                         yield_cols = [c for c in pivot.columns if '수율' in c]
                         styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                         styled_df = styled_df.set_properties(subset=yield_cols, **{'background-color': 'rgba(74, 144, 226, 0.03)'})
-                        
                         for col in yield_cols:
                             styled_df = styled_df.map(lambda val: f'color: {ALERT_RED}; font-weight: bold;' if val < current_threshold else '', subset=[col])
-                        
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
                     st.markdown(f'<div class="custom-threshold-info">💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>', unsafe_allow_html=True)
@@ -208,54 +202,33 @@ if selected_months:
                         trend['누적수율'] = (trend.groupby('연도')['이론금액'].cumsum() / trend.groupby('연도')['실제금액'].cumsum() * 100).round(2)
                         trend['월표시'] = trend['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
-                        trend_piv = trend.pivot(index='월표시', columns='연도', values='누적수율').reset_index()
-                        trend_piv['월숫자'] = trend_piv['월표시'].str.replace('월', '').astype(int)
-                        trend_piv = trend_piv.sort_values('월숫자').reset_index(drop=True)
-                        
+                        # --- [겹침 방지 기술: 대각선 교차 배치 로직] ---
                         fig = go.Figure()
-                        for yr_label in ['25년 누적', '26년 누적']:
-                            y_data = trend[trend['연도'] == yr_label].copy()
-                            y_data['월숫자'] = y_data['월표시'].str.replace('월', '').astype(int)
-                            y_data = y_data.sort_values('월숫자').reset_index(drop=True)
+                        for yr_label in sorted(trend['연도'].unique()):
+                            y_data = trend[trend['연도'] == yr_label]
                             
-                            text_positions = []
-                            text_offsets = []
+                            # [핵심] 26년(현재)은 우측 상단, 25년(대비)은 좌측 하단 배치하여 물리적 겹침 방지
+                            pos = 'top right' if '26년' in yr_label else 'bottom left'
                             
-                            for idx, row in y_data.iterrows():
-                                m_lbl = row['월표시']
-                                current_val = row['누적수율']
-                                match_row = trend_piv[trend_piv['월표시'] == m_lbl]
-                                if not match_row.empty:
-                                    val_25 = match_row['25년 누적'].values[0] if '25년 누적' in trend_piv.columns else current_val
-                                    val_26 = match_row['26년 누적'].values[0] if '26년 누적' in trend_piv.columns else current_val
-                                    
-                                    if abs(val_26 - val_25) < 0.4:
-                                        if yr_label == '26년 누적':
-                                            text_positions.append('top center')
-                                            text_offsets.append(7)
-                                        else:
-                                            text_positions.append('bottom center')
-                                            text_offsets.append(7)
-                                    else:
-                                        text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
-                                        text_offsets.append(0)
-                                else:
-                                    text_positions.append('top center')
-                                    text_offsets.append(0)
+                            # 26년 실적 강조 디자인
+                            font_size = 14 if '26년' in yr_label else 12
+                            font_color = '#1E293B' if '26년' in yr_label else '#94A3B8'
+                            font_weight = 'bold' if '26년' in yr_label else 'normal'
                             
                             fig.add_trace(go.Scatter(
                                 x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
                                 text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), 
-                                textposition=text_positions,
-                                textfont=dict(size=14, color='#1E293B', weight='bold'),
-                                line=dict(color=MAIN_BLUE if yr_label == '26년 누적' else COMP_GRAY, width=3.5),
+                                textposition=pos,
+                                textfont=dict(size=font_size, color=font_color, weight=font_weight),
+                                line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=3.5),
                                 marker=dict(size=8)
                             ))
                             
-                        y_min_val, y_max_val = trend['누적수율'].min(), trend['누적수율'].max()
+                        # Y축 여백을 상하로 20%p씩 추가 확보하여 숫자가 잘림 방지
+                        y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
                         fig.update_layout(
-                            height=280, margin=dict(l=10,r=10,t=40,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                            yaxis=dict(range=[y_min_val-2.5, y_max_val+2.5], gridcolor='#F1F5F9', zeroline=False), 
+                            height=280, margin=dict(l=10,r=20,t=40,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                            yaxis=dict(range=[y_min-3, y_max+3], gridcolor='#F1F5F9', zeroline=False), 
                             xaxis=dict(gridcolor='#F1F5F9'),
                             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                         )
