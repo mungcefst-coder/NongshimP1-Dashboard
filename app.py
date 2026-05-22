@@ -97,7 +97,11 @@ st.markdown("""
 # [2] 데이터 엔진 (Google Sheets 연동)
 # ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
-ALL_MONTHS = ["25.01", "25.02", "25.03", "25.04", "25.05", "25.06", "26.01", "26.02", "26.03", "26.04"]
+ALL_MONTHS = [
+    "25.01", "25.02", "25.03", "25.04", "25.05", "25.06", 
+    "25.07", "25.08", "25.09", "25.10", "25.11", "25.12",
+    "26.01", "26.02", "26.03", "26.04"
+]
 MAIN_BLUE = "#1E40AF"
 
 @st.cache_data(ttl=3600)
@@ -112,6 +116,9 @@ def load_and_fix(month):
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
         df = df[df['생산부문명'].isin(dept_map.keys())].copy()
         df['생산부문명'] = df['생산부문명'].map(dept_map)
+        # 자재 유형 필터링
+        if '자재 유형 내역' in df.columns:
+            df = df[df['자재 유형 내역'].isin(['원자재', '부자재', '반제품'])]
         # 숫자 변환
         for c in ['이론금액', '실제금액']:
             df[c] = pd.to_numeric(df[c].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
@@ -124,7 +131,8 @@ def load_and_fix(month):
 # ==============================================================================
 with st.sidebar:
     st.markdown("<h2 style='color:#1E40AF;'>🏢 Portal Admin</h2>", unsafe_allow_html=True)
-    selected_months = st.multiselect("분석 기간", options=ALL_MONTHS, default=["25.12", "26.01", "26.02", "26.03"])
+    # ⚡ [교정 완료] default 값을 ALL_MONTHS 내에 정확히 존재하는 매칭 데이터 포맷으로 수정
+    selected_months = st.multiselect("분석 기간", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
     search = st.text_input("🔍 품목 필터링")
 
 # --- 헤더 구역 ---
@@ -142,7 +150,7 @@ if selected_months:
     df_raw['연도'] = df_raw['월'].apply(lambda x: '25년' if '25' in str(x) else '26년')
 
     if not df_raw.empty:
-        # --- [Slide 2 느낌] KPI 메트릭 구역 ---
+        # --- KPI 메트릭 구역 ---
         df_26 = df_raw[df_raw['연도'] == '26년']
         if not df_26.empty:
             th_sum = df_26['이론금액'].sum()
@@ -158,12 +166,12 @@ if selected_months:
                 risk_n = len(df_26.groupby('품목')[['이론금액','실제금액']].sum().query('실제금액 >= 400000000 and (이론금액/실제금액*100) <= 98.0'))
                 st.markdown(f"""<div class="kpi-box"><div class="kpi-label">고위험군 자재</div><div class="kpi-value" style="color:#EF4444;">{risk_n:02d}</div><div class="kpi-delta" style="color:#EF4444;">⚠️ 집중 관제 대상</div></div>""", unsafe_allow_html=True)
 
-        # --- [Slide 4 느낌] 부서별 상세 실적 카드 ---
+        # --- 부서별 상세 실적 카드 ---
         st.markdown('<div class="report-card"><div class="report-title">📋 부서별 관리 기준 및 상세 실적</div>', unsafe_allow_html=True)
         tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
         for i, d_name in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
             with tabs[i]:
-                col_l, col_r = st.columns([45, 55])
+                col_l, col_r = st.columns([50, 50])
                 d_df = df_raw if d_name == '전체 총합' else df_raw[df_raw['생산부문명'] == d_name]
                 with col_l:
                     if not d_df.empty:
@@ -175,12 +183,12 @@ if selected_months:
                         tr = d_df.groupby(['연도', '월'])[['이론금액','실제금액']].sum().reset_index()
                         tr['수율'] = (tr['이론금액']/tr['실제금액']*100).round(2)
                         tr['표시월'] = tr['월'].apply(lambda x: f"{x.split('.')[1]}월")
-                        fig = px.area(tr, x='표시월', y='수율', color='연도', markers=True, color_discrete_map={'25년':'#94A3B8', '26년':'#1E40AF'})
-                        fig.update_layout(height=280, margin=dict(l=0,r=0,t=10,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                        fig = px.area(tr, x='표시월', y='수율', color='연度' if '연度' in tr.columns else '연도', markers=True, color_discrete_map={'25년':'#94A3B8', '26년':'#1E40AF'})
+                        fig.update_layout(height=280, margin=dict(l=10,r=10,t=25,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig, use_container_width=True, key=f"fig_{d_name}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [Slide 5/6 느낌] 자재비교 & 리스크 매트릭스 ---
+        # --- 자재비교 & 리스크 매트릭스 ---
         c_left, c_right = st.columns(2)
         with c_left:
             st.markdown('<div class="report-card"><div class="report-title">📊 자재 유형별 성적 비교</div>', unsafe_allow_html=True)
@@ -188,7 +196,8 @@ if selected_months:
             m_data = df_raw[df_raw['자재 유형 내역'] == m_opt].groupby(['연도', '생산부문명'])[['이론금액','실제금액']].sum().reset_index()
             m_data['수율'] = (m_data['이론금액']/m_data['실제금액']*100).round(2)
             fig_b = px.bar(m_data, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년':'#94A3B8', '26년':'#1E40AF'})
-            fig_b.update_layout(height=300, margin=dict(l=0,r=0,t=10,b=0), yaxis=dict(range=[85, 105]))
+            fig_b.update_traces(textposition='outside', textfont=dict(size=12))
+            fig_b.update_layout(height=300, margin=dict(l=10,r=10,t=25,b=10), yaxis=dict(range=[85, 105]))
             st.plotly_chart(fig_b, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
@@ -202,11 +211,11 @@ if selected_months:
                 r_item['금액(억)'] = r_item['실제금액']/100000000
                 fig_s = px.scatter(r_item, x='금액(억)', y='수율', color='연도', hover_name='품목', color_discrete_map={'25년':'#94A3B8', '26년':'#1E40AF'})
                 fig_s.add_hline(y=100.0, line_dash="dash", line_color="#CBD5E1")
-                fig_s.update_layout(height=300, margin=dict(l=0,r=0,t=10,b=0))
+                fig_s.update_layout(height=300, margin=dict(l=10,r=10,t=25,b=10))
                 st.plotly_chart(fig_s, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [Slide 7 느낌] 중점 관리 품목 Top 5 ---
+        # --- 중점 관리 품목 Top 5 ---
         st.markdown('<div class="report-card"><div class="report-title">🚨 중점 관리 품목 (수율 하위 Top 5)</div>', unsafe_allow_html=True)
         t_yr = st.radio("분석 연도 선택", ["26년", "25년"], horizontal=True)
         y_df = df_raw[df_raw['연도'] == t_yr]
@@ -218,9 +227,12 @@ if selected_months:
                 with [tc1, tc2][i]:
                     st.write(f"**📍 {d_n} 중점 품목**")
                     d_top = top_sum[top_sum['생산부문명'] == d_n].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
-                    fig_t = px.bar(d_top, x='수율', y='품목', orientation='h', text='수율', color_discrete_sequence=[MAIN_BLUE if t_yr == "26년" else "#94A3B8"])
-                    fig_t.update_layout(height=300, margin=dict(l=0,r=10,t=10,b=10), yaxis={'categoryorder':'total ascending'})
-                    st.plotly_chart(fig_t, use_container_width=True, key=f"top_{d_n}")
+                    if not d_top.empty:
+                        d_top['label'] = d_top.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
+                        fig_t = px.bar(d_top, x='수율', y='품목', orientation='h', text='label', color_discrete_sequence=[MAIN_BLUE if t_yr == "26년" else "#94A3B8"])
+                        fig_t.update_traces(textposition='outside', textfont=dict(size=14))
+                        fig_t.update_layout(height=300, margin=dict(l=0,r=10,t=10,b=10), xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'})
+                        st.plotly_chart(fig_t, use_container_width=True, key=f"top_{d_n}")
         st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>© 2026 Production Team 1 | Yield Management System Portal</p>", unsafe_allow_html=True)
