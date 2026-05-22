@@ -97,7 +97,8 @@ def preprocess_df(df, month_label):
     if '생산부문명' in df.columns:
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
         df = df[df['생산부문명'].isin(dept_map.keys())].copy()
-        df['생산부문명'] = df['생산부문명'].map(dept_map)
+        df['생산부num'] = df['생산부문명'].map(dept_map)
+        df['생산부문명'] = df['생산부num']
     else: return pd.DataFrame()
     if '자재 유형 내역' in df.columns:
         df = df[df['자재 유형 내역'].isin(['원자재', '부자재', '반제품'])]
@@ -164,11 +165,9 @@ if selected_months:
             risk_count = len(risk_item_df[(risk_item_df['실제금액'] >= 400000000) & (risk_item_df['items_yd'] <= 98.0)])
         else: total_26_yield, kpi_ac, risk_count = 0, 0, 0
 
-        # ⚡ [교정 패치] f-string 내 에러 원천 차단: 포맷 구문 분리 선행 가공 완료
         yield_display = f"{total_26_yield:.2f}" if total_26_yield > 0 else "-"
         cost_display = f"{kpi_ac/100000000:,.1f}" if kpi_ac > 0 else "-"
 
-        # 대시보드 KPI 카드 레이아웃
         with st.container():
             kpi_l, kpi_c, kpi_r = st.columns(3)
             kpi_l.markdown(f'<div class="kpi-tile"><p class="kpi-label">📈 2026년 선택기간 종합 수율</p><div class="kpi-value">{yield_display}<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#22C55E;">● 목표치 대조 관리 중</p></div>', unsafe_allow_html=True)
@@ -195,14 +194,23 @@ if selected_months:
                             pivot_df.columns = [f"{yr[:3]} {'수율' if v=='수율(%)' else v}" for yr, v in [(c[1], c[0]) for c in pivot_df.columns]]
                             pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
 
+                            # ⚡ [교정 포인트] UnboundLocalError의 주범이었던 수동 수율 변경 루프를 안전한 정적 매핑 방식으로 완전 교정
                             def style_table(styler, thresh_val):
                                 styler.set_properties(**{'background-color': '#FFFFFF', 'color': '#0F172A'})
-                                styler.format({c: '{:,.0f}' for c in styler.columns if '수율' not in c})
-                                for col in [c for c in styler.columns if '수율' in col]:
-                                    styler.set_properties(subset=[col], **{'background-color': 'rgba(74, 144, 226, 0.18)'})
-                                    styler.data[col] = styler.data[col].apply(lambda x: f"{x:.2f}%" if x > 0 else "-")
-                                    styler.map(lambda v: 'color: #FF5252; font-weight: bold;' if '%' in str(v) and float(str(v).replace('%','')) < thresh_val else '', subset=[col])
+                                
+                                # 금액 데이터: 소수점 날리고 천 단위 콤마
+                                amt_cols = [c for c in styler.columns if '수율' not in c]
+                                styler.format({c: '{:,.0f}' for c in amt_cols})
+                                
+                                # 수율 데이터: 소수점 2자리 + % 처리 및 파스텔톤 배경 지정
+                                pct_cols = [c for c in styler.columns if '수율' in c]
+                                styler.format({c: '{:.2f}%' for c in pct_cols})
+                                styler.set_properties(subset=pct_cols, **{'background-color': 'rgba(74, 144, 226, 0.18)'})
+                                
+                                # 수율 관리 지표 미달 시 소스 코드 로직 그대로 붉은색 강조 처리
+                                styler.map(lambda v: 'color: #FF5252; font-weight: bold;' if isinstance(v, float) and v < thresh_val else '', subset=['26년 수율'])
                                 return styler
+                                
                             st.dataframe(pivot_df.style.pipe(style_table, thresh_val=YIELD_THRESHOLD[d]), use_container_width=True)
                         st.markdown(f'<div class="threshold-info">📌 {d} 관리 기준 수율 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>', unsafe_allow_html=True)
                     
