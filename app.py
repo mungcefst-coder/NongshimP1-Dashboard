@@ -63,11 +63,7 @@ st.markdown(f"""
             background-color: white; color: #1E293B; border: 1px solid #E2E8F0;
             border-radius: 12px; padding: 18px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
         }}
-        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #64748B; margin-bottom: 6px; }}
-        .mes-kpi-value-box {{ display: flex; align-items: baseline; }}
         .mes-kpi-value {{ font-size: 32px; font-weight: 800; line-height: 1.1; }}
-        .mes-kpi-unit {{ font-size: 15px; font-weight: 600; color: #64748B; margin-left: 5px; }}
-        .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 8px; }}
 
         /* 안내 문구 슬림 박스 */
         .custom-threshold-info {{
@@ -76,10 +72,13 @@ st.markdown(f"""
             border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }}
 
-        /* [개선부] 하단 라디오 필터와 그래프 사이의 동떨어진 여백 제거 */
-        .tight-filter-container {{
-            margin-top: -35px !important; 
+        /* [★초강력 해결책★] Streamlit 고유 위젯 격벽 해제 커스텀 CSS */
+        div[data-testid="stRadio"] {{
+            margin-top: -55px !important;   /* 마진을 더 과감하게 위로 끌어올림 */
             padding-top: 0 !important;
+        }}
+        div[data-testid="stRadio"] > label {{
+            margin-bottom: 2px !important; /* 위젯 자체의 문구 하단 공백 축소 */
         }}
 
         /* 다크모드 대응 */
@@ -300,16 +299,14 @@ if selected_months:
         # 그래프 영역 컨테이너 선언
         chart_block = st.container()
         
-        # [구분선 최적화 구역] 래퍼 컨테이너를 씌워 CSS 음수 마진 적용
-        st.markdown('<div class="tight-filter-container">', unsafe_allow_html=True)
+        # 라디오 버튼 직접 타격 위젯 표출 구역
         v_m = st.radio("📊 데이터 조회 방식 선택", ["📊 선택 기간 전체 누적", "🎯 특정 년월 단독"], horizontal=True)
         if v_m == "🎯 특정 년월 단독":
             t_m = st.selectbox("📅 분석 대상 년월 선택", options=sorted(selected_months))
         else:
             t_m = "전체"
-        st.markdown('</div>', unsafe_allow_html=True) # 래퍼 클로징
             
-        # 데이터 탭 및 바 차트를 컨테이너 내부에 바인딩하여 렌더링
+        # 데이터 탭 및 바 차트를 상단 플레이스홀더 컨테이너에 맵핑
         with chart_block:
             t26, t25 = st.tabs(["📅 2026년 실적 분석", "📅 2025년 실적 분석"])
             for ty, tc in [("26년 누적", t26), ("25년 누적", t25)]:
