@@ -94,7 +94,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# [2] 데이터 엔진 (Google Sheets 연동)
+# [2] 전역 데이터 소스 및 기준선
 # ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = [
@@ -110,18 +110,29 @@ def load_and_fix(month):
         url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={urllib.parse.quote(month)}"
         df = pd.read_csv(url)
         df.columns = [str(c).strip() for c in df.columns]
-        # 컬럼명 자동 매칭
-        df.rename(columns={'生産部門명': '생산부문명', '生産部門名': '생산부문명', '理論金額': '이론금액', '實際金額': '실제금액', '品목텍스트': '품목'}, inplace=True)
+        
+        # ⚡ 데이터 원본 명칭 규칙 표준 대통합 (KeyError 원천 차단)
+        rename_map = {
+            '生産部門명': '생산부문명', '生産部門名': '생산부문명', 
+            '理論金額': '이론금액', '實際金額': '실제금액', 
+            '品목텍스트': '하위품목 텍스트', '품목 텍스트': '하위품목 텍스트',
+            '資재 유형 내역': '자재 유형 내역', '資재 유형내역': '자재 유형 내역'
+        }
+        df.rename(columns=rename_map, inplace=True)
+        
         # 부서명 매핑
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
         df = df[df['생산부문명'].isin(dept_map.keys())].copy()
         df['생산부문명'] = df['생산부문명'].map(dept_map)
+        
         # 자재 유형 필터링
         if '자재 유형 내역' in df.columns:
             df = df[df['자재 유형 내역'].isin(['원자재', '부자재', '반제품'])]
+            
         # 숫자 변환
         for c in ['이론금액', '실제금액']:
-            df[c] = pd.to_numeric(df[c].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         df['월'] = month
         return df
     except: return pd.DataFrame()
@@ -131,7 +142,6 @@ def load_and_fix(month):
 # ==============================================================================
 with st.sidebar:
     st.markdown("<h2 style='color:#1E40AF;'>🏢 Portal Admin</h2>", unsafe_allow_html=True)
-    # ⚡ [교정 완료] default 값을 ALL_MONTHS 내에 정확히 존재하는 매칭 데이터 포맷으로 수정
     selected_months = st.multiselect("분석 기간", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
     search = st.text_input("🔍 품목 필터링")
 
@@ -150,6 +160,9 @@ if selected_months:
     df_raw['연도'] = df_raw['월'].apply(lambda x: '25년' if '25' in str(x) else '26년')
 
     if not df_raw.empty:
+        if search: 
+            df_raw = df_raw[df_raw['하위품목 텍스트'].str.contains(search, na=False)]
+
         # --- KPI 메트릭 구역 ---
         df_26 = df_raw[df_raw['연도'] == '26년']
         if not df_26.empty:
@@ -163,7 +176,8 @@ if selected_months:
             with c2:
                 st.markdown(f"""<div class="kpi-box" style="background:#1E40AF;"><div class="kpi-label" style="color:rgba(255,255,255,0.7);">누적 투입 금액</div><div class="kpi-value" style="color:white;">{ac_sum/100000000:,.1f}B</div><div class="kpi-delta" style="color:rgba(255,255,255,0.8);">단위: 억 원 (KRW)</div></div>""", unsafe_allow_html=True)
             with c3:
-                risk_n = len(df_26.groupby('품목')[['이론금액','실제금액']].sum().query('실제금액 >= 400000000 and (이론금액/실제금액*100) <= 98.0'))
+                # ⚡ [교정 완료] '품목' -> '하위품목 텍스트' 명칭 완전 일치 패치 적용
+                risk_n = len(df_26.groupby('하위품목 텍스트')[['이론금액','실제금액']].sum().query('실제금액 >= 400000000 and (이론금액/실제금액*100) <= 98.0'))
                 st.markdown(f"""<div class="kpi-box"><div class="kpi-label">고위험군 자재</div><div class="kpi-value" style="color:#EF4444;">{risk_n:02d}</div><div class="kpi-delta" style="color:#EF4444;">⚠️ 집중 관제 대상</div></div>""", unsafe_allow_html=True)
 
         # --- 부서별 상세 실적 카드 ---
@@ -174,7 +188,7 @@ if selected_months:
                 col_l, col_r = st.columns([50, 50])
                 d_df = df_raw if d_name == '전체 총합' else df_raw[df_raw['생산부문명'] == d_name]
                 with col_l:
-                    if not d_df.empty:
+                    if not d_df.empty and '자재 유형 내역' in d_df.columns:
                         pv = d_df.groupby(['연도', '자재 유형 내역'])[['이론금액','실제금액']].sum().reset_index()
                         pv['수율(%)'] = (pv['이론금액']/pv['실제금액']*100).round(2)
                         st.dataframe(pv.pivot(index='자재 유형 내역', columns='연도', values='수율(%)').style.format("{:.2f}%"), use_container_width=True)
@@ -183,7 +197,7 @@ if selected_months:
                         tr = d_df.groupby(['연도', '월'])[['이론금액','실제금액']].sum().reset_index()
                         tr['수율'] = (tr['이론금액']/tr['실제금액']*100).round(2)
                         tr['표시월'] = tr['월'].apply(lambda x: f"{x.split('.')[1]}월")
-                        fig = px.area(tr, x='표시월', y='수율', color='연度' if '연度' in tr.columns else '연도', markers=True, color_discrete_map={'25년':'#94A3B8', '26년':'#1E40AF'})
+                        fig = px.area(tr, x='표시월', y='수율', color='연도', markers=True, color_discrete_map={'25년':'#94A3B8', '26년':'#1E40AF'})
                         fig.update_layout(height=280, margin=dict(l=10,r=10,t=25,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig, use_container_width=True, key=f"fig_{d_name}")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -205,11 +219,12 @@ if selected_months:
             st.markdown('<div class="report-card"><div class="report-title">🔍 수율 리스크 매트릭스</div>', unsafe_allow_html=True)
             r_dept = st.selectbox("부서 필터", ["전체 1팀", "면 1과", "면 5과", "스프실"])
             r_df = df_raw.copy() if r_dept == "전체 1팀" else df_raw[df_raw['생산부문명'] == r_dept]
-            if not r_df.empty:
-                r_item = r_df.groupby(['연도', '품목'])[['이론금액','실제금액']].sum().reset_index()
+            if not r_df.empty and '하위품목 텍스트' in r_df.columns:
+                # ⚡ 명칭 통일 패치 적용
+                r_item = r_df.groupby(['연도', '하위품목 텍스트'])[['이론금액','실제금액']].sum().reset_index()
                 r_item['수율'] = (r_item['이론금액']/r_item['실제금액']*100).round(2)
                 r_item['금액(억)'] = r_item['실제금액']/100000000
-                fig_s = px.scatter(r_item, x='금액(억)', y='수율', color='연도', hover_name='품목', color_discrete_map={'25년':'#94A3B8', '26년':'#1E40AF'})
+                fig_s = px.scatter(r_item, x='금액(억)', y='수율', color='연도', hover_name='하위품목 텍스트', color_discrete_map={'25년':'#94A3B8', '26년':'#1E40AF'})
                 fig_s.add_hline(y=100.0, line_dash="dash", line_color="#CBD5E1")
                 fig_s.update_layout(height=300, margin=dict(l=10,r=10,t=25,b=10))
                 st.plotly_chart(fig_s, use_container_width=True)
@@ -220,7 +235,8 @@ if selected_months:
         t_yr = st.radio("분석 연도 선택", ["26년", "25년"], horizontal=True)
         y_df = df_raw[df_raw['연도'] == t_yr]
         if not y_df.empty:
-            top_sum = y_df.groupby(['생산부문명', '품목'])[['이론금액', '실제금액']].sum().reset_index()
+            # ⚡ 명칭 통일 패치 적용
+            top_sum = y_df.groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
             top_sum['수율'] = (top_sum['이론금액'] / top_sum['실제금액'] * 100).round(2)
             tc1, tc2 = st.columns(2)
             for i, d_n in enumerate(['면 1과', '면 5과']):
@@ -229,7 +245,7 @@ if selected_months:
                     d_top = top_sum[top_sum['생산부문명'] == d_n].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
                     if not d_top.empty:
                         d_top['label'] = d_top.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
-                        fig_t = px.bar(d_top, x='수율', y='품목', orientation='h', text='label', color_discrete_sequence=[MAIN_BLUE if t_yr == "26년" else "#94A3B8"])
+                        fig_t = px.bar(d_top, x='수율', y='하위품목 텍스트', orientation='h', text='label', color_discrete_sequence=[MAIN_BLUE if t_yr == "26년" else "#94A3B8"])
                         fig_t.update_traces(textposition='outside', textfont=dict(size=14))
                         fig_t.update_layout(height=300, margin=dict(l=0,r=10,t=10,b=10), xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'})
                         st.plotly_chart(fig_t, use_container_width=True, key=f"top_{d_n}")
