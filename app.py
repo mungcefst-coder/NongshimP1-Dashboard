@@ -90,12 +90,12 @@ with h_right:
 
 st.markdown("<div style='margin-bottom: 25px;'></div>", unsafe_allow_html=True)
 
-# 2. 데이터 처리 함수
+# 2. 데이터 처리 및 로드 로직
 def preprocess_df(df, month_label):
     if df.empty: return pd.DataFrame()
     df = df.copy(); df['월'] = month_label
     df.columns = [str(c).strip() for c in df.columns]
-    rename_map = {'生産部門명': '생산부문명', '生産部門名': '생산부문명', '資재 유형 내역': '자재 유형 내역', '資재 유형내역': '자재 유형 내역', '品목텍스트': '하위품목 텍스트', '품목 텍스트': '하위품목 텍스트', '理論金額': '이론금액', '實際金額': '실제금액'}
+    rename_map = {'生産部門명': '생산부문명', '生産部門명': '생산부문명', '生産部門名': '생산부문명', '資재 유형 내역': '자재 유형 내역', '資재 유형내역': '자재 유형 내역', '品목텍스트': '하위품목 텍스트', '품목 텍스트': '하위품목 텍스트', '理論金額': '이론금액', '實際金額': '실제금액'}
     df.rename(columns=rename_map, inplace=True)
     if '생산부문명' in df.columns:
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
@@ -123,7 +123,7 @@ if selected_months:
         team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
         if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-        # --- [KPI 섹션] ---
+        # --- [KPI 섹션 연산] ---
         df_26_kpi = team_df[team_df['연도'] == '26년 누적']
         if not df_26_kpi.empty:
             k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
@@ -187,10 +187,14 @@ if selected_months:
                         
                         current_threshold = YIELD_THRESHOLD[d]
                         yield_cols = [c for c in pivot.columns if '수율' in c]
+                        
+                        # [개선부] 스타일링 적용 - 음영을 조금 더 진하게 보정 (0.03 -> 0.12)
                         styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
-                        styled_df = styled_df.set_properties(subset=yield_cols, **{'background-color': 'rgba(74, 144, 226, 0.03)'})
+                        styled_df = styled_df.set_properties(subset=yield_cols, **{'background-color': 'rgba(74, 144, 226, 0.12)'})
+                        
                         for col in yield_cols:
                             styled_df = styled_df.map(lambda val: f'color: {ALERT_RED}; font-weight: bold;' if val < current_threshold else '', subset=[col])
+                        
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
                     st.markdown(f'<div class="custom-threshold-info">💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>', unsafe_allow_html=True)
@@ -207,10 +211,9 @@ if selected_months:
                         for yr_label in sorted(trend['연도'].unique()):
                             y_data = trend[trend['연도'] == yr_label]
                             
-                            # [핵심] 26년(현재)은 우측 상단, 25년(대비)은 좌측 하단 배치하여 물리적 겹침 방지
+                            # 26년(현재)은 우측 상단, 25년(대비)은 좌측 하단 배치하여 물리적 겹침 방지
                             pos = 'top right' if '26년' in yr_label else 'bottom left'
                             
-                            # 26년 실적 강조 디자인
                             font_size = 14 if '26년' in yr_label else 12
                             font_color = '#1E293B' if '26년' in yr_label else '#94A3B8'
                             font_weight = 'bold' if '26년' in yr_label else 'normal'
@@ -224,7 +227,6 @@ if selected_months:
                                 marker=dict(size=8)
                             ))
                             
-                        # Y축 여백을 상하로 20%p씩 추가 확보하여 숫자가 잘림 방지
                         y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
                         fig.update_layout(
                             height=280, margin=dict(l=10,r=20,t=40,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
