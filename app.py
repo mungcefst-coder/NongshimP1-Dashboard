@@ -76,7 +76,13 @@ st.markdown(f"""
             border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }}
 
-        /* 다크모드 전용 예외 스케일 적용 */
+        /* [개선부] 하단 라디오 필터와 그래프 사이의 동떨어진 여백 제거 */
+        .tight-filter-container {{
+            margin-top: -35px !important; 
+            padding-top: 0 !important;
+        }}
+
+        /* 다크모드 대응 */
         @media (prefers-color-scheme: dark) {{
             .stApp {{ background-color: #0E1117; }}
             .mes-kpi-card {{ background-color: #1A1C23; color: #F1F5F9; border: 1px solid #2D2F39; }}
@@ -213,13 +219,12 @@ if selected_months:
                         trend['누적수율'] = (trend.groupby('연도')['이론금액'].cumsum() / trend.groupby('연도')['실제금액'].cumsum() * 100).round(2)
                         trend['월표시'] = trend['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
-                        trend_piv = trend.pivot(index='월표시', columns='연度' if '연度' in trend.columns else '연도', values='누적수율').reset_index()
+                        trend_piv = trend.pivot(index='월표시', columns='연도', values='누적수율').reset_index()
                         
                         fig = go.Figure()
                         for yr_label in sorted(trend['연도'].unique()):
                             y_data = trend[trend['연도'] == yr_label].copy()
                             
-                            # --- [★완벽 개선지점] 실시간 겹침 파괴 알고리즘 (밀어내기) ---
                             text_positions = []
                             for idx, row in y_data.iterrows():
                                 m_lbl = row['월표시']
@@ -230,7 +235,6 @@ if selected_months:
                                     val_25 = match_row['25년 누적'].values[0]
                                     val_26 = match_row['26년 누적'].values[0]
                                     
-                                    # 두 선 중 더 높은 지표는 무조건 위(top), 낮은 지표는 아래(bottom)로 배치하여 충돌 방지
                                     if yr_label == '26년 누적':
                                         text_positions.append('top center' if current_val >= val_25 else 'bottom center')
                                     else:
@@ -242,7 +246,7 @@ if selected_months:
                                 x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
                                 text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), 
                                 textposition=text_positions,
-                                textfont=dict(size=14, weight='bold'), # 글자색을 하드코딩하지 않아 다크/라이트 자동 적응
+                                textfont=dict(size=14, weight='bold'),
                                 line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=4),
                                 marker=dict(size=10)
                             ))
@@ -293,18 +297,19 @@ if selected_months:
         # --- 섹션 3: 리스크 리스트 ---
         st.markdown('<div class="section-header"><h2>🚨 집중 관리 자재 리스크 Top 5</h2></div>', unsafe_allow_html=True)
         
-        # [★개선 지점] 1. 차트가 먼저 선점하여 렌더링되도록 플레이스홀더 컨테이너 선언
+        # 그래프 영역 컨테이너 선언
         chart_block = st.container()
         
-        # [★개선 지점] 2. 필터 버튼들을 물리적으로 하단에 배치
-        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        # [구분선 최적화 구역] 래퍼 컨테이너를 씌워 CSS 음수 마진 적용
+        st.markdown('<div class="tight-filter-container">', unsafe_allow_html=True)
         v_m = st.radio("📊 데이터 조회 방식 선택", ["📊 선택 기간 전체 누적", "🎯 특정 년월 단독"], horizontal=True)
         if v_m == "🎯 특정 년월 단독":
             t_m = st.selectbox("📅 분석 대상 년월 선택", options=sorted(selected_months))
         else:
             t_m = "전체"
+        st.markdown('</div>', unsafe_allow_html=True) # 래퍼 클로징
             
-        # [★개선 지점] 3. 하단 필터에서 선택된 변수를 상단 컨테이너 내부 탭에 주입
+        # 데이터 탭 및 바 차트를 컨테이너 내부에 바인딩하여 렌더링
         with chart_block:
             t26, t25 = st.tabs(["📅 2026년 실적 분석", "📅 2025년 실적 분석"])
             for ty, tc in [("26년 누적", t26), ("25년 누적", t25)]:
