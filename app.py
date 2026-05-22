@@ -245,4 +245,9 @@ if selected_months:
                     if not d_t.empty:
                         d_t['label'] = d_t.apply(lambda r: f"{r['수율']:.2f}% ({(r['실제금액']/100000000):.1f}억)", axis=1)
                         fig_t = px.bar(d_t, x='수율', y='하위품목 텍스트', orientation='h', text='label', color_discrete_sequence=['#1E40AF' if t_y == '26년' else '#94A3B8'])
-                        fig_t.update_layout(height=2
+                        fig_t.update_layout(height=260, margin=dict(l=0,r=10,t=10,b=10), xaxis=dict(range=[0, 135]), yaxis={'categoryorder':'total ascending'}, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig_t, use_container_width=True, key=f"top_list_v37_{d_n}")
+        st.markdown('</div>', unsafe_allow_html=True)
+else:
+    st.write("분석 기간을 선택해주세요.")
+st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Monitoring Portal | © 2026 Production Team 1</p>", unsafe_allow_html=True)
