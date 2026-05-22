@@ -135,11 +135,12 @@ if selected_months:
             risk_cnt = len(risk_item_df[(risk_item_df['실제금액'] >= 400000000) & (risk_item_df['yd'] <= 98.0)])
         else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
+        # [교정 완료 지점] total_26_yield 변수를 연산 명칭인 total_26_yd로 통일
         st.markdown(f"""
             <div class="mes-kpi-wrapper">
                 <div class="mes-kpi-card" style="border-top: 5px solid #10B981;">
                     <div class="mes-kpi-label">종합 수율</div>
-                    <div class="mes-kpi-value-box"><span class="mes-kpi-value">{total_26_yield:.2f}</span><span class="mes-kpi-unit">%</span></div>
+                    <div class="mes-kpi-value-box"><span class="mes-kpi-value">{total_26_yd:.2f}</span><span class="mes-kpi-unit">%</span></div>
                     <div class="mes-kpi-status" style="color: #10B981;">▲ 목표치 대조 관리 중</div>
                 </div>
                 <div class="mes-kpi-card" style="border-top: 5px solid #3B82F6;">
@@ -155,6 +156,8 @@ if selected_months:
             </div>
         """, unsafe_allow_html=True)
         
+        st.markdown("<hr style='margin: 15px 0 20px 0; opacity: 0.2;'>", unsafe_allow_html=True)
+
         # --- [1단: 종합 상황판] ---
         st.subheader("📋 생산1팀 수율 종합 상황판")
         depts_nav = ['면 1과', '면 5과', '스프실', '전체 총합']
@@ -183,7 +186,6 @@ if selected_months:
                         pivot = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
                         reorder_cols = [(v, y) for y in ['25년 누적', '26년 누적'] for v in ['이론금액', '실제금액', '수율']]
                         pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
-                        
                         pivot.columns = [f"{yr[:3]} {v}" for v, yr in pivot.columns]
                         pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
                         
@@ -197,7 +199,6 @@ if selected_months:
                         
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
-                    
                     st.markdown(f'<div class="custom-threshold-info">💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>', unsafe_allow_html=True)
 
                 with c2:
@@ -207,46 +208,35 @@ if selected_months:
                         trend['누적수율'] = (trend.groupby('연도')['이론금액'].cumsum() / trend.groupby('연도')['실제금액'].cumsum() * 100).round(2)
                         trend['월표시'] = trend['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
-                        # --- [고도화 반영 구역: 실시간 데이터 겹침 완전 제어 아키텍처] ---
-                        # 월별로 데이터를 재정렬하여 두 연도의 실적값 높낮이를 정밀 계산
                         trend_piv = trend.pivot(index='월표시', columns='연도', values='누적수율').reset_index()
-                        
-                        # 월의 본래 순서 정렬을 보장하기 위해 월표시 숫자를 기준으로 매핑
                         trend_piv['월숫자'] = trend_piv['월표시'].str.replace('월', '').astype(int)
                         trend_piv = trend_piv.sort_values('월숫자').reset_index(drop=True)
                         
                         fig = go.Figure()
-                        
                         for yr_label in ['25년 누적', '26년 누적']:
                             y_data = trend[trend['연도'] == yr_label].copy()
-                            # 정렬 순서 보정
                             y_data['월숫자'] = y_data['월표시'].str.replace('월', '').astype(int)
                             y_data = y_data.sort_values('월숫자').reset_index(drop=True)
                             
-                            # 각 포인트마다 겹침 유무를 추적하여 동적 텍스트 오프셋 계산
                             text_positions = []
                             text_offsets = []
                             
                             for idx, row in y_data.iterrows():
                                 m_lbl = row['월표시']
                                 current_val = row['누적수율']
-                                
-                                # 매칭되는 달의 상대 연도 데이터 검색
                                 match_row = trend_piv[trend_piv['월표시'] == m_lbl]
                                 if not match_row.empty:
                                     val_25 = match_row['25년 누적'].values[0] if '25년 누적' in trend_piv.columns else current_val
                                     val_26 = match_row['26년 누적'].values[0] if '26년 누적' in trend_piv.columns else current_val
                                     
-                                    # 두 실적의 편차가 0.4%p 미만으로 좁혀져 겹칠 리스크가 발생한 경우
                                     if abs(val_26 - val_25) < 0.4:
                                         if yr_label == '26년 누적':
                                             text_positions.append('top center')
-                                            text_offsets.append(7)  # 26년 수치를 선 위쪽으로 더 밀어냄
+                                            text_offsets.append(7)
                                         else:
                                             text_positions.append('bottom center')
-                                            text_offsets.append(7)  # 25년 수치를 선 아래쪽으로 더 밀어냄
+                                            text_offsets.append(7)
                                     else:
-                                        # 기본 오프셋 상태 배치
                                         text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
                                         text_offsets.append(0)
                                 else:
