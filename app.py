@@ -70,7 +70,7 @@ st.markdown("""
 
         /* 오리지널 폰트 세팅 유지 */
         .stTabs [data-baseweb="tab"] p { font-size: 14px !important; }
-        .target-period { font-size: 14px !important; }
+        .target-period { font-size: 13.5px !important; color: #64748B; font-weight: 600; }
         .dataframe, .paint-table td, .paint-table th { font-size: 14px !important; }
         .bottom-filter-label { font-size: 12.5px !important; color: #7F8C8D; margin-bottom: -12px !important; padding-left: 2px; font-weight: bold; }
         div[data-testid="stRadio"] label span { font-size: 12.5px !important; }
@@ -82,10 +82,13 @@ st.markdown("""
         /* 여백 최적화 */
         .stDataFrame { margin-bottom: 0px; }
         .threshold-info { font-size: 14px; color: #475569; margin-top: 12px; font-weight: 700; }
+        
+        /* 시스템 경고 박스 완전 은닉 */
+        .stAlert { display: none !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# 사이드바 컨트롤러 (가이드 박스 st.info 완전 제거)
+# 사이드바 컨트롤러
 with st.sidebar:
     st.markdown("<h2 style='font-size: 22px; font-weight: 700; color: white; margin-top: 10px; margin-bottom: 20px;'>📂 데이터 관제</h2>", unsafe_allow_html=True)
     
@@ -98,7 +101,11 @@ with st.sidebar:
     st.markdown("---")
     search_keyword = st.text_input("🔍 세부 품목 검색", placeholder="비워두면 전체 조회")
 
-# --- [메인 헤더 구역: 브랜드 커스텀 타이틀] ---
+# ⚡ [상단 배치 전처리] 대상 기간 텍스트를 미리 포맷팅하여 헤더 영역에 바인딩
+sorted_display_months = sorted(selected_months) if selected_months else []
+period_text = f"📆 관제 기간: {', '.join(sorted_display_months)}" if sorted_display_months else ""
+
+# --- [메인 헤더 구역: 브랜드 커스텀 타이틀 + 우측 대상 기간 통합] ---
 st.markdown(f"""
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 2px solid #E2E8F0; padding-bottom: 15px;">
         <div>
@@ -108,10 +115,13 @@ st.markdown(f"""
             </h1>
         </div>
         <div style="text-align: right; padding-bottom: 5px;">
+            <div class="target-period" style="margin-bottom: 10px; font-family: 'Inter';">
+                <b>{period_text}</b>
+            </div>
             <div style="background: #E0E7FF; color: #1E40AF; padding: 6px 14px; border-radius: 4px; font-weight: 700; font-size: 12px; border: 1px solid #C7D2FE; display: inline-block;">
                 <span style="color: #22C55E; animation: blink 1.5s infinite;">●</span> SYSTEM LIVE
             </div>
-            <p style="color: #94A3B8; font-size: 11px; margin-top: 8px; font-weight: 600;">Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+            <p style="color: #94A3B8; font-size: 11px; margin-top: 8px; font-weight: 600; margin-bottom: 0;">Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
         </div>
     </div>
     <style>@keyframes blink {{ 0% {{ opacity: 0.3; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.3; }} }}</style>
@@ -177,9 +187,6 @@ if selected_months:
         if search_keyword:
             team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-        sorted_display_months = sorted(selected_months)
-        st.markdown(f"<div class='portal-card' style='padding: 15px 20px; margin-bottom: 15px;'><span class='target-period'><b>📆 분석 대상 기간:</b> `{', '.join(sorted_display_months)}`</span></div>", unsafe_allow_html=True)
-
         # ----------------------------------------------------------------------
         # 고해상도 전문가용 KPI 타일
         # ----------------------------------------------------------------------
@@ -212,8 +219,10 @@ if selected_months:
             st.markdown(f'<div class="kpi-tile"><p class="kpi-label">🚨 4억 이상 고위험 자재 수</p><div class="kpi-value" style="color:{status_color};">{risk_count}<span class="kpi-unit">개 품목</span></div><p class="kpi-trend" style="color:{status_color};">{status_msg}</p></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
+        # ⚡ [교정 포인트] 기존에 여기에 독립 박스로 존재하던 대상 기간 안내 레이아웃(div)을 완전히 들어냈습니다!
+
         # ----------------------------------------------------------------------
-        # 1단: 생산1팀 수율 종합 상황판 (section-header-text 자막 전면 제거)
+        # 1단: 생산1팀 수율 종합 상황판
         # ----------------------------------------------------------------------
         depts_list = ['면 1과', '면 5과', '스프실', '전체 총합']
         
@@ -347,7 +356,7 @@ if selected_months:
         st.markdown('</div>', unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 2단 - 분석 지표 현황 (section-header-text 자막 전면 제거)
+        # 2단 - 분석 지표 현황
         # ----------------------------------------------------------------------
         r2_col1, r2_col2 = st.columns([50, 50])
         
@@ -407,7 +416,7 @@ if selected_months:
             st.markdown('</div>', unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5 (section-header-text 자막 전면 제거)
+        # 3단 - 핵심 관리 자재 Top 5
         # ----------------------------------------------------------------------
         if "top5_view_mode" not in st.session_state:
             st.session_state["top5_view_mode"] = "📊 선택한 기간 전체 누적 데이터"
@@ -443,7 +452,7 @@ if selected_months:
                             
                             if not m_data.empty:
                                 m_data['label'] = m_data.apply(lambda r: f"{r['수율']:.2f}% | {(r['실제금액']/100000000):.2f}억", axis=1)
-                                fig_m = px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
+                                fig_m = px.bar(m_data, x='수율', y='하위품목 텍zen', orientation='h', text='label') if '하위품목 텍zen' in m_data.columns else px.bar(m_data, x='수율', y='하위품목 텍스트', orientation='h', text='label')
                                 fig_m.update_traces(marker_color=MAIN_BLUE if target_yr == "26년 누적" else COMP_GRAY, textposition='outside', textfont=dict(size=12))
                                 fig_m.update_layout(height=280, margin=dict(l=0, r=10, t=10, b=10), xaxis=dict(range=[0, 130]), yaxis={'categoryorder':'total ascending'})
                                 st.plotly_chart(fig_m, use_container_width=True, key=f"top5_bar_{target_yr}_{d}")
