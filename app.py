@@ -20,7 +20,7 @@ YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '�
 MAIN_BLUE = "#3B82F6"       
 COMP_GRAY = "#94A3B8"       
 ALERT_RED = "#EF4444"       
-SUCCESS_GREEN = "#10B981"   # 목표 달성 시 사용할 청록/녹색 테마 
+SUCCESS_GREEN = "#10B981"   
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
@@ -164,10 +164,17 @@ if selected_months:
             k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
             total_26_yd = (k_th / k_ac * 100) if k_ac > 0 else 0
             cost_billion = k_ac / 100000000 
-            risk_cnt = len(df_26_kpi.groupby('하위품목 텍스트').filter(lambda x: x['실제금액'].sum() >= 400000000 and (x['이론금액'].sum()/x['실제금액'].sum()*100) <= 98.0))
+            
+            # --- [★엔지니어링 수정 구역: 중복 품목 1건 결합 집계 로직] ---
+            # 각 자재(하위품목 텍스트)별로 전체 누적 금액과 수율을 구함
+            agg_items = df_26_kpi.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
+            agg_items['수율'] = (agg_items['이론금액'] / agg_items['실제금액'] * 100)
+            
+            # 유니크하게 정제된 자재 데이터 세트에서 '4억 이상' & '수율 98% 이하'를 만족하는 순수 자재 수 카운트
+            risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
         else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-        # --- [★개선부: 목표 달성 여부에 따른 실시간 텍스트/음영 동적 매핑 선언] ---
+        # 목표 달성 여부에 따른 상태 분기 처리
         if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
             kpi_status_text = "▲ 목표 달성"
             kpi_status_color = SUCCESS_GREEN
