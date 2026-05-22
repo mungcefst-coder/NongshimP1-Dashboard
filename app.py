@@ -6,7 +6,7 @@ import urllib.parse
 from datetime import datetime
 
 # ==============================================================================
-# [1] 시스템 디자인 엔진 (잘림 방지 및 여백 최적화)
+# [1] 시스템 디자인 엔진 (최적 밸런스 및 정밀 정렬)
 # ==============================================================================
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
@@ -25,18 +25,7 @@ st.markdown("""
             margin-bottom: 20px;
         }
         
-        /* 20px로 확대된 헤더 텍스트 */
-        .section-header-text {
-            font-size: 20px;
-            font-weight: 700;
-            color: #0F172A;
-            margin-bottom: 15px;
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
+        /* 헤더 20px 고정 */
         .sub-header-text {
             font-size: 20px;
             font-weight: 700;
@@ -45,29 +34,36 @@ st.markdown("""
             display: block;
         }
 
+        .section-header-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0F172A;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .kpi-tile { text-align: left; padding: 10px 5px; }
         .kpi-label { font-size: 14px; font-weight: 600; color: #64748B; margin-bottom: 8px; }
         .kpi-value { font-size: 38px; font-weight: 800; color: #0F172A; line-height: 1; }
         .kpi-unit { font-size: 18px; color: #94A3B8; margin-left: 3px; }
         .kpi-trend { font-size: 13px; margin-top: 10px; font-weight: 700; }
 
-        /* 테이블 공백 및 잘림 방지 설정 */
-        .stDataFrame div[data-testid="stTable"] {
-            background-color: white !important;
-        }
+        /* 데이터프레임 여백 최적화 */
+        .stDataFrame { margin-bottom: 0px; }
         
         .threshold-info {
             font-size: 14px;
             color: #475569;
             margin-top: 12px;
             font-weight: 600;
-            padding-left: 5px;
         }
     </style>
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# [2] 데이터 로직
+# [2] 데이터 처리 엔진
 # ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = ["25.01", "25.02", "25.03", "25.04", "25.05", "25.06", "25.12", "26.01", "26.02", "26.03", "26.04"]
@@ -102,7 +98,7 @@ def fetch_system_data(month):
     except: return pd.DataFrame()
 
 # ==============================================================================
-# [3] 메인 화면 렌더링
+# [3] 메인 포털 렌더링
 # ==============================================================================
 
 with st.sidebar:
@@ -112,7 +108,7 @@ with st.sidebar:
     search = st.text_input("🔍 품목 검색")
     st.info(f"Sync: {datetime.now().strftime('%H:%M:%S')}")
 
-# 헤더
+# 메인 헤더
 st.markdown(f"""
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 2px solid #E2E8F0; padding-bottom: 15px;">
         <div>
@@ -139,7 +135,7 @@ if selected_months:
         full_df['연도'] = full_df['월'].apply(lambda x: '25년' if '25' in str(x) else '26년')
         if search: full_df = full_df[full_df['하위품목 텍스트'].str.contains(search, na=False)]
 
-        # KPI 섹션 (기존 유지)
+        # --- [CARD 1] KPI 상단 섹션 ---
         df_26 = full_df[full_df['연도'] == '26년']
         if not df_26.empty:
             th_sum, ac_sum = df_26['이론금액'].sum(), df_26['실제금액'].sum()
@@ -156,14 +152,14 @@ if selected_months:
             k4.markdown(f'<div class="kpi-tile"><p class="kpi-label">데이터 신뢰도</p><div class="kpi-value" style="color:#1E40AF;">99.9<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#1E40AF;">ERP 동기화 완료</p></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [수율 종합 상황판] 표 가로폭 최적화 버전 ---
+        # --- [CARD 2] 수율 종합 상황판 (최적 밸런스 조정 버전) ---
         st.markdown('<div class="section-header-text">📋 생산1팀 수율 종합 상황판</div>', unsafe_allow_html=True)
         tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
         
         for i, d_name in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
             with tabs[i]:
-                # 7개 컬럼의 시인성을 위해 비율을 [72, 28]로 대폭 수정 (잘림 방지)
-                t_col, g_col = st.columns([72, 28])
+                # 가로 비율을 [63, 37]로 재조정하여 시각적 균형 확보
+                t_col, g_col = st.columns([63, 37])
                 d_df = full_df if d_name == '전체 총합' else full_df[full_df['생산부문명'] == d_name]
                 
                 with t_col:
@@ -183,28 +179,27 @@ if selected_months:
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
                         thresh = YIELD_THRESHOLD[d_name]
-                        def style_final(styler):
+                        def style_final_balanced(styler):
                             styler.set_properties(**{'background-color': '#FFFFFF', 'color': '#0F172A'})
-                            format_dict = {c: '{:,.0f}' for c in pivot_df.columns if '수율' not in c}
-                            format_dict.update({c: '{:.2f}%' for c in pivot_df.columns if '수율' in c})
-                            styler.format(format_dict)
+                            styler.format({c: '{:,.0f}' for c in pivot_df.columns if '수율' not in c})
+                            styler.format({c: '{:.2f}%' for c in pivot_df.columns if '수율' in c})
                             # 수율 컬럼 파스텔 블루 강조
                             styler.set_properties(subset=['25년 수율', '26년 수율'], **{'background-color': '#E0F2FE'})
-                            # 수율 미달 빨간색 굵게
-                            styler.map(lambda x: 'color: #E74C3C; font-weight: bold;' if isinstance(x, float) and x < thresh else '', subset=['26년 수율'])
+                            # 미달 시 강조
+                            styler.map(lambda x: 'color: #E74C3C; font-weight: 800;' if isinstance(x, float) and x < thresh else '', subset=['26년 수율'])
                             return styler
 
-                        # [핵심] 높이 고정을 해제하고 컬럼 너비를 수동 최적화하여 잘림 방지
+                        # 컬럼명을 줄여서 잘림 방지 ("이론금액" -> "이론")
                         st.dataframe(
-                            pivot_df.style.pipe(style_final), 
+                            pivot_df.style.pipe(style_final_balanced), 
                             use_container_width=True,
                             column_config={
-                                "25년 이론금액": st.column_config.NumberColumn(width="small"),
-                                "25년 실제금액": st.column_config.NumberColumn(width="small"),
-                                "25년 수율": st.column_config.TextColumn(width="small"),
-                                "26년 이론금액": st.column_config.NumberColumn(width="small"),
-                                "26년 실제금액": st.column_config.NumberColumn(width="small"),
-                                "26년 수율": st.column_config.TextColumn(width="small"),
+                                "25년 이론금액": st.column_config.NumberColumn("25년 이론", width="small"),
+                                "25년 실제금액": st.column_config.NumberColumn("25년 실제", width="small"),
+                                "25년 수율": st.column_config.TextColumn("25년 수율", width="small"),
+                                "26년 이론금액": st.column_config.NumberColumn("26년 이론", width="small"),
+                                "26년 실제금액": st.column_config.NumberColumn("26년 실제", width="small"),
+                                "26년 수율": st.column_config.TextColumn("26년 수율", width="medium"), # 마지막 열 여유 확보
                             }
                         )
                         st.markdown(f'<p class="threshold-info">📌 {d_name} 관리 기준 수율 : {thresh}% 이상</p>', unsafe_allow_html=True)
@@ -225,23 +220,23 @@ if selected_months:
                             fig.add_trace(go.Scatter(
                                 x=y_data['표시월'], y=y_data['누적수율'],
                                 name=f"{yr} 누적", mode='lines+markers+text',
-                                line=dict(color=color, width=3), marker=dict(size=8),
+                                line=dict(color=color, width=3), marker=dict(size=7),
                                 text=y_data['누적수율'].apply(lambda x: f"{x}%"),
                                 textposition="top center",
-                                textfont=dict(size=11, color=color, weight='bold')
+                                textfont=dict(size=10, color=color, weight='bold')
                             ))
                         
-                        # 표 높이에 맞춰 그래프 높이를 220 정도로 최적화
+                        # 표 높이에 맞춰 250px로 정밀 조정
                         fig.update_layout(
-                            height=225, margin=dict(l=10, r=10, t=10, b=10),
+                            height=250, margin=dict(l=10, r=10, t=10, b=0),
                             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                            legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="right", x=1),
-                            yaxis=dict(range=[tr['누적수율'].min()-0.5, tr['누적수율'].max()+1.0], gridcolor='#F1F5F9'),
-                            xaxis=dict(gridcolor='#F1F5F9')
+                            legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="right", x=1),
+                            yaxis=dict(range=[tr['누적수율'].min()-0.5, tr['누적수율'].max()+1.0], gridcolor='#F1F5F9', title=None),
+                            xaxis=dict(gridcolor='#F1F5F9', title=None)
                         )
                         st.plotly_chart(fig, use_container_width=True, key=f"trend_{d_name}")
 
-        # 하단 그리드 (기존 유지)
+        # --- [CARD 3] 하단 분석 그리드 ---
         c_grid_l, c_grid_r = st.columns(2)
         with c_grid_l:
             st.markdown('<div class="section-header-text">📊 자재 유형별 수율 현황</div>', unsafe_allow_html=True)
