@@ -15,7 +15,6 @@ ALL_MONTHS = [
     "26.01", "26.02", "26.03", "26.04"
 ]
 
-# [중요] 과별 관리 기준 수율 - 이 수치 미달 시 붉은색 강조 적용
 YIELD_THRESHOLD = {
     '면 1과': 98.92, 
     '면 5과': 97.93, 
@@ -25,7 +24,7 @@ YIELD_THRESHOLD = {
 
 MAIN_BLUE = "#4A90E2"       
 COMP_GRAY = "#B0BEC5"       
-ALERT_RED = "#E74C3C"       # 경고 색상
+ALERT_RED = "#E74C3C"       
 
 # 1. 페이지 세팅 및 전역 UI 스타일링 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
@@ -49,6 +48,19 @@ st.markdown(f"""
 
         .stTabs [data-baseweb="tab"] p {{ font-size: 14px !important; font-weight: bold !important; }}
         .dataframe {{ font-size: 14px !important; }}
+        
+        /* [개선 1] 파란색 박스 최적화 - 슬림하고 세련된 라인형으로 변경 */
+        .custom-threshold-info {{
+            padding: 8px 15px;
+            background-color: white;
+            border-left: 4px solid #3B82F6;
+            color: #475569;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 5px;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -154,9 +166,9 @@ if selected_months:
                 target = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                 
                 with c1:
-                    st.markdown(f"**📊 {d} 상세 실적 (소수점 2자리 & 미달 강조)**")
+                    # [개선 3] 타이틀 문구 간소화
+                    st.markdown(f"**📊 {d} 상세 실적**")
                     if not target.empty:
-                        # 데이터 집계
                         summ = target.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
                         extra_rows = []
                         for yr in summ['연도'].unique():
@@ -169,32 +181,25 @@ if selected_months:
                         summ = pd.concat([summ, pd.DataFrame(extra_rows)], ignore_index=True)
                         summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
                         
-                        # 피벗 및 정렬
                         pivot = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
                         reorder_cols = [(v, y) for y in ['25년 누적', '26년 누적'] for v in ['이론금액', '실제금액', '수율']]
                         pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
-                        
                         pivot.columns = [f"{yr[:3]} {v}" for v, yr in pivot.columns]
                         pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
                         
-                        # 하이라이트 로직
-                        def highlight_low_yield(val, threshold):
-                            return f'color: {ALERT_RED}; font-weight: bold;' if val < threshold else ''
-
                         current_threshold = YIELD_THRESHOLD[d]
                         yield_cols = [c for c in pivot.columns if '수율' in c]
-                        
                         styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
-                        styled_df = styled_df.set_properties(subset=yield_cols, **{'background-color': 'rgba(74, 144, 226, 0.05)'})
+                        styled_df = styled_df.set_properties(subset=yield_cols, **{'background-color': 'rgba(74, 144, 226, 0.03)'})
                         
                         for col in yield_cols:
-                            styled_df = styled_df.map(highlight_low_yield, threshold=current_threshold, subset=[col])
+                            styled_df = styled_df.map(lambda val: f'color: {ALERT_RED}; font-weight: bold;' if val < current_threshold else '', subset=[col])
                         
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
                     
-                    # [수정 지점] 요청하신 대로 관리 문구 간소화 적용
-                    st.info(f"💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상")
+                    # [개선 1] 파란색 안내 박스 -> 슬림한 커스텀 디자인으로 변경
+                    st.markdown(f'<div class="custom-threshold-info">💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>', unsafe_allow_html=True)
 
                 with c2:
                     st.markdown(f"**📈 {d} 수율 변화 추이**")
@@ -205,10 +210,15 @@ if selected_months:
                         fig = go.Figure()
                         for yr_label in sorted(trend['연도'].unique()):
                             y_data = trend[trend['연도'] == yr_label]
+                            # [개선 2] 꺾은선 그래프 숫자 글자 크기 확대 (14px) 및 여백 조정
                             fig.add_trace(go.Scatter(x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
                                                     text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), textposition='top center',
-                                                    line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=3)))
-                        fig.update_layout(height=280, margin=dict(l=10,r=10,t=25,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                                                    textfont=dict(size=14, color='#1E293B', weight='bold'),
+                                                    line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=3.5)))
+                        # 수치가 짤리지 않도록 y축 마진 확보
+                        y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
+                        fig.update_layout(height=280, margin=dict(l=10,r=10,t=30,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                                         yaxis=dict(range=[y_min-3, y_max+3], gridcolor='#F1F5F9'), xaxis=dict(gridcolor='#F1F5F9'),
                                          legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
                         st.plotly_chart(fig, use_container_width=True, key=f"trend_{d}")
 
@@ -223,8 +233,8 @@ if selected_months:
                 ds = f_df.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                 ds['수율'] = (ds['이론금액'] / ds['실제금액'] * 100).round(2)
                 fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
-                fig1.update_traces(texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold'))
-                fig1.update_layout(height=330, yaxis=dict(range=[ds['수율'].min()-3, 105]), xaxis_title=None)
+                fig1.update_traces(texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold', size=13))
+                fig1.update_layout(height=330, yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='#F1F5F9'), xaxis_title=None)
                 st.plotly_chart(fig1, use_container_width=True)
 
         with r2c2:
@@ -232,19 +242,40 @@ if selected_months:
             s_dept = st.selectbox("조회 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="s_dept")
             p_df = team_df.copy() if s_dept == "전체 1팀" else team_df[team_df['생산부문명'] == s_dept].copy()
             if not p_df.empty:
-                isc = p_df.groupby(['연도', '생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+                isc = p_df.groupby(['연도', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
                 isc['수율'] = (isc['이론금액'] / isc['실제금액'] * 100).round(2)
                 isc['억'] = isc['실제금액'] / 100000000
-                fig3 = px.scatter(isc, x='억', y='수율', color='연도', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
-                fig3.add_hline(y=100.0, line_dash="dash", line_color="gray", opacity=0.5)
-                fig3.update_layout(height=330, xaxis_title="금액(억원)", yaxis_title="수율 (%)")
+                
+                # [개선 4] 리스크 품목 자동 분류 및 점 크기 확대
+                def assign_matrix_class(row):
+                    if row['연도'] == '26년 누적' and row['억'] >= 4.0 and row['수율'] <= 98.0:
+                        return '🚨 집중 관리 대상 (4억↑/98%↓)'
+                    return row['연도']
+                
+                isc['분류'] = isc.apply(assign_matrix_class, axis=1)
+                
+                # 범례에서 연도 ID 삭제하고 25년/26년/집중관리만 표시하도록 맵핑
+                fig3 = px.scatter(isc, x='억', y='수율', color='분류', 
+                                  hover_name='하위품목 텍스트',
+                                  color_discrete_map={
+                                      '25년 누적': COMP_GRAY, 
+                                      '26년 누적': MAIN_BLUE, 
+                                      '🚨 집중 관리 대상 (4억↑/98%↓)': ALERT_RED
+                                  },
+                                  category_orders={'분류': ['25년 누적', '26년 누적', '🚨 집중 관리 대상 (4억↑/98%↓)']})
+                
+                # 점 크기 확대 및 스타일링
+                fig3.update_traces(marker=dict(size=14, line=dict(width=1, color='white'), opacity=0.8))
+                fig3.add_hline(y=100.0, line_dash="dash", line_color="#94A3B8", opacity=0.6)
+                fig3.update_layout(height=330, xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)",
+                                 legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0))
                 st.plotly_chart(fig3, use_container_width=True)
 
         # --- [하단 핵심 관리 TOP 5] ---
         st.markdown("---")
         st.subheader("🚨 핵심 관리 자재 리스크 Top 5")
         v_m = st.radio("필터", ["📊 선택 기간 전체 누적", "🎯 특정 년월 단독"], horizontal=True, label_visibility="collapsed")
-        t_m = st.selectbox("월", options=sorted(selected_months), label_visibility="collapsed") if v_m == "🎯 특정 년월 단독" else "전체"
+        t_m = st.selectbox("월 선택", options=sorted(selected_months), label_visibility="collapsed") if v_m == "🎯 특정 년월 단독" else "전체"
         
         t26, t25 = st.tabs(["📅 2026년 실적 분석", "📅 2025년 실적 분석"])
         for ty, tc in [("26년 누적", t26), ("25년 누적", t25)]:
@@ -259,8 +290,9 @@ if selected_months:
                             st.markdown(f"**📍 {d_name} 중점 관리 리스트**")
                             m_d = isum[isum['생산부문명'] == d_name].sort_values('실제금액', ascending=False).head(15).sort_values('수율').head(5)
                             fig_m = px.bar(m_d, x='수율', y='하위품목 텍스트', orientation='h', text='수율')
-                            fig_m.update_traces(marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold'))
-                            fig_m.update_layout(height=340, xaxis=dict(range=[0, 140]), yaxis={'categoryorder':'total ascending'})
+                            fig_m.update_traces(marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, 
+                                              texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold'))
+                            fig_m.update_layout(height=340, xaxis=dict(range=[0, 140], gridcolor='#F1F5F9'), yaxis={'categoryorder':'total ascending'})
                             st.plotly_chart(fig_m, use_container_width=True, key=f"t5_{ty}_{d_name}")
 else:
     st.warning("⚠️ 사이드바에서 분석할 년월을 선택해 주세요.")
