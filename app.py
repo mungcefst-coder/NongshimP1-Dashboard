@@ -17,7 +17,7 @@ st.markdown("""
         .stApp { background-color: #F1F5F9 !important; }
         html, body, [class*="css"] { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
         
-        /* [흰색 카드 제거] */
+        /* [흰색 카드 제거 및 투명 레이아웃] */
         .portal-card {
             background-color: transparent !important;
             padding: 5px 0px !important;
@@ -26,7 +26,7 @@ st.markdown("""
             margin-bottom: 5px !important;
         }
         
-        /* [메인 타이틀] */
+        /* [메인 타이틀] 크기 21px 고정 */
         .section-header-text {
             font-size: 21px !important;
             font-weight: 800 !important;
@@ -39,7 +39,7 @@ st.markdown("""
             gap: 10px;
         }
 
-        /* [KPI 위젯 레이아웃] */
+        /* [KPI 위젯] */
         .kpi-tile { text-align: left; }
         .kpi-label { font-size: 14px; font-weight: 600; color: #64748B; margin-bottom: 8px; }
         .kpi-value { font-size: 42px; font-weight: 800; color: #0F172A; line-height: 1; letter-spacing: -1px; }
@@ -148,19 +148,19 @@ if selected_months:
             with k1: 
                 st.markdown(f'<div class="kpi-tile"><p class="kpi-label">종합 수율</p><div class="kpi-value">{y_v:.2f}<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:{yield_color};">{yield_status}</p></div>', unsafe_allow_html=True)
             with k2: 
-                # ⚡ 변수명 오류 수정 패치 완료 (ac_sum -> ac_s)
                 st.markdown(f'<div class="kpi-tile"><p class="kpi-label">실제 투입 금액</p><div class="kpi-value">{ac_s/100000000:,.1f}<span class="kpi-unit">억</span></div><p class="kpi-trend" style="color:#64748B;">KRW 누적 실적</p></div>', unsafe_allow_html=True)
             with k3: 
                 st.markdown(f'<div class="kpi-tile"><p class="kpi-label">고위험 자재</p><div class="kpi-value" style="color:#E74C3C;">{r_count:02d}<span class="kpi-unit">건</span></div><p class="kpi-trend" style="color:#E74C3C;">⚠️ 정밀 점검 대상</p></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [1. 부문별 상세 수율 및 변화 트렌드] ---
+        # --- [📋 부문별 상세 수율 및 변화 트렌드] ---
         st.markdown('<div class="section-header-text">📋 부문별 상세 수율 및 변화 트렌드</div>', unsafe_allow_html=True)
         st.markdown('<div class="portal-card">', unsafe_allow_html=True)
         tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
         for i, d_n in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
             with tabs[i]:
-                c_l, c_r = st.columns([35, 65])
+                # 🚨 [수정] 표와 그래프 비율을 48:52로 조정하여 밸런스 최적화
+                c_l, c_r = st.columns([48, 52])
                 t_df = full_df if d_n == '전체 총합' else full_df[full_df['생산부문명'] == d_n]
                 
                 with c_l:
@@ -181,42 +181,43 @@ if selected_months:
                                       color_discrete_map={'25년': '#94A3B8', '26년': '#1E40AF'})
                         
                         fig.update_traces(line=dict(width=4), marker=dict(size=10), textposition='top center')
+                        # 🚨 [수정] 그래프 높이를 240으로 낮추어 표와 정렬 맞춤
                         fig.update_layout(
-                            height=260, margin=dict(l=10,r=10,t=30,b=10),
+                            height=240, margin=dict(l=10,r=10,t=30,b=10),
                             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                            xaxis_title=None, yaxis_title="수율 (%)",
-                            showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                            xaxis_title=None, yaxis_title=None,
+                            showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="right", x=1)
                         )
-                        st.plotly_chart(fig, use_container_width=True, key=f"line_v33_{d_n}")
+                        st.plotly_chart(fig, use_container_width=True, key=f"line_v34_{d_n}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [2. 자재 유형 비교 & 3. 리스크 매트릭스] ---
+        # --- [📊 자재 유형별 실적 비교 & 🔍 수율 리스크 매트릭스] ---
         st.markdown('<div class="portal-card">', unsafe_allow_html=True)
         cl, cr = st.columns(2)
         with cl:
             st.markdown('<p class="section-header-text">📊 자재 유형별 실적 비교</p>', unsafe_allow_html=True)
-            m_o = st.selectbox("자재 유형 선택", ["원자재", "부자재", "반제품"], key="mat_filt_v33")
+            m_o = st.selectbox("자재 유형 선택", ["원자재", "부자재", "반제품"], key="mat_filt_v34")
             m_d = full_df[full_df['자재 유형 내역'] == m_o].groupby(['연도', '생산부문명'])[['이론금액','실제금액']].sum().reset_index()
             m_d['수율'] = (m_d['이론금액']/m_d['실제금액']*100).round(2)
-            fig_b = px.bar(m_d, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년':'#94A3B8', '26년':'#1E40AF'})
+            fig_b = px.bar(m_d, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년':'#CBD5E1', '26년':'#1E40AF'})
             fig_b.update_layout(height=280, margin=dict(l=0,r=0,t=10,b=0), yaxis=dict(range=[85, 105]), showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_b, use_container_width=True)
             
         with cr:
             st.markdown('<p class="section-header-text">🔍 수율 리스크 매트릭스</p>', unsafe_allow_html=True)
-            r_p = st.selectbox("관제 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="risk_filt_v33")
+            r_p = st.selectbox("관제 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="risk_filt_v34")
             r_d = full_df.copy() if r_p == "전체 1팀" else full_df[full_df['생산부문명'] == r_p]
             if not r_d.empty:
                 r_i = r_d.groupby(['연도', '하위품목 텍스트'])[['이론금액','실제금액']].sum().reset_index()
                 r_i['수율'] = (r_i['이론금액']/r_i['실제금액']*100).round(2)
                 r_i['금액(억)'] = r_i['실제금액']/100000000
-                fig_s = px.scatter(r_i, x='금액(억)', y='수율', color='연도', hover_name='하위품목 텍스트', color_discrete_map={'25년':'#94A3B8', '26년':'#1E40AF'})
+                fig_s = px.scatter(r_i, x='금액(억)', y='수율', color='연도', hover_name='하위품목 텍스트', color_discrete_map={'25년':'#CBD5E1', '26년':'#1E40AF'})
                 fig_s.add_hline(y=100.0, line_dash="dash", line_color="#CBD5E1")
                 fig_s.update_layout(height=280, margin=dict(l=0,r=0,t=10,b=0), showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig_s, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [4. 중점 관리 리스트] ---
+        # --- [🚨 중점 관리 품목] ---
         st.markdown('<div class="section-header-text">🚨 중점 관리 품목 (수율 하위 Top 5)</div>', unsafe_allow_html=True)
         st.markdown('<div class="portal-card">', unsafe_allow_html=True)
         t_y = st.radio("실적 기준 연도", ["26년", "25년"], horizontal=True)
@@ -231,12 +232,12 @@ if selected_months:
                     d_t = t_s[t_s['생산부문명'] == d_n].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
                     if not d_t.empty:
                         d_t['label'] = d_t.apply(lambda r: f"{r['수율']:.2f}% ({(r['실제금액']/100000000):.1f}억)", axis=1)
-                        fig_t = px.bar(d_t, x='수율', y='하위품목 텍스트', orientation='h', text='label', color_discrete_sequence=['#1E40AF' if t_y == '26년' else '#94A3B8'])
+                        fig_t = px.bar(d_t, x='수율', y='하위품목 텍스트', orientation='h', text='label', color_discrete_sequence=['#1E40AF' if t_y == '26년' else '#CBD5E1'])
                         fig_t.update_layout(height=260, margin=dict(l=0,r=10,t=10,b=10), xaxis=dict(range=[0, 135]), yaxis={'categoryorder':'total ascending'}, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                        st.plotly_chart(fig_t, use_container_width=True, key=f"top_list_v33_{d_n}")
+                        st.plotly_chart(fig_t, use_container_width=True, key=f"top_list_v34_{d_n}")
         st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     st.write("분석 기간을 선택해주세요.")
 
-st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Monitoring Portal | © 2026 Nongshim Production Team 1</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Monitoring Portal | © 2026 Production Team 1</p>", unsafe_allow_html=True)
