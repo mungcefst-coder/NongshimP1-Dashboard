@@ -6,7 +6,7 @@ import urllib.parse
 from datetime import datetime
 
 # ==============================================================================
-# 1. 전역 데이터 소스 및 기준선 선언부
+# 전역 데이터 소스 및 기준선 선언부
 # ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = [
@@ -15,7 +15,7 @@ ALL_MONTHS = [
     "26.01", "26.02", "26.03", "26.04"
 ]
 
-# [중요] 과별 관리 기준 수율 - 이 수치 미달 시 붉은색 강조 적용
+# 과별 관리 기준 수율 - 이 수치 미달 시 붉은색 강조 적용
 YIELD_THRESHOLD = {
     '면 1과': 98.92, 
     '면 5과': 97.93, 
@@ -173,12 +173,13 @@ if selected_months:
                         pivot = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
                         reorder_cols = [(v, y) for y in ['25년 누적', '26년 누적'] for v in ['이론금액', '실제금액', '수율']]
                         pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
-                        pivot.columns = [f"{y[:3]} {v}" for v, yr in pivot.columns]
+                        
+                        # [버그 수정 완료 지점] y -> yr 변수명 매칭 완료
+                        pivot.columns = [f"{yr[:3]} {v}" for v, yr in pivot.columns]
                         pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
                         
                         # --- [하이라이트 로직] ---
                         def highlight_low_yield(val, threshold):
-                            # 미달 시 붉은색 볼드체 적용 CSS
                             return f'color: {ALERT_RED}; font-weight: bold;' if val < threshold else ''
 
                         # 과별 임계치 로드
@@ -187,8 +188,6 @@ if selected_months:
                         
                         # 스타일링 적용
                         styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
-                        
-                        # 수율 컬럼 배경색 및 미달 값 강조 (순수 수치 데이터 기준)
                         styled_df = styled_df.set_properties(subset=yield_cols, **{'background-color': 'rgba(74, 144, 226, 0.05)'})
                         
                         for col in yield_cols:
