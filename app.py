@@ -23,21 +23,21 @@ ALERT_RED = "#EF4444"
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
-# [Premium UI 디자인]
+# [UI 디자인 스타일링]
 st.markdown(f"""
     <style>
         .stApp {{ background-color: #F8FAFC; }}
         
-        /* [고급 구분선] - 더 진하고 세련된 디자인 */
+        /* [고급 구분선] - 세련된 디자인 유지 */
         .premium-divider {{
             height: 2px;
             background: linear-gradient(to right, {MAIN_BLUE}, rgba(148, 163, 184, 0.3), rgba(0,0,0,0));
-            margin: 50px 0 30px 0;
+            margin: 40px 0 25px 0;
             border-radius: 2px;
             opacity: 0.8;
         }}
 
-        /* [섹션 헤더 바] - 제목을 강조하여 구분함 */
+        /* [섹션 헤더 바] - 구조적 분리 유지 */
         .section-header {{
             display: flex;
             align-items: center;
@@ -52,12 +52,33 @@ st.markdown(f"""
             color: #1E293B !important;
         }}
 
-        /* KPI 카드 스타일 유지 */
-        .mes-kpi-card {{ 
-            background-color: white; color: #1E293B; border: 1px solid #E2E8F0;
-            border-radius: 16px; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        /* [KPI 원상복구] - 부담스럽지 않은 원래의 슬림한 스타일로 회귀 */
+        .mes-kpi-wrapper {{ 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 20px; 
+            margin-bottom: 5px; 
         }}
-        .mes-kpi-value {{ font-size: 48px; font-weight: 800; line-height: 1; }}
+        .mes-kpi-card {{ 
+            background-color: white; 
+            color: #1E293B; 
+            border: 1px solid #E2E8F0;
+            border-radius: 12px; 
+            padding: 18px 24px;   /* 기존의 슬림한 패딩으로 축소 */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+        }}
+        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #64748B; margin-bottom: 6px; }}
+        .mes-kpi-value-box {{ display: flex; align-items: baseline; }}
+        .mes-kpi-value {{ font-size: 32px; font-weight: 800; line-height: 1.1; }} /* 폰트 크기 다운사이징 */
+        .mes-kpi-unit {{ font-size: 15px; font-weight: 600; color: #64748B; margin-left: 5px; }}
+        .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 8px; }}
+
+        /* 안내 문구 슬림 박스 */
+        .custom-threshold-info {{
+            padding: 10px 18px; background-color: white; border-left: 5px solid {MAIN_BLUE};
+            color: #475569; font-size: 14px; font-weight: 600; margin-top: 8px;
+            border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }}
 
         /* 다크모드 대응 */
         @media (prefers-color-scheme: dark) {{
@@ -65,12 +86,13 @@ st.markdown(f"""
             .mes-kpi-card {{ background-color: #1A1C23; color: #F1F5F9; border: 1px solid #2D2F39; }}
             .section-header h2 {{ color: #F1F5F9 !important; }}
             .premium-divider {{ background: linear-gradient(to right, {MAIN_BLUE}, rgba(255,255,255,0.1), rgba(0,0,0,0)); }}
+            .custom-threshold-info {{ background-color: #1A1C23 !important; color: #F1F5F9 !important; }}
         }}
     </style>
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 데이터 처리 로직 (이전과 동일)
+# 데이터 처리 로직 (동일)
 # ------------------------------------------------------------------------------
 def preprocess_df(df, month_label):
     if df.empty: return pd.DataFrame()
@@ -134,7 +156,7 @@ if selected_months:
         team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
         if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-        # KPI 섹션
+        # KPI 연산
         df_26_kpi = team_df[team_df['연도'] == '26년 누적']
         if not df_26_kpi.empty:
             k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
@@ -143,22 +165,23 @@ if selected_months:
             risk_cnt = len(df_26_kpi.groupby('하위품목 텍스트').filter(lambda x: x['실제금액'].sum() >= 400000000 and (x['이론금액'].sum()/x['실제금액'].sum()*100) <= 98.0))
         else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
+        # [원복 완료] 슬림하고 한눈에 들어오는 원래 크기의 KPI 카드 레이아웃
         st.markdown(f"""
             <div class="mes-kpi-wrapper">
-                <div class="mes-kpi-card" style="border-top: 5px solid #10B981;">
-                    <div style="font-size: 16px; font-weight: 700; color: #64748B; margin-bottom: 15px;">종합 수율</div>
-                    <div style="display: flex; align-items: baseline;"><span class="mes-kpi-value">{total_26_yd:.2f}</span><span style="font-size: 20px; font-weight: 600; color: #64748B; margin-left: 8px;">%</span></div>
-                    <div style="font-size: 15px; font-weight: 700; margin-top: 15px; color: #10B981;">▲ 목표치 대조 관리 중</div>
+                <div class="mes-kpi-card" style="border-top: 4px solid #10B981;">
+                    <div class="mes-kpi-label">종합 수율</div>
+                    <div class="mes-kpi-value-box"><span class="mes-kpi-value">{total_26_yd:.2f}</span><span class="mes-kpi-unit">%</span></div>
+                    <div class="mes-kpi-status" style="color: #10B981;">▲ 목표치 대조 관리 중</div>
                 </div>
-                <div class="mes-kpi-card" style="border-top: 5px solid {MAIN_BLUE};">
-                    <div style="font-size: 16px; font-weight: 700; color: #64748B; margin-bottom: 15px;">누적 실제 투입 금액</div>
-                    <div style="display: flex; align-items: baseline;"><span class="mes-kpi-value">{cost_billion:,.1f}</span><span style="font-size: 20px; font-weight: 600; color: #64748B; margin-left: 8px;">억 원</span></div>
-                    <div style="font-size: 15px; font-weight: 700; margin-top: 15px; opacity: 0.7;">생산 운영 스케일</div>
+                <div class="mes-kpi-card" style="border-top: 4px solid {MAIN_BLUE};">
+                    <div class="mes-kpi-label">누적 실제 투입 금액</div>
+                    <div class="mes-kpi-value-box"><span class="mes-kpi-value">{cost_billion:,.1f}</span><span class="mes-kpi-unit">억 원</span></div>
+                    <div class="mes-kpi-status" style="color: #64748B;">생산 운영 스케일</div>
                 </div>
-                <div class="mes-kpi-card" style="border-top: 5px solid {ALERT_RED};">
-                    <div style="font-size: 16px; font-weight: 700; color: #64748B; margin-bottom: 15px;">고위험 자재 건수</div>
-                    <div style="display: flex; align-items: baseline;"><span class="mes-kpi-value" style="color: {ALERT_RED};">{risk_cnt:02d}</span><span style="font-size: 20px; font-weight: 600; color: #64748B; margin-left: 8px;">건</span></div>
-                    <div style="font-size: 15px; font-weight: 700; margin-top: 15px; color: {ALERT_RED};">⚠️ 즉시 집중 점검 필요</div>
+                <div class="mes-kpi-card" style="border-top: 4px solid {ALERT_RED};">
+                    <div class="mes-kpi-label">고위험 자재 건수</div>
+                    <div class="mes-kpi-value-box"><span class="mes-kpi-value" style="color: {ALERT_RED};">{risk_cnt:02d}</span><span class="mes-kpi-unit">건</span></div>
+                    <div class="mes-kpi-status" style="color: {ALERT_RED};">⚠️ 즉시 집중 점검 필요</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
