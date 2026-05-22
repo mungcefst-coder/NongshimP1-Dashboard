@@ -149,13 +149,12 @@ if selected_months:
             k4.markdown(f'<div class="kpi-tile"><p class="kpi-label">데이터 신뢰도</p><div class="kpi-value" style="color:#1E40AF;">99.9<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#1E40AF;">ERP 동기화 완료</p></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [CARD 2] 수율 종합 상황판 (사진과 100% 동일 사양) ---
+        # --- [CARD 2] 수율 종합 상황판 (포맷터 버그 완전 조치 버전) ---
         st.markdown('<div class="section-header-text">📋 생산1팀 수율 종합 상황판</div>', unsafe_allow_html=True)
         tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
         
         for i, d_name in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
             with tabs[i]:
-                # 가로 비율 최적화: 표(65%), 그래프(35%)
                 t_col, g_col = st.columns([65, 35])
                 d_df = full_df if d_name == '전체 총합' else full_df[full_df['생산부문명'] == d_name]
                 
@@ -172,39 +171,42 @@ if selected_months:
                         summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
                         
                         pivot_df = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
-                        pivot_df.columns = [f"{c[1]} {c[0]}" for c in pivot_df.columns]
-                        pivot_df = pivot_df[['25년 이론금액', '25년 실제금액', '25년 수율', '26년 이론금액', '26년 실제금액', '26년 수율']]
+                        
+                        # ⚡ [긴급 교정] 포맷터가 컬럼명 불일치로 무시되지 않도록 아예 내부 컬럼명을 정형화하여 생성
+                        pivot_df.columns = [f"{c[1]}_{c[0]}" for c in pivot_df.columns]
+                        pivot_df = pivot_df[['25년_이론금액', '25년_실제금액', '25년_수율', '26년_이론금액', '26년_실제금액', '26년_수율']]
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
                         thresh = YIELD_THRESHOLD[d_name]
                         
-                        # 스타일링 핵심 패치
+                        # 스타일링 가이드 적용
                         def apply_table_style(styler):
                             # 1. 배경색 흰색 바탕 고정
                             styler.set_properties(**{'background-color': '#FFFFFF', 'color': '#0F172A'})
-                            # 2. 금액 소수점 제거 및 천단위 콤마 ({:,.0f})
-                            amt_cols = [c for c in pivot_df.columns if '금액' in c]
-                            styler.format({c: '{:,.0f}' for c in amt_cols})
-                            # 3. 수율 소수점 2자리 ({:.2f}%)
-                            yield_cols = [c for c in pivot_df.columns if '수율' in c]
-                            styler.format({c: '{:.2f}%' for c in yield_cols})
-                            # 4. 수율 컬럼 파스텔 하늘색 배경
-                            styler.set_properties(subset=['25년 수율', '26년 수율'], **{'background-color': '#E0F2FE'})
-                            # 5. 수율 미달 시 빨간색 굵게
-                            styler.map(lambda x: 'color: #E74C3C; font-weight: 800;' if isinstance(x, float) and x < thresh else '', subset=['26년 수율'])
+                            # 2. 금액 소수점 제거 및 천단위 콤마 실적용 고정 ({:,.0f})
+                            styler.format({
+                                '25년_이론금액': '{:,.0f}', '25년_실제금액': '{:,.0f}',
+                                '26년_이론금액': '{:,.0f}', '26년_실제금액': '{:,.0f}'
+                            })
+                            # 3. 수율 소수점 2자리 표시 ({:.2f}%)
+                            styler.format({'25년_수율': '{:.2f}%', '26년_수율': '{:.2f}%'})
+                            # 4. 수율 컬럼 파스텔 하늘색 배경 매칭
+                            styler.set_properties(subset=['25년_수율', '26년_수율'], **{'background-color': '#E0F2FE'})
+                            # 5. 수율 미달 시 빨간색 굵게 표시
+                            styler.map(lambda x: 'color: #E74C3C; font-weight: 800;' if isinstance(x, float) and x < thresh else '', subset=['26년_수율'])
                             return styler
 
-                        # 잘림 방지를 위해 컬럼명 축약 적용
+                        # `column_config`에는 단지 겉보기 명칭만 매핑하여 깨짐 현상 원천 봉쇄
                         st.dataframe(
                             pivot_df.style.pipe(apply_table_style), 
                             use_container_width=True,
                             column_config={
-                                "25년 이론금액": st.column_config.NumberColumn("25년 이론", width="small"),
-                                "25년 실제금액": st.column_config.NumberColumn("25년 실제", width="small"),
-                                "25년 수율": st.column_config.TextColumn("25년 수율", width="small"),
-                                "26년 이론금액": st.column_config.NumberColumn("26년 이론", width="small"),
-                                "26년 실제금액": st.column_config.NumberColumn("26년 실제", width="small"),
-                                "26년 수율": st.column_config.TextColumn("26년 수율", width="medium"), # 마지막 열 잘림 방지 공간 확보
+                                "25년_이론금액": st.column_config.NumberColumn("25년 이론"),
+                                "25년_실제금액": st.column_config.NumberColumn("25년 실제"),
+                                "25년_수율": st.column_config.TextColumn("25년 수율"),
+                                "26년_이론금액": st.column_config.NumberColumn("26년 이론"),
+                                "26년_실제금액": st.column_config.NumberColumn("26년 실제"),
+                                "26년_수율": st.column_config.TextColumn("26년 수율", width="medium"), 
                             }
                         )
                         st.markdown(f'<p class="threshold-info">📌 {d_name} 관리 기준 수율 : {thresh}% 이상</p>', unsafe_allow_html=True)
