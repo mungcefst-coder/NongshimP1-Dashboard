@@ -8,7 +8,7 @@ from datetime import datetime
 # ==============================================================================
 # [1] 시스템 포털 엔진 설계 (Deep CSS Override)
 # ==============================================================================
-st.set_page_config(layout="wide", page_title="통합 수율 관리 분석 포털 v2.5")
+st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
 # 실제 ERP 시스템 감성을 위한 CSS 주입
 st.markdown("""
@@ -123,17 +123,35 @@ with st.sidebar:
     st.markdown("---")
     st.info(f"마지막 동기화: {datetime.now().strftime('%H:%M:%S')}")
 
-# --- [메인 헤더] ---
+# --- [메인 헤더 구역: 생산1팀 Smart 수율 모니터링 Portal] ---
 st.markdown(f"""
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 35px; border-bottom: 2px solid #E2E8F0; padding-bottom: 20px;">
         <div>
-            <h1 style="font-size: 32px; font-weight: 800; color: #0F172A; margin: 0;">통합 수율 관리 분석 포털 <span style="color:#1E40AF;">Integrated Portal</span></h1>
-            <p style="color: #64748B; font-size: 15px; margin-top: 5px;">실시간 생산 지표 및 공정 수율 데이터 가시화 시스템</p>
+            <p style="color:#1E40AF; font-weight:700; letter-spacing:4px; margin-bottom:2px; font-size:12px;">MES INTEGRATED OPERATIONAL MONITORING</p>
+            <h1 style="font-size: 36px; font-weight: 800; color: #0F172A; margin: 0; letter-spacing: -1.2px;">
+                생산1팀 <span style="color:#1E40AF;">Smart</span> 수율 모니터링 Portal
+            </h1>
+            <p style="color: #64748B; font-size: 15px; margin-top: 6px; font-weight: 500;">
+                실시간 제조 공정 원가 분석 및 자재 유형별 수율 안정화 관제 시스템
+            </p>
         </div>
-        <div style="text-align: right; color: #1E40AF; font-weight: 700; font-size: 14px;">
-            <span style="background: #DBEAFE; padding: 5px 12px; border-radius: 4px;">● SYSTEM ONLINE</span>
+        <div style="text-align: right; padding-bottom: 3px;">
+            <div style="background: #E0E7FF; color: #1E40AF; padding: 6px 16px; border-radius: 6px; font-weight: 700; font-size: 13px; border: 1px solid #C7D2FE; display: inline-block;">
+                <span style="color: #22C55E; margin-right: 6px; animation: blink 1.5s infinite;">●</span> SYSTEM LIVE
+            </div>
+            <p style="color: #94A3B8; font-size: 12px; margin-top: 10px; font-weight: 600; font-family: 'Inter';">
+                Synchronized: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+            </p>
         </div>
     </div>
+    
+    <style>
+        @keyframes blink {{
+            0% {{ opacity: 0.3; }}
+            50% {{ opacity: 1; }}
+            100% {{ opacity: 0.3; }}
+        }}
+    </style>
 """, unsafe_allow_html=True)
 
 if selected_months:
@@ -191,7 +209,7 @@ if selected_months:
             m_opt = st.selectbox("유형 필터", ["원자재", "부자재", "반제품"])
             m_df = full_df[full_df['자재 유형 내역'] == m_opt].groupby(['연도', '생산부문명'])[['이론금액','실제금액']].sum().reset_index()
             m_df['수율'] = (m_df['이론금액']/m_df['실제금액']*100).round(2)
-            fig_bar = px.bar(m_df, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년':'#CBD5E1', '26년':'#1E40AF'})
+            fig_bar = px.bar(m_df, x='생산부문명', y='수율', color='연度' if '연度' in m_df.columns else '연도', barmode='group', text='수율', color_discrete_map={'25년':'#CBD5E1', '26년':'#1E40AF'})
             fig_bar.update_layout(height=300, margin=dict(l=0,r=0,t=20,b=0), yaxis=dict(range=[85, 105]), showlegend=False)
             st.plotly_chart(fig_bar, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -232,4 +250,4 @@ if selected_months:
 else:
     st.warning("⚠️ 좌측 사이드바에서 분석 기간을 설정해 주세요.")
 
-st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Production Monitoring Portal System | © 2026 Nongshim Production Team 1</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Production Monitoring Portal System | © 2026 Production Team 1</p>", unsafe_allow_html=True)
