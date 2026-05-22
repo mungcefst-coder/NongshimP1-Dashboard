@@ -178,7 +178,6 @@ if selected_months:
                         
                         summ = pd.concat([summ, pd.DataFrame(extra_rows)], ignore_index=True)
                         summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
-                        
                         pivot = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
                         reorder_cols = [(v, y) for y in ['25년 누적', '26년 누적'] for v in ['이론금액', '실제금액', '수율']]
                         pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
@@ -188,7 +187,6 @@ if selected_months:
                         current_threshold = YIELD_THRESHOLD[d]
                         yield_cols = [c for c in pivot.columns if '수율' in c]
                         styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
-                        # 수율 음영 최적화 (0.12)
                         styled_df = styled_df.set_properties(subset=yield_cols, **{'background-color': 'rgba(74, 144, 226, 0.12)'})
                         for col in yield_cols:
                             styled_df = styled_df.map(lambda val: f'color: {ALERT_RED}; font-weight: bold;' if val < current_threshold else '', subset=[col])
@@ -206,7 +204,6 @@ if selected_months:
                         fig = go.Figure()
                         for yr_label in sorted(trend['연도'].unique()):
                             y_data = trend[trend['연도'] == yr_label]
-                            # 대각선 staggered 배치 로직
                             pos = 'top right' if '26년' in yr_label else 'bottom left'
                             fig.add_trace(go.Scatter(
                                 x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
@@ -216,15 +213,24 @@ if selected_months:
                                 line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=3.5),
                                 marker=dict(size=8)
                             ))
-                        y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
                         
-                        # [개선 1] Y축 숫자 짤림 방지를 위해 마진(l=60) 확보 및 여백(range) 조정
-                        fig.update_layout(height=280, 
-                                         margin=dict(l=60, r=40, t=40, b=10), # l:10 -> 60으로 확대
-                                         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                                         yaxis=dict(range=[y_min-3, y_max+3], gridcolor='#F1F5F9', zeroline=False, automargin=True), 
-                                         xaxis=dict(gridcolor='#F1F5F9'),
-                                         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                        # [핵심 수정부] Y축 숫자 짤림 방지 파격 처방
+                        y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
+                        fig.update_layout(
+                            height=280, 
+                            margin=dict(l=100, r=40, t=40, b=20), # 왼쪽 마진 l=60 -> 100으로 대폭 확대
+                            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                            yaxis=dict(
+                                range=[y_min-3, y_max+3], 
+                                gridcolor='#F1F5F9', 
+                                zeroline=False, 
+                                automargin=False, # 자동 마진을 끄고 수동 l=100 값 적용
+                                ticksuffix="  ",   # 숫자 뒤에 공백을 주어 축선에서 떼어냄
+                                tickfont=dict(size=13) # 축 숫자 크기 미세 조정
+                            ), 
+                            xaxis=dict(gridcolor='#F1F5F9'),
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                        )
                         st.plotly_chart(fig, use_container_width=True, key=f"trend_{d}")
 
         # --- [하단 분석 매트릭스] ---
@@ -235,16 +241,14 @@ if selected_months:
             s_col1, s_col2 = st.columns([0.4, 0.6])
             with s_col1:
                 m_opt = st.selectbox("조회 자재 선택", ["원자재", "부자재", "반제품"], key="m_opt")
-            
             f_df = team_df[team_df['자재 유형 내역'] == m_opt]
             if not f_df.empty:
                 ds = f_df.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                 ds['수율'] = (ds['이론금액'] / ds['실제금액'] * 100).round(2)
                 fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
                 fig1.update_traces(texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold', size=13))
-                # 바 차트에서도 Y축 숫자 짤림 방지 마진 확보
-                fig1.update_layout(height=330, margin=dict(l=60, r=20, t=30, b=10), 
-                                   yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='#F1F5F9', automargin=True), xaxis_title=None)
+                fig1.update_layout(height=330, margin=dict(l=80, r=20, t=30, b=10), # 바 차트도 마진 l=80 확보
+                                   yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='#F1F5F9'), xaxis_title=None)
                 st.plotly_chart(fig1, use_container_width=True)
 
         with r2c2:
@@ -252,7 +256,6 @@ if selected_months:
             s_col3, s_col4 = st.columns([0.4, 0.6])
             with s_col3:
                 s_dept = st.selectbox("조회 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="s_dept")
-            
             p_df = team_df.copy() if s_dept == "전체 1팀" else team_df[team_df['생산부문명'] == s_dept].copy()
             if not p_df.empty:
                 isc = p_df.groupby(['연도', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
@@ -268,8 +271,7 @@ if selected_months:
                                   category_orders={'분류': ['25년 누적', '26년 누적', '🚨 집중 관리 대상 (4억↑/98%↓)']})
                 fig3.update_traces(marker=dict(size=14, line=dict(width=1, color='white'), opacity=0.8))
                 fig3.add_hline(y=100.0, line_dash="dash", line_color="#94A3B8", opacity=0.6)
-                # 산점도 좌측 숫자(수율) 짤림 방지 마진 확보
-                fig3.update_layout(height=330, margin=dict(l=60, r=20, t=40, b=10),
+                fig3.update_layout(height=330, margin=dict(l=80, r=20, t=40, b=10), # 산점도 마진 l=80 확보
                                  xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)",
                                  legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0))
                 st.plotly_chart(fig3, use_container_width=True)
@@ -294,7 +296,6 @@ if selected_months:
                             fig_m = px.bar(m_d, x='수율', y='하위품목 텍스트', orientation='h', text='수율')
                             fig_m.update_traces(marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, 
                                               texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold'))
-                            # 품목명이 길 수 있으므로 왼쪽 마진 충분히 확보(l=150)
                             fig_m.update_layout(height=340, margin=dict(l=150, r=40, t=20, b=10),
                                                 xaxis=dict(range=[0, 140], gridcolor='#F1F5F9'), yaxis={'categoryorder':'total ascending'})
                             st.plotly_chart(fig_m, use_container_width=True, key=f"t5_{ty}_{d_name}")
