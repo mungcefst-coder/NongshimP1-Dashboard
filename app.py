@@ -31,7 +31,7 @@ ALERT_RED = "#E74C3C"       # 리스크 매트릭스 고위험 강조 (소프트
 # 1. 페이지 세팅 및 전역 UI 스타일링 
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
-# [수정부 - 상단 디자인] 첨부 이미지 양식 맞춤형 글로벌 CSS 오버라이딩 (변수 버그 전면 교정)
+# [CSS 오버라이딩 구역] 중괄호 탈출 문자(Double Braces) 누락 현상 완전 해결
 st.markdown(f"""
     <style>
         /* 포털형 통합 연회색 배경 */
@@ -89,7 +89,7 @@ st.markdown(f"""
             font-size: 13px; font-weight: 700; margin-top: 12px;
         }}
 
-        /* 기존 유지 디자인 규격 */
+        /* 기존 유지 디자인 규격 및 이스케이프 버그 전면 교정 */
         .stTabs [data-baseweb="tab"] p {{
             font-size: 14px !important;
         }}
@@ -102,7 +102,7 @@ st.markdown(f"""
         [data-testid="stSidebar"] .stAlert p {{
             font-size: 13.5px !important;
             white-space: nowrap !important;
-        }
+        }}
         .bottom-filter-label {{
             font-size: 12.5px !important;
             color: #7F8C8D;
@@ -221,7 +221,7 @@ if selected_months:
         st.markdown("---")
 
         # ----------------------------------------------------------------------
-        # 상단 핵심 성과 지표(KPI) 인포그래픽 (NameError 변수 완전 교정본)
+        # 상단 핵심 성과 지표(KPI) 인포그래픽
         # ----------------------------------------------------------------------
         df_26_kpi = team_df[team_df['연도'] == '26년 누적']
         if not df_26_kpi.empty:
@@ -236,7 +236,6 @@ if selected_months:
         else:
             total_26_yield, total_cost_billion, risk_count = 0, 0, 0
 
-        # ALERT_RED 매핑으로 완벽 교정
         st.markdown(f"""
             <div class="mes-kpi-wrapper">
                 <div class="mes-kpi-card" style="border-top: 4px solid #10B981;">
