@@ -6,7 +6,7 @@ import urllib.parse
 from datetime import datetime
 
 # ==============================================================================
-# 전역 데이터 소스 및 기준선 선언부
+# 1. 전역 데이터 소스 및 기준선 선언부
 # ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = [
@@ -15,7 +15,7 @@ ALL_MONTHS = [
     "26.01", "26.02", "26.03", "26.04"
 ]
 
-# 과별 관리 기준 수율 - 이 수치 미달 시 붉은색 강조 적용
+# [중요] 과별 관리 기준 수율 - 이 수치 미달 시 붉은색 강조 적용
 YIELD_THRESHOLD = {
     '면 1과': 98.92, 
     '면 5과': 97.93, 
@@ -174,19 +174,16 @@ if selected_months:
                         reorder_cols = [(v, y) for y in ['25년 누적', '26년 누적'] for v in ['이론금액', '실제금액', '수율']]
                         pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
                         
-                        # [버그 수정 완료 지점] y -> yr 변수명 매칭 완료
                         pivot.columns = [f"{yr[:3]} {v}" for v, yr in pivot.columns]
                         pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
                         
-                        # --- [하이라이트 로직] ---
+                        # 하이라이트 로직
                         def highlight_low_yield(val, threshold):
                             return f'color: {ALERT_RED}; font-weight: bold;' if val < threshold else ''
 
-                        # 과별 임계치 로드
                         current_threshold = YIELD_THRESHOLD[d]
                         yield_cols = [c for c in pivot.columns if '수율' in c]
                         
-                        # 스타일링 적용
                         styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                         styled_df = styled_df.set_properties(subset=yield_cols, **{'background-color': 'rgba(74, 144, 226, 0.05)'})
                         
@@ -195,7 +192,9 @@ if selected_months:
                         
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
-                    st.info(f"💡 {d} 관리 기준 수율: **{YIELD_THRESHOLD[d]:.2f}% 이상** (미달 시 붉은색 강조)")
+                    
+                    # [수정 지점] 요청하신 대로 관리 문구 간소화 적용
+                    st.info(f"💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상")
 
                 with c2:
                     st.markdown(f"**📈 {d} 수율 변화 추이**")
@@ -203,9 +202,14 @@ if selected_months:
                         trend = target.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index().sort_values(['연도', '월'])
                         trend['누적수율'] = (trend.groupby('연도')['이론금액'].cumsum() / trend.groupby('연도')['실제금액'].cumsum() * 100).round(2)
                         trend['월표시'] = trend['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
-                        fig = px.line(trend, x='월표시', y='누적수율', color='연도', markers=True, text='누적수율', color_discrete_map={'25년 누적':COMP_GRAY, '26년 누적':MAIN_BLUE})
-                        fig.update_traces(texttemplate='%{text:.2f}%', textposition='top center', textfont=dict(size=11, weight='bold'))
-                        fig.update_layout(height=280, margin=dict(l=10,r=10,t=25,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(gridcolor='#F1F5F9'), xaxis=dict(gridcolor='#F1F5F9'))
+                        fig = go.Figure()
+                        for yr_label in sorted(trend['연도'].unique()):
+                            y_data = trend[trend['연도'] == yr_label]
+                            fig.add_trace(go.Scatter(x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
+                                                    text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), textposition='top center',
+                                                    line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=3)))
+                        fig.update_layout(height=280, margin=dict(l=10,r=10,t=25,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                                         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
                         st.plotly_chart(fig, use_container_width=True, key=f"trend_{d}")
 
         # --- [하단 분석 매트릭스] ---
