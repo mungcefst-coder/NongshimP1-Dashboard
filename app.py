@@ -31,7 +31,7 @@ ALERT_RED = "#E74C3C"       # 리스크 매트릭스 고위험 강조 (소프트
 # 1. 페이지 세팅 및 전역 UI 스타일링 
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
-# [CSS 오버라이딩 구역] 중괄호 탈출 문자(Double Braces) 누락 현상 완전 해결
+# [CSS 오버라이딩 구역] 이스케이프 문자 및 레이아웃 유지
 st.markdown(f"""
     <style>
         /* 포털형 통합 연회색 배경 */
@@ -89,7 +89,7 @@ st.markdown(f"""
             font-size: 13px; font-weight: 700; margin-top: 12px;
         }}
 
-        /* 기존 유지 디자인 규격 및 이스케이프 버그 전면 교정 */
+        /* 기존 유지 디자인 규격 */
         .stTabs [data-baseweb="tab"] p {{
             font-size: 14px !important;
         }}
@@ -116,7 +116,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# 사이드바 컨트롤러 (기존 구성 100% 보존)
+# 사이드바 컨트롤러 (불변)
 with st.sidebar:
     st.header("⚙️ SYSTEM ADMIN")
     st.markdown("---")
@@ -130,25 +130,25 @@ with st.sidebar:
     st.markdown("---")
     search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
 
-# 상단 타이틀 구성 (양식 커스텀 스타일)
-h_left, h_right = st.columns([4, 1])
+# 상단 타이틀 구성 (메인제목 크기 확대: 32px -> 42px)
+h_left, h_right = st.columns([4.5, 1])
 with h_left:
     st.markdown("""
-        <div style="color: #3B82F6; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; margin-bottom: 5px;">
+        <div style="color: #3B82F6; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; margin-bottom: 8px;">
             MES INTEGRATED OPERATIONAL MONITORING
         </div>
-        <h1 style="color: #002D5B; font-size: 32px; font-weight: 800; margin: 0; padding: 0;">
+        <h1 style="color: #002D5B; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
             생산1팀 <span style="color:#3B82F6;">Smart 수율 모니터링</span> Portal
         </h1>
     """, unsafe_allow_html=True)
 
 with h_right:
     st.markdown(f"""
-        <div style="text-align: right; margin-top: 10px;">
-            <div style="background: #EBF5FF; color: #3B82F6; padding: 6px 14px; border-radius: 6px; font-weight: 800; display: inline-block; font-size: 13px; border: 1px solid #BFDBFE;">
+        <div style="text-align: right; margin-top: 15px;">
+            <div style="background: #EBF5FF; color: #3B82F6; padding: 7px 16px; border-radius: 6px; font-weight: 800; display: inline-block; font-size: 13.5px; border: 1px solid #BFDBFE;">
                 ● SYSTEM LIVE
             </div>
-            <div style="color: #94A3B8; font-size: 11px; margin-top: 8px; font-weight: 600;">
+            <div style="color: #94A3B8; font-size: 11px; margin-top: 10px; font-weight: 600;">
                 Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}
             </div>
         </div>
@@ -221,7 +221,7 @@ if selected_months:
         st.markdown("---")
 
         # ----------------------------------------------------------------------
-        # 상단 핵심 성과 지표(KPI) 인포그래픽
+        # 상단 핵심 성과 지표(KPI) 인포그래픽 (3열 고정)
         # ----------------------------------------------------------------------
         df_26_kpi = team_df[team_df['연도'] == '26년 누적']
         if not df_26_kpi.empty:
@@ -394,7 +394,7 @@ if selected_months:
                     else: st.caption("추이 데이터가 존재하지 않습니다.")
 
         # ----------------------------------------------------------------------
-        # 2단 - 분석 지표 현황 (관제 가이드 삭제 및 5:5 완벽 대칭 격자 일치) - 절대 불변 영역
+        # 2단 - 분석 지표 현황 (5:5 완벽 대칭 격자 일치) - 절대 불변 영역
         # ----------------------------------------------------------------------
         st.markdown("---")
         
@@ -452,7 +452,7 @@ if selected_months:
             else: st.caption("분석할 리스크 데이터가 부족합니다.")
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5 (관제 가이드 삭제 및 5:5 완벽 대칭 격자 일치) - 절대 불변 영역
+        # 3단 - 핵심 관리 자재 Top 5 (절대 불변 영역)
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.subheader("🚨 핵심 관리 자재 Top 5")
