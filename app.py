@@ -6,18 +6,27 @@ import urllib.parse
 from datetime import datetime
 
 # ==============================================================================
-# [1] 시스템 포털 엔진 설계 (Deep CSS - 제목 및 모든 배경 상자 제거)
+# [1] 시스템 포털 엔진 설계 (Deep CSS - 흰색 카드 상자 완전 박멸)
 # ==============================================================================
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* 시스템 전체 배경 */
-        .stApp { background-color: #F8FAFC !important; }
+        /* [배경색 정형화] 시스템 전체 배경을 차분한 톤으로 고정 */
+        .stApp { background-color: #F1F5F9 !important; }
         html, body, [class*="css"] { font-family: 'Inter', 'Noto Sans KR', sans-serif; }
         
-        /* 알림/경고 박스 투명화 (주황색 네모 방지) */
+        /* 🚨 [핵심 수정] 기존 portal-card(흰색 상자/테두리/그림자)를 완전히 투명화 처리 */
+        .portal-card {
+            background-color: transparent !important;
+            padding: 10px 0px !important;
+            border: none !important;
+            box-shadow: none !important;
+            margin-bottom: 10px !important;
+        }
+        
+        /* 알림/경고 박스 투명화 */
         div[data-testid="stNotification"], .stAlert {
             background-color: transparent !important;
             border: none !important;
@@ -26,34 +35,32 @@ st.markdown("""
             margin: 0 !important;
         }
         
-        /* 상단 여백 최적화 */
-        header[data-testid="stHeader"] { background-color: rgba(0,0,0,0); }
-        
-        /* [데이터 카드] 순수하게 보더만 있는 깔끔한 흰색 카드 */
-        .portal-card {
-            background-color: #FFFFFF;
-            padding: 24px;
-            border-radius: 8px;
-            border: 1px solid #E2E8F0;
-            margin-bottom: 25px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        /* [섹션 타이틀 복구] 빨간색 표시로 지워졌던 대제목 레이아웃 복구 및 세련되게 변경 */
+        .section-header-text {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1E40AF;
+            margin-bottom: 15px;
+            margin-top: 25px;
+            letter-spacing: -0.5px;
         }
 
-        /* KPI 타일 디자인 */
+        /* KPI 지표 수치 레이아웃 */
         .kpi-tile { text-align: left; }
-        .kpi-label { font-size: 14px; font-weight: 600; color: #64748B; margin-bottom: 8px; }
-        .kpi-value { font-size: 42px; font-weight: 800; color: #0F172A; line-height: 1; letter-spacing: -1px; }
-        .kpi-unit { font-size: 18px; color: #94A3B8; margin-left: 3px; font-weight: 600; }
-        .kpi-trend { font-size: 13px; margin-top: 10px; font-weight: 700; }
+        .kpi-label { font-size: 13px; font-weight: 600; color: #64748B; margin-bottom: 6px; }
+        .kpi-value { font-size: 38px; font-weight: 800; color: #0F172A; line-height: 1; letter-spacing: -1px; }
+        .kpi-unit { font-size: 16px; color: #94A3B8; margin-left: 2px; font-weight: 600; }
+        .kpi-trend { font-size: 12px; margin-top: 8px; font-weight: 700; }
 
-        /* 사이드바 디자인 */
+        /* 사이드바 테마 */
         section[data-testid="stSidebar"] { background-color: #1E293B !important; }
         section[data-testid="stSidebar"] * { color: white !important; }
         
-        /* 탭 가독성 */
-        .stTabs [data-baseweb="tab"] p { font-size: 15px !important; font-weight: 700 !important; }
+        /* 탭 가독성 및 데이터 프레임 보더 제거 */
+        .stTabs [data-baseweb="tab"] p { font-size: 14px !important; font-weight: 700 !important; }
+        .stDataFrame { border: none !important; }
         
-        /* 불필요한 위젯 간격 제거 */
+        /* 레이아웃 패딩 최적화 */
         .block-container { padding-top: 2rem !important; }
     </style>
 """, unsafe_allow_html=True)
@@ -90,7 +97,7 @@ def fetch_system_data(month):
     except: return pd.DataFrame()
 
 # ==============================================================================
-# [3] 포털 시스템 메인 렌더링 (제목 행 삭제 버전)
+# [3] 포털 시스템 메인 렌더링 (흰색 카드 제거 버전)
 # ==============================================================================
 
 # --- [사이드바] ---
@@ -104,7 +111,7 @@ with st.sidebar:
 
 # --- [메인 헤더] ---
 st.markdown(f"""
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 15px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 1px solid #CBD5E1; padding-bottom: 15px;">
         <div>
             <p style="color:#1E40AF; font-weight:700; letter-spacing:4px; margin-bottom:2px; font-size:11px;">MES INTEGRATED MONITORING</p>
             <h1 style="font-size: 34px; font-weight: 800; color: #0F172A; margin: 0; letter-spacing: -1.2px; line-height: 1.1;">
@@ -131,7 +138,7 @@ if selected_months:
         full_df['연도'] = full_df['월'].apply(lambda x: '25년' if '25' in str(x) else '26년')
         if search: full_df = full_df[full_df['하위품목 텍스트'].str.contains(search, na=False)]
 
-        # --- [CARD 1: KPI 센터] ---
+        # --- [1단: KPI 센터] (카드 배경 제거 및 투명 처리) ---
         df_26 = full_df[full_df['연도'] == '26년']
         if not df_26.empty:
             th_sum, ac_sum = df_26['이론금액'].sum(), df_26['실제금액'].sum()
@@ -152,7 +159,8 @@ if selected_months:
                 st.markdown(f'<div class="kpi-tile"><p class="kpi-label">데이터 신뢰도</p><div class="kpi-value" style="color:#1E40AF;">99.9<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#1E40AF;">ERP 실시간 동기화</p></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [CARD 2: 부문별 상세 실적 (제목 제거됨)] ---
+        # --- [2단: 부문별 상세 실적 패널] ---
+        st.markdown('<div class="section-header-text">📋 부문별 상세 수율 및 변화 트렌드</div>', unsafe_allow_html=True)
         st.markdown('<div class="portal-card">', unsafe_allow_html=True)
         tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
         for i, d_name in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
@@ -174,21 +182,23 @@ if selected_months:
                         st.plotly_chart(fig, use_container_width=True, key=f"trend_{d_name}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [CARD 3: 다차원 분석 (제목 제거됨)] ---
+        # --- [3단: 다차원 분석 그리드] ---
         col_grid_l, col_grid_r = st.columns(2)
         with col_grid_l:
+            st.markdown('<div class="section-header-text">📊 자재 유형별 실적 비교</div>', unsafe_allow_html=True)
             st.markdown('<div class="portal-card">', unsafe_allow_html=True)
-            m_opt = st.selectbox("자재 유형 선택", ["원자재", "부자재", "반제품"], key="mat_filt_v3")
+            m_opt = st.selectbox("자재 유형 선택", ["원자재", "부자재", "반제품"], key="mat_filt_v4")
             m_df = full_df[full_df['자재 유형 내역'] == m_opt].groupby(['연도', '생산부문명'])[['이론금액','실제금액']].sum().reset_index()
             m_df['수율'] = (m_df['이론금액']/m_df['실제금액']*100).round(2)
             fig_bar = px.bar(m_df, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년':'#CBD5E1', '26년':'#1E40AF'})
-            fig_bar.update_layout(height=280, margin=dict(l=0,r=0,t=10,b=0), yaxis=dict(range=[85, 105]), showlegend=False)
+            fig_bar.update_layout(height=280, margin=dict(l=0,r=0,t=10,b=0), yaxis=dict(range=[85, 105]), showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_bar, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
         with col_grid_r:
+            st.markdown('<div class="section-header-text">🔍 수율 리스크 매트릭스</div>', unsafe_allow_html=True)
             st.markdown('<div class="portal-card">', unsafe_allow_html=True)
-            r_dept = st.selectbox("관제 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="risk_filt_v3")
+            r_dept = st.selectbox("관제 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="risk_filt_v4")
             r_df = full_df.copy() if r_dept == "전체 1팀" else full_df[full_df['생산부문명'] == r_dept]
             if not r_df.empty:
                 r_item = r_df.groupby(['연도', '하위품목 텍스트'])[['이론금액','실제금액']].sum().reset_index()
@@ -196,11 +206,12 @@ if selected_months:
                 r_item['금액(억)'] = r_item['실제금액']/100000000
                 fig_sc = px.scatter(r_item, x='금액(억)', y='수율', color='연도', hover_name='하위품목 텍스트', color_discrete_map={'25년':'#CBD5E1', '26년':'#1E40AF'})
                 fig_sc.add_hline(y=100.0, line_dash="dash", line_color="#CBD5E1")
-                fig_sc.update_layout(height=280, margin=dict(l=0,r=0,t=10,b=0), showlegend=False)
+                fig_sc.update_layout(height=280, margin=dict(l=0,r=0,t=10,b=0), showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig_sc, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [CARD 4: 중점 관리 리스트 (제목 제거됨)] ---
+        # --- [4단: 중점 관리 품목 리스트] ---
+        st.markdown('<div class="section-header-text">🚨 중점 관리 품목 (수율 하위 Top 5)</div>', unsafe_allow_html=True)
         st.markdown('<div class="portal-card">', unsafe_allow_html=True)
         t_yr = st.radio("실적 기준 연도", ["26년", "25년"], horizontal=True)
         y_df = full_df[full_df['연도'] == t_yr]
@@ -215,11 +226,11 @@ if selected_months:
                     if not d_top.empty:
                         d_top['label'] = d_top.apply(lambda r: f"{r['수율']:.2f}% ({(r['실제금액']/100000000):.1f}억)", axis=1)
                         fig_t = px.bar(d_top, x='수율', y='하위품목 텍스트', orientation='h', text='label', color_discrete_sequence=['#1E40AF' if t_yr == '26년' else '#CBD5E1'])
-                        fig_t.update_layout(height=260, margin=dict(l=0,r=10,t=10,b=10), xaxis=dict(range=[0, 135]), yaxis={'categoryorder':'total ascending'})
-                        st.plotly_chart(fig_t, use_container_width=True, key=f"top_list_v3_{d_n}")
+                        fig_t.update_layout(height=260, margin=dict(l=0,r=10,t=10,b=10), xaxis=dict(range=[0, 135]), yaxis={'categoryorder':'total ascending'}, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig_t, use_container_width=True, key=f"top_list_v4_{d_n}")
         st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     st.write("분석 기간을 선택해주세요.")
 
-st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Monitoring Portal | © 2026 Nongshim Production Team 1</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Monitoring Portal | © 2026 Production Team 1</p>", unsafe_allow_html=True)
