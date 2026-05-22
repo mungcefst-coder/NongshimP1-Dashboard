@@ -29,7 +29,6 @@ ALERT_RED = "#E74C3C"       # 리스크 매트릭스 고위험 강조
 # 1. 페이지 세팅 및 전역 UI 스타일링 (SaaS형 대시보드 스킨 적용)
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
-# 오리지널 스타일 유지보수 및 SaaS 관제 시스템용 풀 커스텀 CSS 주입
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -53,15 +52,7 @@ st.markdown("""
             margin-bottom: 20px;
         }
         
-        /* 타이틀 및 서브 헤더 통합 제어 (20px) */
-        .section-header-text {
-            font-size: 20px;
-            font-weight: 700;
-            color: #0F172A;
-            margin-bottom: 15px;
-            margin-top: 5px;
-        }
-        
+        /* 탭 내부 타이틀 크기 고정 (20px) */
         .sub-header-text {
             font-size: 20px;
             font-weight: 700;
@@ -81,20 +72,22 @@ st.markdown("""
         .stTabs [data-baseweb="tab"] p { font-size: 14px !important; }
         .target-period { font-size: 14px !important; }
         .dataframe, .paint-table td, .paint-table th { font-size: 14px !important; }
-        [data-testid="stSidebar"] .stAlert p { font-size: 13.5px !important; white-space: nowrap !important; }
         .bottom-filter-label { font-size: 12.5px !important; color: #7F8C8D; margin-bottom: -12px !important; padding-left: 2px; font-weight: bold; }
         div[data-testid="stRadio"] label span { font-size: 12.5px !important; }
         
         /* 사이드바 관리자 스타일 */
         section[data-testid="stSidebar"] { background-color: #1E293B !important; color: white; }
         section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p { color: white; }
+        
+        /* 여백 최적화 */
+        .stDataFrame { margin-bottom: 0px; }
+        .threshold-info { font-size: 14px; color: #475569; margin-top: 12px; font-weight: 700; }
     </style>
 """, unsafe_allow_html=True)
 
-# 사이드바 컨트롤러 (기존 로직 유지)
+# 사이드바 컨트롤러 (가이드 박스 st.info 완전 제거)
 with st.sidebar:
-    st.header("📂 데이터 관제")
-    st.info("📊 통합 수율 관리 시스템 실시간 가동")
+    st.markdown("<h2 style='font-size: 22px; font-weight: 700; color: white; margin-top: 10px; margin-bottom: 20px;'>📂 데이터 관제</h2>", unsafe_allow_html=True)
     
     selected_months = st.multiselect(
         "분석할 년월(YY.MM) 복수 선택", 
@@ -188,7 +181,7 @@ if selected_months:
         st.markdown(f"<div class='portal-card' style='padding: 15px 20px; margin-bottom: 15px;'><span class='target-period'><b>📆 분석 대상 기간:</b> `{', '.join(sorted_display_months)}`</span></div>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 고해상도 전문가용 KPI 타일 (f-string 조건 서식 버그 완전 교정)
+        # 고해상도 전문가용 KPI 타일
         # ----------------------------------------------------------------------
         df_26_kpi = team_df[team_df['연도'] == '26년 누적']
         if not df_26_kpi.empty:
@@ -203,7 +196,6 @@ if selected_months:
         else:
             total_26_yield, total_cost_billion, risk_count = 0, 0, 0
 
-        # ⚡ [교정 포인트] f-string 내부의 삼항연산자와 포맷 구문을 상단에서 문자열로 선행 분리 가공
         yield_display = f"{total_26_yield:.2f}" if total_26_yield > 0 else "-"
         cost_display = f"{total_cost_billion:,.1f}" if total_cost_billion > 0 else "-"
 
@@ -221,10 +213,8 @@ if selected_months:
         st.markdown('</div>', unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 1단: 생산1팀 수율 종합 상황판
+        # 1단: 생산1팀 수율 종합 상황판 (section-header-text 자막 전면 제거)
         # ----------------------------------------------------------------------
-        st.markdown('<div class="section-header-text">📋 생산1팀 수율 종합 상황판</div>', unsafe_allow_html=True)
-        
         depts_list = ['면 1과', '면 5과', '스프실', '전체 총합']
         
         st.markdown('<div class="portal-card">', unsafe_allow_html=True)
@@ -311,7 +301,7 @@ if selected_months:
                         trend_raw['표시월'] = trend_raw['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
                         df_25 = trend_raw[trend_raw['연도'] == '25년 누적'].set_index('표시월')
-                        df_26 = trend_raw[trend_raw['연度'] == '26년 누적'].set_index('표시월') if '연度' in trend_raw.columns else trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
+                        df_26 = trend_raw[trend_raw['연도'] == '26년 누적'].set_index('표시월')
                         
                         fig_line = go.Figure()
                         for yr_label in sorted(trend_raw['연도'].unique()):
@@ -357,13 +347,13 @@ if selected_months:
         st.markdown('</div>', unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 2단 - 분석 지표 현황
+        # 2단 - 분석 지표 현황 (section-header-text 자막 전면 제거)
         # ----------------------------------------------------------------------
         r2_col1, r2_col2 = st.columns([50, 50])
         
         with r2_col1:
-            st.markdown('<div class="section-header-text">📊 자재 유형별 수율 현황</div>', unsafe_allow_html=True)
             st.markdown('<div class="portal-card">', unsafe_allow_html=True)
+            st.markdown('<span class="sub-header-text">📊 자재 유형별 수율 현황</span>', unsafe_allow_html=True)
             sub_col_box1, sub_col_space1 = st.columns([40, 60])
             with sub_col_box1:
                 mat_choice = st.selectbox("조회 자재 선택", ["원자재", "부자재", "반제품"], key="mat_opt")
@@ -381,8 +371,8 @@ if selected_months:
             st.markdown('</div>', unsafe_allow_html=True)
 
         with r2_col2:
-            st.markdown('<div class="section-header-text">🔍 수율 리스크 매트릭스</div>', unsafe_allow_html=True)
             st.markdown('<div class="portal-card">', unsafe_allow_html=True)
+            st.markdown('<span class="sub-header-text">🔍 수율 리스크 매트릭스</span>', unsafe_allow_html=True)
             sub_col_box2, sub_col_space2 = st.columns([40, 60])
             with sub_col_box2:
                 scatter_dept = st.selectbox("조회 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="m_dept")
@@ -417,10 +407,8 @@ if selected_months:
             st.markdown('</div>', unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 3단 - 핵심 관리 자재 Top 5
+        # 3단 - 핵심 관리 자재 Top 5 (section-header-text 자막 전면 제거)
         # ----------------------------------------------------------------------
-        st.markdown('<div class="section-header-text">🚨 핵심 관리 자재 Top 5</div>', unsafe_allow_html=True)
-        
         if "top5_view_mode" not in st.session_state:
             st.session_state["top5_view_mode"] = "📊 선택한 기간 전체 누적 데이터"
         if "top5_single_month_select" not in st.session_state:
@@ -430,6 +418,7 @@ if selected_months:
         target_single_month = st.session_state["top5_single_month_select"]
         
         st.markdown('<div class="portal-card">', unsafe_allow_html=True)
+        st.markdown('<span class="sub-header-text">🚨 핵심 관리 자재 Top 5</span>', unsafe_allow_html=True)
         tab_26, tab_25 = st.tabs(["📅 2026년 실적 분석", "📅 2025년 실적 분석"])
         
         for target_yr, current_tab in [("26년 누적", tab_26), ("25년 누적", tab_25)]:
@@ -449,7 +438,7 @@ if selected_months:
                     r3_c1, r3_c2 = st.columns([50, 50])
                     for idx, d in enumerate(['면 1과', '면 5과']):
                         with [r3_c1, r3_c2][idx]:
-                            st.markdown(f"<span class='sub-header-text'>📍 {d} 중점 관리 품목 {chart_title_suffix}</span>", unsafe_allow_html=True)
+                            st.markdown(f"<span class='sub-header-text' style='font-size: 16px;'>📍 {d} 중점 관리 품목 {chart_title_suffix}</span>", unsafe_allow_html=True)
                             m_data = item_sum[item_sum['생산부문명'] == d].sort_values('실제금액', ascending=False).head(15).sort_values('수율', ascending=True).head(5)
                             
                             if not m_data.empty:
@@ -487,7 +476,3 @@ if selected_months:
                 )
             else:
                 st.empty()
-else:
-    st.warning("⚠️ 사이드바에서 분석할 년월을 선택해 주세요.")
-
-st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Production Monitoring Portal System | © 2026 Production Team 1</p>", unsafe_allow_html=True)
