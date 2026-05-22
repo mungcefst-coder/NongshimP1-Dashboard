@@ -148,7 +148,8 @@ if selected_months:
             with k1: 
                 st.markdown(f'<div class="kpi-tile"><p class="kpi-label">종합 수율</p><div class="kpi-value">{y_v:.2f}<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:{yield_color};">{yield_status}</p></div>', unsafe_allow_html=True)
             with k2: 
-                st.markdown(f'<div class="kpi-tile"><p class="kpi-label">실제 투입 금액</p><div class="kpi-value">{ac_sum/100000000:,.1f}<span class="kpi-unit">억</span></div><p class="kpi-trend" style="color:#64748B;">KRW 누적 실적</p></div>', unsafe_allow_html=True)
+                # ⚡ 변수명 오류 수정 패치 완료 (ac_sum -> ac_s)
+                st.markdown(f'<div class="kpi-tile"><p class="kpi-label">실제 투입 금액</p><div class="kpi-value">{ac_s/100000000:,.1f}<span class="kpi-unit">억</span></div><p class="kpi-trend" style="color:#64748B;">KRW 누적 실적</p></div>', unsafe_allow_html=True)
             with k3: 
                 st.markdown(f'<div class="kpi-tile"><p class="kpi-label">고위험 자재</p><div class="kpi-value" style="color:#E74C3C;">{r_count:02d}<span class="kpi-unit">건</span></div><p class="kpi-trend" style="color:#E74C3C;">⚠️ 정밀 점검 대상</p></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -164,23 +165,20 @@ if selected_months:
                 
                 with c_l:
                     if not t_df.empty:
-                        # 🚨 [수정 1] 표에서 합계/전체 데이터 삭제 및 필터링
                         pv = t_df.groupby(['연도', '자재 유형 내역'])[['이론금액','실제금액']].sum().reset_index()
                         pv['수율(%)'] = (pv['이론금액']/pv['실제금액']*100).round(2)
-                        # 합계 제외 자재 유형만 표시
                         pv = pv[pv['자재 유형 내역'].isin(['원자재', '부자재', '반제품'])]
                         st.dataframe(pv.pivot(index='자재 유형 내역', columns='연도', values='수율(%)').style.format("{:.2f}%"), use_container_width=True)
                 
                 with c_r:
                     if not t_df.empty:
-                        # 🚨 [수정 2] 꺾은선 그래프로 수정 및 년도별 확연한 구분
                         tr = t_df.groupby(['연도', '월'])[['이론금액','실제금액']].sum().reset_index()
                         tr['수율'] = (tr['이론금액']/tr['실제금액']*100).round(2)
                         tr['표시월'] = tr['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                         
                         fig = px.line(tr, x='표시월', y='수율', color='연도', 
                                       markers=True, text='수율',
-                                      color_discrete_map={'25년': '#94A3B8', '26년': '#1E40AF'}) # 회색 vs 블루 대비
+                                      color_discrete_map={'25년': '#94A3B8', '26년': '#1E40AF'})
                         
                         fig.update_traces(line=dict(width=4), marker=dict(size=10), textposition='top center')
                         fig.update_layout(
@@ -241,4 +239,4 @@ if selected_months:
 else:
     st.write("분석 기간을 선택해주세요.")
 
-st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Monitoring Portal | © 2026 Production Team 1</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Monitoring Portal | © 2026 Nongshim Production Team 1</p>", unsafe_allow_html=True)
