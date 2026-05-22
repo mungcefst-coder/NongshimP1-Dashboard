@@ -31,92 +31,92 @@ ALERT_RED = "#E74C3C"       # 리스크 매트릭스 고위험 강조 (소프트
 # 1. 페이지 세팅 및 전역 UI 스타일링 
 st.set_page_config(layout="wide", page_title="생산1팀 통합 수율 관리 시스템")
 
-# [수정부 - 상단 디자인] 첨부 이미지 양식 맞춤형 글로벌 CSS 오버라이딩
-st.markdown("""
+# [수정부 - 상단 디자인] 첨부 이미지 양식 맞춤형 글로벌 CSS 오버라이딩 (변수 버그 전면 교정)
+st.markdown(f"""
     <style>
         /* 포털형 통합 연회색 배경 */
-        .stApp {
+        .stApp {{
             background-color: #F8FAFC !important;
-        }
+        }}
         
         /* 사이드바 스타일 정의 (SYSTEM ADMIN 폰트 및 강렬한 레드 멀티 태그) */
-        [data-testid="stSidebar"] {
+        [data-testid="stSidebar"] {{
             background-color: #F1F5F9 !important;
             border-right: 1px solid #E2E8F0;
-        }
-        [data-testid="stSidebar"] .stMarkdown h2 {
+        }}
+        [data-testid="stSidebar"] .stMarkdown h2 {{
             color: #ADB5BD !important; font-size: 14px !important; font-weight: 700 !important; letter-spacing: 1px !important;
-        }
-        span[data-baseweb="tag"] {
-            background-color: #FF4B4B !important;
+        }}
+        span[data-baseweb="tag"] {{
+            background-color: {ALERT_RED} !important;
             border-radius: 4px !important;
             padding: 2px 6px !important;
-        }
-        span[data-baseweb="tag"] span {
+        }}
+        span[data-baseweb="tag"] span {{
             color: white !important; font-weight: 700 !important; font-size: 12px !important;
-        }
-        span[data-baseweb="tag"] svg {
+        }}
+        span[data-baseweb="tag"] svg {{
             fill: white !important;
-        }
+        }}
 
         /* 고해상도 이미지 전용 KPI 3열 매트릭스 타일 구조 */
-        .mes-kpi-wrapper {
+        .mes-kpi-wrapper {{
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 24px;
             margin-bottom: 10px;
-        }
-        .mes-kpi-card {
+        }}
+        .mes-kpi-card {{
             background: #FFFFFF;
             border: 1px solid #E2E8F0;
             border-radius: 8px;
             padding: 22px 24px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        .mes-kpi-label {
+        }}
+        .mes-kpi-label {{
             font-size: 14px; font-weight: 600; color: #64748B; margin-bottom: 12px;
-        }
-        .mes-kpi-value-box {
+        }}
+        .mes-kpi-value-box {{
             display: flex; align-items: baseline;
-        }
-        .mes-kpi-value {
+        }}
+        .mes-kpi-value {{
             font-size: 34px; font-weight: 800; color: #1E293B; line-height: 1;
-        }
-        .mes-kpi-unit {
+        }}
+        .mes-kpi-unit {{
             font-size: 18px; font-weight: 600; color: #64748B; margin-left: 4px;
-        }
-        .mes-kpi-status {
+        }}
+        .mes-kpi-status {{
             font-size: 13px; font-weight: 700; margin-top: 12px;
-        }
+        }}
 
         /* 기존 유지 디자인 규격 */
-        .stTabs [data-baseweb="tab"] p {
+        .stTabs [data-baseweb="tab"] p {{
             font-size: 14px !important;
-        }
-        .target-period {
+        }}
+        .target-period {{
             font-size: 14px !important;
-        }
-        .dataframe, .paint-table td, .paint-table th {
+        }}
+        .dataframe, .paint-table td, .paint-table th {{
             font-size: 14px !important;
-        }
-        [data-testid="stSidebar"] .stAlert p {
+        }}
+        [data-testid="stSidebar"] .stAlert p {{
             font-size: 13.5px !important;
             white-space: nowrap !important;
         }
-        .bottom-filter-label {
+        .bottom-filter-label {{
             font-size: 12.5px !important;
             color: #7F8C8D;
             margin-bottom: -12px !important;
             padding-left: 2px;
             font-weight: bold;
-        }
-        div[data-testid="stRadio"] label span {
+        }}
+        div[data-testid="stRadio"] label span {{
             font-size: 12.5px !important;
-        }
+        }}
     </style>
 """, unsafe_allow_html=True)
 
-# 사이드바 컨트롤러 (이미지 텍스트 양식 변경)
+# 사이드바 컨트롤러 (기존 구성 100% 보존)
 with st.sidebar:
     st.header("⚙️ SYSTEM ADMIN")
     st.markdown("---")
@@ -130,7 +130,7 @@ with st.sidebar:
     st.markdown("---")
     search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
 
-# [수정부 - 상단 타이틀 구성] 이미지와 완전 대조 일치형 헤더 컴포넌트 빌드
+# 상단 타이틀 구성 (양식 커스텀 스타일)
 h_left, h_right = st.columns([4, 1])
 with h_left:
     st.markdown("""
@@ -221,8 +221,7 @@ if selected_months:
         st.markdown("---")
 
         # ----------------------------------------------------------------------
-        # [수정부 - 상단 핵심 성과 지표(KPI) 인포그래픽] 
-        # 이미지 가이드라인 준수: 데이터 신뢰도 제외 3열 고해상도 카드 하드코딩 렌더링
+        # 상단 핵심 성과 지표(KPI) 인포그래픽 (NameError 변수 완전 교정본)
         # ----------------------------------------------------------------------
         df_26_kpi = team_df[team_df['연도'] == '26년 누적']
         if not df_26_kpi.empty:
@@ -237,7 +236,7 @@ if selected_months:
         else:
             total_26_yield, total_cost_billion, risk_count = 0, 0, 0
 
-        # 백색 Portal 카드 격자 정렬 주입 (유령 박스 완벽 차단 기법)
+        # ALERT_RED 매핑으로 완벽 교정
         st.markdown(f"""
             <div class="mes-kpi-wrapper">
                 <div class="mes-kpi-card" style="border-top: 4px solid #10B981;">
@@ -254,12 +253,12 @@ if selected_months:
                     </div>
                     <div class="mes-kpi-status" style="color: #64748B;">생산 운영 스케일</div>
                 </div>
-                <div class="mes-kpi-card" style="border-top: 4px solid {COLOR_RED_TAG};">
+                <div class="mes-kpi-card" style="border-top: 4px solid {ALERT_RED};">
                     <div class="mes-kpi-label">4억 이상 고위험 자재 수</div>
                     <div class="mes-kpi-value-box">
-                        <span class="mes-kpi-value" style="color: {COLOR_RED_TAG};">{risk_count:02d}</span><span class="mes-kpi-unit">개 품목</span>
+                        <span class="mes-kpi-value" style="color: {ALERT_RED};">{risk_count:02d}</span><span class="mes-kpi-unit">개 품목</span>
                     </div>
-                    <div class="mes-kpi-status" style="color: {COLOR_RED_TAG};">⚠️ 집중 검토 요망</div>
+                    <div class="mes-kpi-status" style="color: {ALERT_RED};">⚠️ 집중 검토 요망</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
