@@ -6,7 +6,7 @@ import urllib.parse
 from datetime import datetime
 
 # ==============================================================================
-# [1] 시스템 디자인 엔진 (사진 기반 정밀 튜닝)
+# [1] 시스템 디자인 엔진 (ERP 스타일 고도화)
 # ==============================================================================
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
@@ -59,7 +59,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# [2] 데이터 로직 및 기준선
+# [2] 데이터 처리 핵심 로직
 # ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = ["25.01", "25.02", "25.03", "25.04", "25.05", "25.06", "25.12", "26.01", "26.02", "26.03", "26.04"]
@@ -97,7 +97,7 @@ def fetch_system_data(month):
     except: return pd.DataFrame()
 
 # ==============================================================================
-# [3] 메인 화면 렌더링
+# [3] 포털 시스템 메인 렌더링
 # ==============================================================================
 
 with st.sidebar:
@@ -107,7 +107,7 @@ with st.sidebar:
     search = st.text_input("🔍 품목 실시간 검색")
     st.info(f"Sync: {datetime.now().strftime('%H:%M:%S')}")
 
-# 헤더
+# 메인 헤더
 st.markdown(f"""
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 2px solid #E2E8F0; padding-bottom: 15px;">
         <div>
@@ -134,7 +134,7 @@ if selected_months:
         full_df['연도'] = full_df['월'].apply(lambda x: '25년' if '25' in str(x) else '26년')
         if search: full_df = full_df[full_df['하위품목 텍스트'].str.contains(search, na=False)]
 
-        # --- KPI 타일 (기존 유지) ---
+        # --- [CARD 1] 상단 핵심 KPI 메트릭 ---
         df_26 = full_df[full_df['연도'] == '26년']
         if not df_26.empty:
             th_sum, ac_sum = df_26['이론금액'].sum(), df_26['실제금액'].sum()
@@ -151,7 +151,7 @@ if selected_months:
             k4.markdown(f'<div class="kpi-tile"><p class="kpi-label">데이터 신뢰도</p><div class="kpi-value" style="color:#1E40AF;">99.9<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#1E40AF;">ERP 동기화 완료</p></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [CARD 2: 수율 종합 상황판] 사진과 똑같이 수정 ---
+        # --- [CARD 2] 생산1팀 수율 종합 상황판 (정밀 포맷팅) ---
         st.markdown('<div class="section-header-text">📋 생산1팀 수율 종합 상황판</div>', unsafe_allow_html=True)
         tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
         
@@ -160,10 +160,10 @@ if selected_months:
                 t_col, g_col = st.columns([62, 38])
                 d_df = full_df if d_name == '전체 총합' else full_df[full_df['생산부문명'] == d_name]
                 
-                with t_col: # 표 (Table) 수정
+                with t_col: # 표 데이터 정교화
                     st.write(f"**📊 {d_name} 수율 지표**")
                     if not d_df.empty:
-                        # 데이터 재구성
+                        # 통계 데이터 생성
                         summ = d_df.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
                         total_rows = []
                         for yr in ['25년', '26년']:
@@ -172,33 +172,36 @@ if selected_months:
                         summ = pd.concat([summ, pd.DataFrame(total_rows)], ignore_index=True)
                         summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
                         
-                        # 피벗 생성 (사진의 7열 구조)
+                        # 7열 피벗 구조 (25년 선배치, 26년 후배치)
                         pivot_df = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
                         pivot_df.columns = [f"{c[1]} {c[0]}" for c in pivot_df.columns]
                         pivot_df = pivot_df[['25년 이론금액', '25년 실제금액', '25년 수율', '26년 이론금액', '26년 실제금액', '26년 수율']]
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
-                        # 스타일링
+                        # 스타일링 가이드 적용
                         thresh = YIELD_THRESHOLD[d_name]
-                        def style_table(styler):
-                            # 숫자 포맷
-                            styler.format({c: '{:,.0f}' for c in pivot_df.columns if '수율' not in c})
-                            styler.format({c: '{:.2f}%' for c in pivot_df.columns if '수율' in c})
-                            # 25년 배경색 (회색/베이지)
+                        def style_table_refined(styler):
+                            # 1. 소수점 제거 및 천단위 콤마 (이론금액, 실제금액 열)
+                            format_dict = {c: '{:,.0f}' for c in pivot_df.columns if '수율' not in c}
+                            # 2. 수율(%) 열은 소수점 2자리 유지
+                            format_dict.update({c: '{:.2f}%' for c in pivot_df.columns if '수율' in c})
+                            styler.format(format_dict)
+                            
+                            # 3. 25년 데이터 배경색 강조 (사진의 회색조 반영)
                             styler.set_properties(subset=['25년 이론금액', '25년 실제금액', '25년 수율'], **{'background-color': '#F8F9FA'})
-                            # 수율 미달 강조 (빨간색)
+                            
+                            # 4. 26년 수율 미달 시 빨간색 강조
                             styler.map(lambda x: 'color: #E74C3C; font-weight: bold;' if isinstance(x, float) and x < thresh else '', subset=['26년 수율'])
                             return styler
 
-                        st.dataframe(pivot_df.style.pipe(style_table), use_container_width=True)
+                        st.dataframe(pivot_df.style.pipe(style_table_refined), use_container_width=True)
                         st.markdown(f'<p class="threshold-info">📌 {d_name} 관리 기준 수율 : {thresh}% 이상</p>', unsafe_allow_html=True)
 
-                with g_col: # 그래프 (Line Chart) 수정
+                with g_col: # 꺾은선 추이 그래프
                     st.write(f"**📈 수율 변화 추이**")
                     if not d_df.empty:
                         tr = d_df.groupby(['연도', '월'])[['이론금액','실제금액']].sum().reset_index()
                         tr = tr.sort_values(['연도', '월'])
-                        # 누적 수율 계산 (cumsum)
                         tr['cum_th'] = tr.groupby('연도')['이론금액'].cumsum()
                         tr['cum_ac'] = tr.groupby('연도')['실제금액'].cumsum()
                         tr['누적수율'] = (tr['cum_th'] / tr['cum_ac'] * 100).round(2)
@@ -227,12 +230,12 @@ if selected_months:
                         )
                         st.plotly_chart(fig, use_container_width=True, key=f"trend_{d_name}")
 
-        # --- 하단 분석 그리드 (기존 유지) ---
+        # --- [CARD 3] 하단 분석 그리드 ---
         c_grid_l, c_grid_r = st.columns(2)
         with c_grid_l:
-            st.markdown('<div class="section-header-text">📊 자재 유형별 실적 비교</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header-text">📊 자재 유형별 수율 현황</div>', unsafe_allow_html=True)
             st.markdown('<div class="portal-card">', unsafe_allow_html=True)
-            m_opt = st.selectbox("유형 필터", ["원자재", "부자재", "반제품"], key="mat_filt")
+            m_opt = st.selectbox("조회 대상", ["원자재", "부자재", "반제품"], key="mat_filt")
             m_df = full_df[full_df['자재 유형 내역'] == m_opt].groupby(['연도', '생산부문명'])[['이론금액','실제금액']].sum().reset_index()
             m_df['수율'] = (m_df['이론금액']/m_df['실제금액']*100).round(2)
             fig_bar = px.bar(m_df, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년':COMP_GRAY, '26년':MAIN_BLUE})
@@ -243,7 +246,7 @@ if selected_months:
         with c_grid_r:
             st.markdown('<div class="section-header-text">🔍 수율 리스크 매트릭스</div>', unsafe_allow_html=True)
             st.markdown('<div class="portal-card">', unsafe_allow_html=True)
-            r_dept = st.selectbox("부서 필터", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="risk_filt")
+            r_dept = st.selectbox("조회 부서", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="risk_filt")
             r_df = full_df.copy() if r_dept == "전체 1팀" else full_df[full_df['생산부문명'] == r_dept]
             if not r_df.empty:
                 r_item = r_df.groupby(['연도', '하위품목 텍스트'])[['이론금액','실제금액']].sum().reset_index()
@@ -256,6 +259,6 @@ if selected_months:
             st.markdown('</div>', unsafe_allow_html=True)
 
 else:
-    st.warning("⚠️ 좌측 사이드바에서 분석 기간을 설정해 주세요.")
+    st.warning("⚠️ 분석 대상 년월을 선택해 주세요.")
 
 st.markdown("<p style='text-align:center; color:#94A3B8; font-size:12px; margin-top:50px;'>Integrated Production Monitoring Portal System | © 2026 Nongshim Production Team 1</p>", unsafe_allow_html=True)
