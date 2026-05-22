@@ -26,7 +26,7 @@ st.markdown("""
             margin-bottom: 20px;
         }
         
-        /* 섹션 타이틀 */
+        /* 섹션 및 서브 타이틀 글자 크기 통합 (20px) */
         .section-header-text {
             font-size: 20px;
             font-weight: 700;
@@ -37,6 +37,14 @@ st.markdown("""
             align-items: center;
             gap: 10px;
         }
+        
+        .sub-header-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 12px;
+            display: block;
+        }
 
         /* KPI 타일 */
         .kpi-tile { text-align: left; padding: 10px 5px; }
@@ -45,7 +53,7 @@ st.markdown("""
         .kpi-unit { font-size: 18px; color: #94A3B8; margin-left: 3px; }
         .kpi-trend { font-size: 13px; margin-top: 10px; font-weight: 700; }
 
-        /* 테이블 폰트 및 스타일 */
+        /* 테이블 스타일 */
         .stDataFrame { border-radius: 4px; }
         
         /* 관리 기준 안내 텍스트 */
@@ -65,10 +73,7 @@ SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = ["25.01", "25.02", "25.03", "25.04", "25.05", "25.06", "25.12", "26.01", "26.02", "26.03", "26.04"]
 
 YIELD_THRESHOLD = {
-    '면 1과': 98.92,
-    '면 5과': 97.93,
-    '스프실': 99.53,
-    '전체 총합': 98.73
+    '면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '전체 총합': 98.73
 }
 
 MAIN_BLUE = "#1E40AF"
@@ -134,7 +139,7 @@ if selected_months:
         full_df['연도'] = full_df['월'].apply(lambda x: '25년' if '25' in str(x) else '26년')
         if search: full_df = full_df[full_df['하위품목 텍스트'].str.contains(search, na=False)]
 
-        # --- [CARD 1] 상단 핵심 KPI 메트릭 ---
+        # --- [CARD 1] 상단 핵심 KPI ---
         df_26 = full_df[full_df['연도'] == '26년']
         if not df_26.empty:
             th_sum, ac_sum = df_26['이론금액'].sum(), df_26['실제금액'].sum()
@@ -151,19 +156,19 @@ if selected_months:
             k4.markdown(f'<div class="kpi-tile"><p class="kpi-label">데이터 신뢰도</p><div class="kpi-value" style="color:#1E40AF;">99.9<span class="kpi-unit">%</span></div><p class="kpi-trend" style="color:#1E40AF;">ERP 동기화 완료</p></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- [CARD 2] 생산1팀 수율 종합 상황판 (정밀 포맷팅) ---
+        # --- [CARD 2] 수율 종합 상황판 (높이 및 폰트 크기 수정) ---
         st.markdown('<div class="section-header-text">📋 생산1팀 수율 종합 상황판</div>', unsafe_allow_html=True)
         tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
         
         for i, d_name in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
             with tabs[i]:
-                t_col, g_col = st.columns([62, 38])
+                # 가로 비율을 55:45로 조정하여 표를 컴팩트하게 만듦
+                t_col, g_col = st.columns([55, 45])
                 d_df = full_df if d_name == '전체 총합' else full_df[full_df['생산부문명'] == d_name]
                 
-                with t_col: # 표 데이터 정교화
-                    st.write(f"**📊 {d_name} 수율 지표**")
+                with t_col:
+                    st.markdown(f'<span class="sub-header-text">📊 {d_name} 수율 지표</span>', unsafe_allow_html=True)
                     if not d_df.empty:
-                        # 통계 데이터 생성
                         summ = d_df.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
                         total_rows = []
                         for yr in ['25년', '26년']:
@@ -172,33 +177,30 @@ if selected_months:
                         summ = pd.concat([summ, pd.DataFrame(total_rows)], ignore_index=True)
                         summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
                         
-                        # 7열 피벗 구조 (25년 선배치, 26년 후배치)
                         pivot_df = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
                         pivot_df.columns = [f"{c[1]} {c[0]}" for c in pivot_df.columns]
                         pivot_df = pivot_df[['25년 이론금액', '25년 실제금액', '25년 수율', '26년 이론금액', '26년 실제금액', '26년 수율']]
                         pivot_df = pivot_df.reindex(['원자재', '부자재', '반제품', '전체 수율'])
                         
-                        # 스타일링 가이드 적용
                         thresh = YIELD_THRESHOLD[d_name]
-                        def style_table_refined(styler):
-                            # 1. 소수점 제거 및 천단위 콤마 (이론금액, 실제금액 열)
+                        def style_refined(styler):
+                            # 전체 흰색 바탕 초기화
+                            styler.set_properties(**{'background-color': '#FFFFFF'})
                             format_dict = {c: '{:,.0f}' for c in pivot_df.columns if '수율' not in c}
-                            # 2. 수율(%) 열은 소수점 2자리 유지
                             format_dict.update({c: '{:.2f}%' for c in pivot_df.columns if '수율' in c})
                             styler.format(format_dict)
-                            
-                            # 3. 25년 데이터 배경색 강조 (사진의 회색조 반영)
-                            styler.set_properties(subset=['25년 이론금액', '25년 실제금액', '25년 수율'], **{'background-color': '#F8F9FA'})
-                            
-                            # 4. 26년 수율 미달 시 빨간색 강조
+                            # 수율 값 컬럼만 파스텔 하늘색 배경 적용
+                            styler.set_properties(subset=['25년 수율', '26년 수율'], **{'background-color': '#E0F2FE'})
+                            # 수율 미달 빨간색 강조
                             styler.map(lambda x: 'color: #E74C3C; font-weight: bold;' if isinstance(x, float) and x < thresh else '', subset=['26년 수율'])
                             return styler
 
-                        st.dataframe(pivot_df.style.pipe(style_table_refined), use_container_width=True)
+                        # 높이를 280px로 고정하여 그래프와 맞춤
+                        st.dataframe(pivot_df.style.pipe(style_refined), use_container_width=True, height=280)
                         st.markdown(f'<p class="threshold-info">📌 {d_name} 관리 기준 수율 : {thresh}% 이상</p>', unsafe_allow_html=True)
 
-                with g_col: # 꺾은선 추이 그래프
-                    st.write(f"**📈 수율 변화 추이**")
+                with g_col:
+                    st.markdown(f'<span class="sub-header-text">📈 수율 변화 추이</span>', unsafe_allow_html=True)
                     if not d_df.empty:
                         tr = d_df.groupby(['연도', '월'])[['이론금액','실제금액']].sum().reset_index()
                         tr = tr.sort_values(['연도', '월'])
@@ -212,20 +214,19 @@ if selected_months:
                             y_data = tr[tr['연도'] == yr]
                             fig.add_trace(go.Scatter(
                                 x=y_data['표시월'], y=y_data['누적수율'],
-                                name=f"{yr} 누적",
-                                mode='lines+markers+text',
-                                line=dict(color=color, width=3),
-                                marker=dict(size=8),
+                                name=f"{yr} 누적", mode='lines+markers+text',
+                                line=dict(color=color, width=3), marker=dict(size=8),
                                 text=y_data['누적수율'].apply(lambda x: f"{x}%"),
                                 textposition="top center",
                                 textfont=dict(size=11, color=color, weight='bold')
                             ))
                         
+                        # 그래프 높이도 280px로 맞춤 (상단 텍스트 고려)
                         fig.update_layout(
-                            height=320, margin=dict(l=10, r=10, t=30, b=10),
+                            height=280, margin=dict(l=10, r=10, t=30, b=10),
                             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
                             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                            yaxis=dict(range=[tr['누적수율'].min()-1, tr['누적수율'].max()+1.5], title="누적 수율 (%)", gridcolor='#E2E8F0'),
+                            yaxis=dict(range=[tr['누적수율'].min()-1, tr['누적수율'].max()+1.5], gridcolor='#E2E8F0'),
                             xaxis=dict(gridcolor='#E2E8F0')
                         )
                         st.plotly_chart(fig, use_container_width=True, key=f"trend_{d_name}")
