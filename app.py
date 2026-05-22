@@ -195,7 +195,7 @@ if selected_months:
         st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
-        # 1단: 생산1팀 수율 종합 상황판 (5:5 대칭 정렬 및 카드 격자화)
+        # 1단: 생산1팀 수율 종합 상황판 (st.container 통합 분리 및 카드 래핑)
         # ----------------------------------------------------------------------
         with st.container(border=True):
             st.subheader("📋 생산1팀 수율 종합 상황판")
@@ -219,7 +219,7 @@ if selected_months:
                                 base_summ = pd.concat([base_summ, pd.DataFrame(total_rows)], ignore_index=True)
                             base_summ['수율(%)'] = (base_summ['이론금액'] / base_summ['실제금액'] * 100)
                             
-                            pivot_df = base_summ.pivot(index='자재 유형 내역', columns='연度' if '연度' in base_summ.columns else '연도', values=['이론금액', '실제금액', '수율(%)'])
+                            pivot_df = base_summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율(%)'])
                             all_cols = [(val, yr) for yr in ['25년 누적', '26년 누적'] for val in ['이론금액', '실제금액', '수율(%)']]
                             pivot_df = pivot_df.reindex(columns=all_cols, fill_value=0)
                             
@@ -233,7 +233,8 @@ if selected_months:
                                 
                                 for col in styler.columns:
                                     if '수율' in col:
-                                        styler.set_properties(subset=[col], **Edge_Style := {'background-color': 'rgba(74, 144, 226, 0.12)'})
+                                        # SyntaxError 구역 완전 교정 완료
+                                        styler.set_properties(subset=[col], **{'background-color': 'rgba(74, 144, 226, 0.12)'})
                                 
                                 def apply_cell_logic(val):
                                     if isinstance(val, str) and '%' in val:
@@ -272,7 +273,7 @@ if selected_months:
                             
                             fig_line = go.Figure()
                             for yr_label in sorted(trend_raw['연도'].unique()):
-                                yr_data = trend_raw[trend_raw['연度'] == yr_label] if '연度' in trend_raw.columns else trend_raw[trend_raw['연도'] == yr_label]
+                                yr_data = trend_raw[trend_raw['연도'] == yr_label]
                                 color = MAIN_BLUE if '26년' in yr_label else COMP_GRAY
                                 
                                 position_list = []
@@ -328,10 +329,9 @@ if selected_months:
                 if not filtered_r2_1.empty:
                     dept_sum = filtered_r2_1.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                     dept_sum['수율'] = (dept_sum['이론금액'] / dept_sum['실제금액'] * 100).round(2)
-                    fig1 = px.bar(dept_sum, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
+                    fig1 = px.bar(dept_sum, x='생산부문명', y='수율', color='연度' if '연度' in dept_sum.columns else '연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
                     fig1.update_traces(textposition='outside', textfont=dict(size=12, weight='bold'))
                     
-                    # 수율 데이터 하한선 마진 연산으로 유동적 조절하여 그래프 잘림 예방
                     y_min_calc = max(0, dept_sum['수율'].min() - 4)
                     fig1.update_layout(height=290, margin=dict(l=5, r=5, t=25, b=5), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
                                        yaxis=dict(range=[y_min_calc, 108], gridcolor='#E2E8F0'), xaxis_title=None, font=dict(size=13))
@@ -380,7 +380,6 @@ if selected_months:
         with st.container(border=True):
             st.subheader("🚨 핵심 관리 자재 Top 5")
             
-            # 레이아웃 꼬임을 방지하기 위해 세션 연산부 및 필터 컨트롤러 결합 배치
             st.markdown("<div class='bottom-filter-label'>⚙️ 데이터 조회 범위 세부 튜닝</div>", unsafe_allow_html=True)
             top5_ctrl_col1, top5_ctrl_col2, _ = st.columns([35, 15, 50])
             
@@ -405,7 +404,6 @@ if selected_months:
                     target_single_month = sorted(selected_months)[0] if selected_months else "25.01"
                     st.empty()
 
-            # 탭 활성화부 렌더링
             tab_26, tab_25 = st.tabs(["📅 2026년 실적 분석", "📅 2025년 실적 분석"])
             
             for target_yr, current_tab in [("26년 누적", tab_26), ("25년 누적", tab_25)]:
@@ -418,7 +416,6 @@ if selected_months:
                         chart_title_suffix = f"({target_yr[:3]} 선택 기간 누적)"
                         
                     if not yr_df.empty:
-                        # 중복 연산 방지 및 통일화된 부서 키 매핑 적용
                         item_sum = yr_df[yr_df['생산부문명'] != '스프실'].groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
                         item_sum['수율'] = (item_sum['이론금액'] / item_sum['실제금액'] * 100).round(2)
                         
