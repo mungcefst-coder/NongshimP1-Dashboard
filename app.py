@@ -22,7 +22,7 @@ COMP_GRAY = "#94A3B8"
 ALERT_RED = "#EF4444"       
 SUCCESS_GREEN = "#10B981"   
 
-st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
+st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
 # [UI 디자인 스타일링]
 st.markdown(f"""
@@ -110,7 +110,7 @@ with h_left:
     st.markdown(f"""
         <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
         <h1 style="color: var(--text-color); font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-            생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> Portal
+            생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
         </h1>
     """, unsafe_allow_html=True)
 with h_right:
