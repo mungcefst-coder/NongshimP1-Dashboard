@@ -218,7 +218,8 @@ if selected_months:
                         
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
-                    st.markdown(f'<div class="custom-threshold-info">💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>', unsafe_allow_html=True)
+                    # 👇 네모 박스 클래스를 제거하고, margin-top을 음수로 주어 표와 간격을 확 좁혔습니다.
+                    st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {{d}} 기준 : {{YIELD_THRESHOLD[d]:.2f}}% 이상</div>", unsafe_allow_html=True)
                 with c2:
                     st.markdown(f"**📈 {d} 수율 변화 추이**")
                     if not target.empty:
