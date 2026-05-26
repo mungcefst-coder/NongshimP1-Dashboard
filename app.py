@@ -102,7 +102,7 @@ def load_single_month_cached(sheet_id, m):
 with st.sidebar:
     st.header("⚙️ SYSTEM ADMIN")
     # [★디테일 수정] 부산생산1팀 영문 표기 추가 및 간격/색상 미세 조정
-    st.markdown("<div style='color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
+    st.markdown("<div style='color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
     st.markdown("---")
     selected_months = st.multiselect("🗓️ 관제 대상 년월", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
     st.markdown("---")
