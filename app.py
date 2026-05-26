@@ -22,7 +22,7 @@ COMP_GRAY = "#94A3B8"
 ALERT_RED = "#EF4444"       
 SUCCESS_GREEN = "#10B981"   
 
-st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
+st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
 # [UI 디자인 스타일링]
 st.markdown(f"""
