@@ -102,7 +102,7 @@ with st.sidebar:
     st.markdown("---")
     selected_months = st.multiselect("🗓️ 관제 대상 년월", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
     st.markdown("---")
-    search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
+    search_keyword = st.text_input("🔍 자재명 검색", placeholder="자재명을 입력하세요...")
 
 # 포털 메인 타이틀
 h_left, h_right = st.columns([4.5, 1])
