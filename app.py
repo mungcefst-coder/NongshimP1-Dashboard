@@ -231,11 +231,15 @@ if selected_months:
                         styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                         styled_df = styled_df.set_properties(subset=yield_cols, **{'background-color': 'rgba(74, 144, 226, 0.12)'})
                         
-                        # --- [교정 및 반영 지점] 수율 수치(%)가 기준 미달일 경우 폰트 자체를 빨간색 Bold 처리 ---
-                        styled_df = styled_df.map(
-                            lambda val: f'color: {ALERT_RED}; font-weight: 900 !important;' if (pd.notna(val) and val > 0 and val < current_threshold) else '', 
-                            subset=yield_cols
-                        )
+                        # --- [★완벽 개선 지점★] 폰트 두께 강제 적용 알고리즘 (Red Bold) ---
+                        # font-weight를 CSS 표준 가장 두꺼운 값인 900(또는 bolder)으로 잡고 !important를 부여합니다.
+                        def style_low_yield(val):
+                            if pd.notna(val) and val > 0 and val < current_threshold:
+                                # font-weight 900과 !important의 결합으로 AG Grid 기본 테마를 뚫어냅니다.
+                                return f'color: {ALERT_RED} !important; font-weight: 900 !important; font-size: 1.05em !important;'
+                            return ''
+
+                        styled_df = styled_df.map(style_low_yield, subset=yield_cols)
                         
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
