@@ -110,7 +110,7 @@ with h_left:
     st.markdown(f"""
         <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
         <h1 style="color: var(--text-color); font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-            생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> Portal
+            생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
         </h1>
     """, unsafe_allow_html=True)
 with h_right:
