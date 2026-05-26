@@ -29,6 +29,7 @@ st.markdown(f"""
     <style>
         .stApp {{ background-color: #F8FAFC; }}
         
+        /* 프리미엄 섹션 구분선 */
         .premium-divider {{
             height: 2px;
             background: linear-gradient(to right, {MAIN_BLUE}, rgba(148, 163, 184, 0.3), rgba(0,0,0,0));
@@ -37,12 +38,14 @@ st.markdown(f"""
             opacity: 0.8;
         }}
 
+        /* 구조적 분리 세티 헤더 바 */
         .section-header {{
             display: flex; align-items: center; margin-bottom: 20px;
             padding-left: 10px; border-left: 5px solid {MAIN_BLUE};
         }}
         .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #1E293B !important; }}
 
+        /* 슬림 KPI 레이아웃 */
         .mes-kpi-wrapper {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 5px; }}
         .mes-kpi-card {{ 
             background-color: white; color: #1E293B; border: 1px solid #E2E8F0;
@@ -54,12 +57,7 @@ st.markdown(f"""
         .mes-kpi-unit {{ font-size: 15px; font-weight: 600; color: #64748B; margin-left: 5px; }}
         .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 8px; }}
 
-        .custom-threshold-info {{
-            padding: 10px 18px; background-color: white; border-left: 5px solid {MAIN_BLUE};
-            color: #475569; font-size: 14px; font-weight: 600; margin-top: 8px;
-            border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }}
-
+        /* Streamlit 고유 라디오 위젯 격벽 해제 커스텀 CSS (하단 바 밀착) */
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
         div[data-testid="stRadio"] > label {{ margin-bottom: 2px !important; }}
 
@@ -68,7 +66,6 @@ st.markdown(f"""
             .mes-kpi-card {{ background-color: #1A1C23; color: #F1F5F9; border: 1px solid #2D2F39; }}
             .section-header h2 {{ color: #F1F5F9 !important; }}
             .premium-divider {{ background: linear-gradient(to right, {MAIN_BLUE}, rgba(255,255,255,0.1), rgba(0,0,0,0)); }}
-            .custom-threshold-info {{ background-color: #1A1C23 !important; color: #F1F5F9 !important; }}
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -101,7 +98,6 @@ def load_single_month_cached(sheet_id, m):
 # --- 사이드바 위젯 ---
 with st.sidebar:
     st.header("⚙️ SYSTEM ADMIN")
-    # [★디테일 수정] 부산생산1팀 영문 표기 추가 및 간격/색상 미세 조정
     st.markdown("<div style='color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
     st.markdown("---")
     selected_months = st.multiselect("🗓️ 관제 대상 년월", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
@@ -136,16 +132,19 @@ if selected_months:
         team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
         if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
+        # KPI 연산
         df_26_kpi = team_df[team_df['연도'] == '26년 누적']
         if not df_26_kpi.empty:
             k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
             total_26_yd = (k_th / k_ac * 100) if k_ac > 0 else 0
             cost_billion = k_ac / 100000000 
+            
             agg_items = df_26_kpi.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
             agg_items['수율'] = (agg_items['이론금액'] / agg_items['실제금액'] * 100)
             risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
         else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
+        # 목표 달성 분기 로직
         if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
             kpi_status_text = "▲ 목표 달성"
             kpi_status_color = SUCCESS_GREEN
@@ -175,6 +174,7 @@ if selected_months:
         
         st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
 
+        # --- 섹션 1: 종합 상황판 ---
         st.markdown('<div class="section-header"><h2>📋 생산1팀 수율 종합 상황판</h2></div>', unsafe_allow_html=True)
         tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
         for i, d in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
@@ -218,9 +218,9 @@ if selected_months:
                         
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
-                   # 👇 중괄호를 한 개씩만 쓰도록 수정했습니다!
+                    
+                    # [수정 완결 지점] 중괄호를 정상 바인딩하여 텍스트형으로 밀착 처리
                     st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
-번거롭게 해드려 죄송합니다. 바로 적용해 보세요!
                 with c2:
                     st.markdown(f"**📈 {d} 수율 변화 추이**")
                     if not target.empty:
