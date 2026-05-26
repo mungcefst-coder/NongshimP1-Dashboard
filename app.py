@@ -19,7 +19,7 @@ YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '�
 
 MAIN_BLUE = "#3B82F6"       
 COMP_GRAY = "#94A3B8"       
-ALERT_RED = "#EF4444"       
+ALERT_RED = "#EF4444"       # 미달 시 적용할 빨간색 테마
 SUCCESS_GREEN = "#10B981"   
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
@@ -165,12 +165,8 @@ if selected_months:
             total_26_yd = (k_th / k_ac * 100) if k_ac > 0 else 0
             cost_billion = k_ac / 100000000 
             
-            # --- [★엔지니어링 수정 구역: 중복 품목 1건 결합 집계 로직] ---
-            # 각 자재(하위품목 텍스트)별로 전체 누적 금액과 수율을 구함
             agg_items = df_26_kpi.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
             agg_items['수율'] = (agg_items['이론금액'] / agg_items['실제금액'] * 100)
-            
-            # 유니크하게 정제된 자재 데이터 세트에서 '4억 이상' & '수율 98% 이하'를 만족하는 순수 자재 수 카운트
             risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
         else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
@@ -228,7 +224,20 @@ if selected_months:
                         pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
                         pivot.columns = [f"{yr[:3]} {v}" for v, yr in pivot.columns]
                         pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
-                        st.dataframe(pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns}).set_properties(subset=[c for c in pivot.columns if '수율' in c], **{'background-color': 'rgba(74, 144, 226, 0.12)'}), use_container_width=True)
+                        
+                        current_threshold = YIELD_THRESHOLD[d]
+                        yield_cols = [c for c in pivot.columns if '수율' in c]
+                        
+                        styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
+                        styled_df = styled_df.set_properties(subset=yield_cols, **{'background-color': 'rgba(74, 144, 226, 0.12)'})
+                        
+                        # --- [교정 및 반영 지점] 수율 수치(%)가 기준 미달일 경우 폰트 자체를 빨간색 Bold 처리 ---
+                        styled_df = styled_df.map(
+                            lambda val: f'color: {ALERT_RED}; font-weight: 900 !important;' if (pd.notna(val) and val > 0 and val < current_threshold) else '', 
+                            subset=yield_cols
+                        )
+                        
+                        st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
                     st.markdown(f'<div class="custom-threshold-info">💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>', unsafe_allow_html=True)
                 with c2:
@@ -342,4 +351,4 @@ if selected_months:
                                 fig_m.update_layout(height=340, margin=dict(l=150, r=60, t=20, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 140], gridcolor='rgba(128,128,128,0.1)'))
                                 st.plotly_chart(fig_m, use_container_width=True, key=f"t5_{ty}_{d_name}")
 else:
-    st.warning("📂 분석 대상 년월을 선택해 주세요.")
+    st.warning("📅 분석 대상 년월을 선택해 주세요.")
