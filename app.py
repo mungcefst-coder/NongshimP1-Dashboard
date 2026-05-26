@@ -22,7 +22,7 @@ COMP_GRAY = "#94A3B8"
 ALERT_RED = "#EF4444"       
 SUCCESS_GREEN = "#10B981"   
 
-st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
+st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
 # CSS 스타일링
 st.markdown(f"""
@@ -49,23 +49,17 @@ st.markdown(f"""
         .mes-kpi-value {{ font-size: 32px; font-weight: 800; line-height: 1.1; }}
         .mes-kpi-unit {{ font-size: 15px; font-weight: 600; color: #64748B; margin-left: 5px; }}
         .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 8px; }}
-        .custom-threshold-info {{
-            padding: 10px 18px; background-color: white; border-left: 5px solid {MAIN_BLUE};
-            color: #475569; font-size: 14px; font-weight: 600; margin-top: 8px;
-            border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }}
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
         @media (prefers-color-scheme: dark) {{
             .stApp {{ background-color: #0E1117; }}
             .mes-kpi-card {{ background-color: #1A1C23; color: #F1F5F9; border: 1px solid #2D2F39; }}
             .section-header h2 {{ color: #F1F5F9 !important; }}
-            .custom-threshold-info {{ background-color: #1A1C23 !important; color: #F1F5F9 !important; }}
         }}
     </style>
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 2. 시스템 세션 제어
+# 시스템 세션 제어
 # ------------------------------------------------------------------------------
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 
@@ -75,7 +69,7 @@ def login():
     else: st.error("⚠️ 아이디 또는 비밀번호가 틀렸습니다.")
 
 # ------------------------------------------------------------------------------
-# 3. 데이터 로드 로직
+# 데이터 로드
 # ------------------------------------------------------------------------------
 def preprocess_df(df, month_label):
     if df.empty: return pd.DataFrame()
@@ -124,14 +118,14 @@ else:
         st.markdown(f"""
             <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
             <h1 style="color: var(--text-color); font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-                생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
+                생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> Portal
             </h1>
         """, unsafe_allow_html=True)
     with h_right:
         st.markdown(f"""
-            <div style="text-align: right; margin-top: 15px;">
-                <div style="background: white; color: {MAIN_BLUE}; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid {MAIN_BLUE}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">● SYSTEM LIVE</div>
-                <div style="color: #94A3B8; font-size: 11px; margin-top: 10px; font-weight: 600;">Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
+            <div style='text-align: right; margin-top: 15px;'>
+                <div style='background: white; color: {MAIN_BLUE}; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid {MAIN_BLUE}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>● SYSTEM LIVE</div>
+                <div style='color: #94A3B8; font-size: 11px; margin-top: 10px; font-weight: 600;'>Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -193,12 +187,18 @@ else:
                             summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
                             pivot = summ.pivot(index='자재 유형 내역', columns='연도', values='수율')
                             
-                            def highlight_red_bold(val):
-                                return 'color: red; font-weight: bold;' if pd.notna(val) and val < YIELD_THRESHOLD[d] else ''
-                            
-                            st.dataframe(pivot.style.applymap(highlight_red_bold), use_container_width=True)
+                            def style_yield_cells(val):
+                                try:
+                                    v = float(val)
+                                    if v > 0 and v < YIELD_THRESHOLD[d]:
+                                        return f'color: {ALERT_RED}; background-color: rgba(239, 68, 68, 0.15);'
+                                    else:
+                                        return 'background-color: rgba(74, 144, 226, 0.12);'
+                                except: return ''
+                                
+                            # ★ 오류 수정: applymap 대신 map 사용
+                            styled_df = pivot.style.format('{:.2f}%').map(style_yield_cells)
+                            st.dataframe(styled_df, use_container_width=True)
                         st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
                     with c2:
-                        st.write("📈 상세 추이 생략 (코드 복잡도 방지)") # 실제 차트 로직 유지
-            
-            # (이하 생략된 차트 로직들도 동일하게 하단 필터링 구조로 삽입 가능)
+                        st.write("📈 상세 추이 생략 (상단 차트 로직과 동일 적용 가능)")
