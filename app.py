@@ -22,7 +22,7 @@ COMP_GRAY = "#94A3B8"
 ALERT_RED = "#EF4444"       
 SUCCESS_GREEN = "#10B981"   
 
-st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
+st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
 # [UI 디자인 스타일링]
 st.markdown(f"""
@@ -110,7 +110,7 @@ with h_left:
     st.markdown(f"""
         <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
         <h1 style="color: var(--text-color); font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-            생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
+            생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> Portal
         </h1>
     """, unsafe_allow_html=True)
 with h_right:
@@ -219,7 +219,6 @@ if selected_months:
                         st.dataframe(styled_df, use_container_width=True)
                     else: st.caption("데이터 없음")
                     
-                    # [수정 완결 지점] 중괄호를 정상 바인딩하여 텍스트형으로 밀착 처리
                     st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
                 with c2:
                     st.markdown(f"**📈 {d} 수율 변화 추이**")
@@ -302,7 +301,10 @@ if selected_months:
         
         v_m = st.radio("📊 데이터 조회 방식 선택", ["📊 선택 기간 전체 누적", "🎯 특정 년월 단독"], horizontal=True)
         if v_m == "🎯 특정 년월 단독":
-            t_m = st.selectbox("📅 분석 대상 년월 선택", options=sorted(selected_months))
+            # [★크기 축소 개선 지점★] 셀렉트 박스 너비를 제한하기 위해 컬럼 적용 (30% 너비)
+            s_col_filter, _ = st.columns([0.3, 0.7])
+            with s_col_filter:
+                t_m = st.selectbox("📅 분석 대상 년월 선택", options=sorted(selected_months))
         else:
             t_m = "전체"
             
