@@ -98,13 +98,17 @@ def load_single_month_cached(sheet_id, m):
         return preprocess_df(pd.read_csv(url), m)
     except: return pd.DataFrame()
 
+# --- 사이드바 위젯 ---
 with st.sidebar:
     st.header("⚙️ SYSTEM ADMIN")
+    # [★디테일 수정] 부산생산1팀 영문 표기 추가 및 간격/색상 미세 조정
+    st.markdown("<div style='color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
     st.markdown("---")
     selected_months = st.multiselect("🗓️ 관제 대상 년월", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
     st.markdown("---")
     search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
 
+# 포털 메인 타이틀
 h_left, h_right = st.columns([4.5, 1])
 with h_left:
     st.markdown(f"""
@@ -200,13 +204,10 @@ if selected_months:
                         
                         styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                         
-                        # --- [★완벽 교정 지점★] 렌더링 에러를 피하고 하이라이트를 주는 안전한 CSS 로직 ---
                         def style_yield_cells(val):
                             try:
                                 v = float(val)
                                 if v > 0 and v < current_threshold:
-                                    # 에러를 내는 font-size, font-weight 제외!
-                                    # 대신 글자색을 빨간색으로, 배경을 연한 빨간색으로 지정하여 Bold 못지않게 눈에 띄게 처리
                                     return f'color: {ALERT_RED}; background-color: rgba(239, 68, 68, 0.15);'
                                 else:
                                     return 'background-color: rgba(74, 144, 226, 0.12);'
