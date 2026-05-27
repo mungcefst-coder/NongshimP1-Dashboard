@@ -6,7 +6,7 @@ import urllib.parse
 from datetime import datetime
 
 # ==============================================================================
-# 1. 전역 데이터 소스 및 기준선 선언부
+# 1. 전역 데이터 소스 및 설정
 # ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = [
@@ -22,30 +22,23 @@ COMP_GRAY = "#94A3B8"
 ALERT_RED = "#EF4444"       
 SUCCESS_GREEN = "#10B981"   
 
-st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
+st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
 
-# [UI 디자인 스타일링]
+# CSS 스타일링
 st.markdown(f"""
     <style>
         .stApp {{ background-color: #F8FAFC; }}
-        
-        /* 프리미엄 섹션 구분선 */
         .premium-divider {{
             height: 2px;
             background: linear-gradient(to right, {MAIN_BLUE}, rgba(148, 163, 184, 0.3), rgba(0,0,0,0));
             margin: 40px 0 25px 0;
-            border-radius: 2px;
-            opacity: 0.8;
+            border-radius: 2px; opacity: 0.8;
         }}
-
-        /* 구조적 분리 세티 헤더 바 */
         .section-header {{
             display: flex; align-items: center; margin-bottom: 20px;
             padding-left: 10px; border-left: 5px solid {MAIN_BLUE};
         }}
         .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #1E293B !important; }}
-
-        /* 슬림 KPI 레이아웃 */
         .mes-kpi-wrapper {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 5px; }}
         .mes-kpi-card {{ 
             background-color: white; color: #1E293B; border: 1px solid #E2E8F0;
@@ -56,22 +49,44 @@ st.markdown(f"""
         .mes-kpi-value {{ font-size: 32px; font-weight: 800; line-height: 1.1; }}
         .mes-kpi-unit {{ font-size: 15px; font-weight: 600; color: #64748B; margin-left: 5px; }}
         .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 8px; }}
-
-        /* Streamlit 고유 라디오 위젯 격벽 해제 커스텀 CSS (하단 바 밀착) */
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
-        div[data-testid="stRadio"] > label {{ margin-bottom: 2px !important; }}
-
         @media (prefers-color-scheme: dark) {{
             .stApp {{ background-color: #0E1117; }}
             .mes-kpi-card {{ background-color: #1A1C23; color: #F1F5F9; border: 1px solid #2D2F39; }}
             .section-header h2 {{ color: #F1F5F9 !important; }}
-            .premium-divider {{ background: linear-gradient(to right, {MAIN_BLUE}, rgba(255,255,255,0.1), rgba(0,0,0,0)); }}
         }}
     </style>
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 데이터 처리 로직 
+# 2. 이원화 로그인 시스템 세션 제어
+# ------------------------------------------------------------------------------
+if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
+if 'is_admin' not in st.session_state: st.session_state['is_admin'] = False
+
+def login():
+    uid = st.session_state.username
+    upw = st.session_state.password
+    
+    # [관리자 마스터 계정 검증]
+    if uid == "admin" and upw == "admin5678":
+        st.session_state['logged_in'] = True
+        st.session_state['is_admin'] = True
+    
+    # [일반 팀원 공용 계정 검증]
+    elif uid == "busan1" and upw == "team1234":
+        st.session_state['logged_in'] = True
+        st.session_state['is_admin'] = False
+        
+    else: 
+        st.error("⚠️ 아이디 또는 비밀번호가 틀렸습니다.")
+
+def logout():
+    st.session_state['logged_in'] = False
+    st.session_state['is_admin'] = False
+
+# ------------------------------------------------------------------------------
+# 3. 데이터 로드 및 전처리 로직
 # ------------------------------------------------------------------------------
 def preprocess_df(df, month_label):
     if df.empty: return pd.DataFrame()
@@ -95,235 +110,228 @@ def load_single_month_cached(sheet_id, m):
         return preprocess_df(pd.read_csv(url), m)
     except: return pd.DataFrame()
 
-# --- 사이드바 위젯 ---
-with st.sidebar:
-    st.header("⚙️ SYSTEM ADMIN")
-    st.markdown("<div style='color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
-    st.markdown("---")
-    selected_months = st.multiselect("🗓️ 관제 대상 년월", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
-    st.markdown("---")
-    search_keyword = st.text_input("🔍 자재명 검색", placeholder="자재명을 입력하세요...")
+# ------------------------------------------------------------------------------
+# 4. 포털 라우팅 인터페이스
+# ------------------------------------------------------------------------------
+# --- CASE A. 로그인 거부 상태 (로그인 창 표출) ---
+if not st.session_state['logged_in']:
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
+        st.subheader("🔐 시스템 로그인")
+        st.text_input("아이디", key="username")
+        st.text_input("비밀번호", type="password", key="password")
+        st.button("로그인", on_click=login, use_container_width=True)
 
-# 포털 메인 타이틀
-h_left, h_right = st.columns([4.5, 1])
-with h_left:
-    st.markdown(f"""
-        <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
-        <h1 style="color: var(--text-color); font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-            생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
-        </h1>
-    """, unsafe_allow_html=True)
-with h_right:
-    st.markdown(f"""
-        <div style="text-align: right; margin-top: 15px;">
-            <div style="background: white; color: {MAIN_BLUE}; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid {MAIN_BLUE}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">● SYSTEM LIVE</div>
-            <div style="color: #94A3B8; font-size: 11px; margin-top: 10px; font-weight: 600;">Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
-        </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
-
-if selected_months:
-    active_dfs = [load_single_month_cached(SHEET_ID, m) for m in selected_months]
-    active_dfs = [d for d in active_dfs if not d.empty]
-            
-    if active_dfs:
-        team_df = pd.concat(active_dfs, ignore_index=True)
-        team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
-        if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
-
-        # KPI 연산
-        df_26_kpi = team_df[team_df['연도'] == '26년 누적']
-        if not df_26_kpi.empty:
-            k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
-            total_26_yd = (k_th / k_ac * 100) if k_ac > 0 else 0
-            cost_billion = k_ac / 100000000 
-            
-            agg_items = df_26_kpi.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
-            agg_items['수율'] = (agg_items['이론금액'] / agg_items['실제금액'] * 100)
-            risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
-        else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
-
-        # 목표 달성 분기 로직
-        if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
-            kpi_status_text = "▲ 목표 달성"
-            kpi_status_color = SUCCESS_GREEN
+# --- CASE B. 로그인 성공 상태 (대시보드 메인 포털 표출) ---
+else:
+    with st.sidebar:
+        # 접속한 권한에 따라 뱃지 표출 분기
+        if st.session_state['is_admin']:
+            st.markdown("<span style='background-color:#EF4444; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
         else:
-            kpi_status_text = "▼ 목표 미달"
-            kpi_status_color = ALERT_RED
+            st.markdown("<span style='background-color:#3B82F6; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>TEAM MEMBER</span>", unsafe_allow_html=True)
+            
+        st.header("⚙️ SYSTEM ADMIN")
+        st.markdown("<div style='color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
+        st.button("🔓 로그아웃", on_click=logout, use_container_width=True)
+        st.markdown("---")
+        selected_months = st.multiselect("🗓️ 관제 대상 년월", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
+        st.markdown("---")
+        search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
 
+    # 헤더 타이틀 및 시스템 모니터링 라이브 상태 표출
+    h_left, h_right = st.columns([4.5, 1])
+    with h_left:
         st.markdown(f"""
-            <div class="mes-kpi-wrapper">
-                <div class="mes-kpi-card" style="border-top: 4px solid {kpi_status_color};">
-                    <div class="mes-kpi-label">종합 수율</div>
-                    <div class="mes-kpi-value-box"><span class="mes-kpi-value">{total_26_yd:.2f}</span><span class="mes-kpi-unit">%</span></div>
-                    <div class="mes-kpi-status" style="color: {kpi_status_color};">{kpi_status_text}</div>
-                </div>
-                <div class="mes-kpi-card" style="border-top: 4px solid {MAIN_BLUE};">
-                    <div class="mes-kpi-label">누적 실제 투입 금액</div>
-                    <div class="mes-kpi-value-box"><span class="mes-kpi-value">{cost_billion:,.1f}</span><span class="mes-kpi-unit">억 원</span></div>
-                    <div class="mes-kpi-status" style="color: #64748B;">생산 운영 스케일</div>
-                </div>
-                <div class="mes-kpi-card" style="border-top: 4px solid {ALERT_RED};">
-                    <div class="mes-kpi-label">고위험 자재 건수</div>
-                    <div class="mes-kpi-value-box"><span class="mes-kpi-value" style="color: {ALERT_RED};">{risk_cnt:02d}</span><span class="mes-kpi-unit">건</span></div>
-                    <div class="mes-kpi-status" style="color: {ALERT_RED};">⚠️ 즉시 집중 점검 필요</div>
-                </div>
+            <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
+            <h1 style="color: var(--text-color); font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
+                생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> Portal
+            </h1>
+        """, unsafe_allow_html=True)
+    with h_right:
+        st.markdown(f"""
+            <div style='text-align: right; margin-top: 15px;'>
+                <div style='background: white; color: {MAIN_BLUE}; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid {MAIN_BLUE}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>● SYSTEM LIVE</div>
+                <div style='color: #94A3B8; font-size: 11px; margin-top: 10px; font-weight: 600;'>Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
             </div>
         """, unsafe_allow_html=True)
-        
-        st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
 
-        # --- 섹션 1: 종합 상황판 ---
-        st.markdown('<div class="section-header"><h2>📋 생산1팀 수율 종합 상황판</h2></div>', unsafe_allow_html=True)
-        tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
-        for i, d in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
-            with tabs[i]:
-                c1, c2 = st.columns(2)
-                target = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
-                with c1:
-                    st.markdown(f"**📊 {d} 상세 실적**")
-                    if not target.empty:
-                        summ = target.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
-                        extra_rows = []
-                        for yr in summ['연도'].unique():
-                            yr_data = summ[summ['연도'] == yr]
-                            rb_data = yr_data[yr_data['자재 유형 내역'].isin(['원자재', '부자재'])]
-                            if not rb_data.empty: extra_rows.append({'연도': yr, '자재 유형 내역': '원부자재 수율', '이론금액': rb_data['이론금액'].sum(), '실제금액': rb_data['실제금액'].sum()})
-                            extra_rows.append({'연도': yr, '자재 유형 내역': '전체 수율', '이론금액': yr_data['이론금액'].sum(), '실제금액': yr_data['실제금액'].sum()})
-                        summ = pd.concat([summ, pd.DataFrame(extra_rows)], ignore_index=True)
-                        summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
-                        pivot = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
-                        reorder_cols = [(v, y) for y in ['25년 누적', '26년 누적'] for v in ['이론금액', '실제금액', '수율']]
-                        pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
-                        pivot.columns = [f"{yr[:3]} {v}" for v, yr in pivot.columns]
-                        pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
-                        
-                        current_threshold = YIELD_THRESHOLD[d]
-                        yield_cols = [c for c in pivot.columns if '수율' in c]
-                        
-                        styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
-                        
-                        def style_yield_cells(val):
-                            try:
-                                v = float(val)
-                                if v > 0 and v < current_threshold:
-                                    return f'color: {ALERT_RED}; background-color: rgba(239, 68, 68, 0.15);'
-                                else:
-                                    return 'background-color: rgba(74, 144, 226, 0.12);'
-                            except:
-                                return 'background-color: rgba(74, 144, 226, 0.12);'
-                                
-                        styled_df = styled_df.map(style_yield_cells, subset=yield_cols)
-                        
-                        st.dataframe(styled_df, use_container_width=True)
-                    else: st.caption("데이터 없음")
-                    
-                    st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
-                with c2:
-                    st.markdown(f"**📈 {d} 수율 변화 추이**")
-                    if not target.empty:
-                        trend = target.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index().sort_values(['연도', '월'])
-                        trend['누적수율'] = (trend.groupby('연도')['이론금액'].cumsum() / trend.groupby('연도')['실제금액'].cumsum() * 100).round(2)
-                        trend['월표시'] = trend['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
-                        trend_piv = trend.pivot(index='월표시', columns='연도', values='누적수율').reset_index()
-                        
-                        fig = go.Figure()
-                        for yr_label in sorted(trend['연도'].unique()):
-                            y_data = trend[trend['연도'] == yr_label].copy()
-                            text_positions = []
-                            for idx, row in y_data.iterrows():
-                                m_lbl = row['월표시']
-                                current_val = row['누적수율']
-                                match_row = trend_piv[trend_piv['월표시'] == m_lbl]
-                                
-                                if not match_row.empty and '25년 누적' in trend_piv.columns and '26년 누적' in trend_piv.columns:
-                                    val_25 = match_row['25년 누적'].values[0]
-                                    val_26 = match_row['26년 누적'].values[0]
-                                    if yr_label == '26년 누적':
-                                        text_positions.append('top center' if current_val >= val_25 else 'bottom center')
-                                    else:
-                                        text_positions.append('top center' if current_val > val_26 else 'bottom center')
-                                else:
-                                    text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
-                            
-                            fig.add_trace(go.Scatter(
-                                x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
-                                text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), 
-                                textposition=text_positions, textfont=dict(size=14, weight='bold'),
-                                line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=4), marker=dict(size=10)
-                            ))
-                            
-                        y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
-                        fig.update_layout(height=280, margin=dict(l=100,r=80,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[y_min-3, y_max+3], gridcolor='rgba(128,128,128,0.1)', zeroline=False, ticksuffix="  "), xaxis=dict(type='category', range=[-0.5, len(trend['월표시'].unique())-0.5], gridcolor='rgba(128,128,128,0.1)'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-                        st.plotly_chart(fig, use_container_width=True)
+    st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
 
-        st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
+    # --------------------------------------------------------------------------
+    # 5. 메인 대시보드 그래픽 구동 렌더링 부
+    # --------------------------------------------------------------------------
+    if selected_months:
+        active_dfs = [load_single_month_cached(SHEET_ID, m) for m in selected_months]
+        active_dfs = [d for d in active_dfs if not d.empty]
+        if active_dfs:
+            team_df = pd.concat(active_dfs, ignore_index=True)
+            team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
+            if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-        # --- 섹션 2: 실시간 비교 및 리스크 분석 ---
-        st.markdown('<div class="section-header"><h2>📊 실시간 비교 및 리스크 분석</h2></div>', unsafe_allow_html=True)
-        r2c1, r2c2 = st.columns(2)
-        with r2c1:
-            st.subheader("📍 부문별 수율 비교")
-            s_col1, _ = st.columns([0.45, 0.55])
-            with s_col1: m_opt = st.selectbox("조회 자재 선택", ["원자재", "부자재", "반제품"], key="m_opt")
-            f_df = team_df[team_df['자재 유형 내역'] == m_opt]
-            if not f_df.empty:
-                ds = f_df.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
-                ds['수율'] = (ds['이론금액'] / ds['실제금액'] * 100).round(2)
-                fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
-                fig1.update_traces(texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold', size=13))
-                fig1.update_layout(height=330, margin=dict(l=80, r=20, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='rgba(128,128,128,0.1)'), xaxis_title=None)
-                st.plotly_chart(fig1, use_container_width=True)
-        with r2c2:
-            st.subheader("🔍 수율 리스크 매트릭스")
-            s_col3, _ = st.columns([0.45, 0.55])
-            with s_col3: s_dept = st.selectbox("조회 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="s_dept")
-            p_df = team_df.copy() if s_dept == "전체 1팀" else team_df[team_df['생산부문명'] == s_dept].copy()
-            if not p_df.empty:
-                isc = p_df.groupby(['연도', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
-                isc['수율'] = (isc['이론금액'] / isc['실제금액'] * 100).round(2)
-                isc['억'] = isc['실제금액'] / 100000000
-                def amc(row):
-                    if row['연도'] == '26년 누적' and row['억'] >= 4.0 and row['수율'] <= 98.0: return '🚨 집중 관리 대상'
-                    return row['연도']
-                isc['분류'] = isc.apply(amc, axis=1)
-                fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '🚨 집중 관리 대상': ALERT_RED})
-                fig3.update_traces(marker=dict(size=15, line=dict(width=1, color='white')))
-                fig3.update_layout(height=330, margin=dict(l=80, r=20, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)", legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02))
-                st.plotly_chart(fig3, use_container_width=True)
+            # 최상단 3열 KPI 핵심 연산
+            df_26_kpi = team_df[team_df['연도'] == '26년 누적']
+            if not df_26_kpi.empty:
+                k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
+                total_26_yd = (k_th / k_ac * 100) if k_ac > 0 else 0
+                cost_billion = k_ac / 100000000 
+                agg_items = df_26_kpi.groupby('하위품목 텍스트')[['이론금액', '실제금액']].sum().reset_index()
+                agg_items['수율'] = (agg_items['이론금액'] / agg_items['실제금액'] * 100)
+                risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
+            else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-        st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
+            kpi_color = SUCCESS_GREEN if total_26_yd >= YIELD_THRESHOLD['전체 총합'] else ALERT_RED
+            kpi_text = "▲ 목표 달성" if total_26_yd >= YIELD_THRESHOLD['전체 총합'] else "▼ 목표 미달"
 
-        # --- 섹션 3: 리스크 리스트 ---
-        st.markdown('<div class="section-header"><h2>🚨 집중 관리 자재 리스크 Top 5</h2></div>', unsafe_allow_html=True)
-        chart_block = st.container()
-        
-        v_m = st.radio("📊 데이터 조회 방식 선택", ["📊 선택 기간 전체 누적", "🎯 특정 년월 단독"], horizontal=True)
-        if v_m == "🎯 특정 년월 단독":
-            # [★크기 축소 개선 지점★] 셀렉트 박스 너비를 제한하기 위해 컬럼 적용 (30% 너비)
-            s_col_filter, _ = st.columns([0.3, 0.7])
-            with s_col_filter:
-                t_m = st.selectbox("📅 분석 대상 년월 선택", options=sorted(selected_months))
-        else:
-            t_m = "전체"
+            st.markdown(f"""
+                <div class="mes-kpi-wrapper">
+                    <div class="mes-kpi-card" style="border-top: 4px solid {kpi_color};">
+                        <div class="mes-kpi-label">종합 수율</div>
+                        <div class="mes-kpi-value-box"><span class="mes-kpi-value">{total_26_yd:.2f}</span><span class="mes-kpi-unit">%</span></div>
+                        <div class="mes-kpi-status" style="color: {kpi_color};">{kpi_text}</div>
+                    </div>
+                    <div class="mes-kpi-card" style="border-top: 4px solid {MAIN_BLUE};">
+                        <div class="mes-kpi-label">누적 실제 투입 금액</div>
+                        <div class="mes-kpi-value-box"><span class="mes-kpi-value">{cost_billion:,.1f}</span><span class="mes-kpi-unit">억 원</span></div>
+                        <div class="mes-kpi-status" style="color: #64748B;">생산 운영 스케일</div>
+                    </div>
+                    <div class="mes-kpi-card" style="border-top: 4px solid {ALERT_RED};">
+                        <div class="mes-kpi-label">고위험 자재 건수</div>
+                        <div class="mes-kpi-value-box"><span class="mes-kpi-value" style="color: {ALERT_RED};">{risk_cnt:02d}</span><span class="mes-kpi-unit">건</span></div>
+                        <div class="mes-kpi-status" style="color: {ALERT_RED};">⚠️ 즉시 집중 점검 필요</div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
             
-        with chart_block:
-            t26, t25 = st.tabs(["📅 2026년 실적 분석", "📅 2025년 실적 분석"])
-            for ty, tc in [("26년 누적", t26), ("25년 누적", t25)]:
-                with tc:
-                    ydf = team_df[team_df['월'] == t_m] if v_m == "🎯 특정 년월 단독" else team_df[team_df['연도'] == ty]
-                    if not ydf.empty:
-                        isum = ydf[ydf['생산부문명'] != '스프실'].groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
-                        isum['수율'] = (isum['이론금액'] / isum['실제금액'] * 100).round(2)
-                        cc1, cc2 = st.columns(2)
-                        for idx, d_name in enumerate(['면 1과', '면 5과']):
-                            with [cc1, cc2][idx]:
-                                st.markdown(f"**📍 {d_name} 중점 관리 리스트**")
-                                m_d = isum[isum['생산부문명'] == d_name].sort_values('실제금액', ascending=False).head(15).sort_values('수율').head(5)
-                                fig_m = px.bar(m_d, x='수율', y='하위품목 텍스트', orientation='h', text='수율')
-                                fig_m.update_traces(marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold'))
-                                fig_m.update_layout(height=340, margin=dict(l=150, r=60, t=20, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 140], gridcolor='rgba(128,128,128,0.1)'))
-                                st.plotly_chart(fig_m, use_container_width=True, key=f"t5_{ty}_{d_name}")
-else:
-    st.warning("📂 분석 대상 년월을 선택해 주세요.")
+            st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header"><h2>📋 생산1팀 수율 종합 상황판</h2></div>', unsafe_allow_html=True)
+            
+            # 종합 상황판 탭 시스템 구동
+            tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
+            for i, d in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
+                with tabs[i]:
+                    c1, c2 = st.columns(2)
+                    target = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
+                    with c1:
+                        if not target.empty:
+                            summ = target.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
+                            summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
+                            pivot = summ.pivot(index='자재 유형 내역', columns='연도', values='수율')
+                            
+                            def style_yield_cells(val):
+                                try:
+                                    v = float(val)
+                                    if v > 0 and v < YIELD_THRESHOLD[d]:
+                                        return f'color: {ALERT_RED}; background-color: rgba(239, 68, 68, 0.15);'
+                                    else:
+                                        return 'background-color: rgba(74, 144, 226, 0.12);'
+                                except: return ''
+                                
+                            styled_df = pivot.style.format('{:.2f}%').map(style_yield_cells)
+                            st.dataframe(styled_df, use_container_width=True)
+                        st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
+                    with c2:
+                        st.markdown(f"**📈 {d} 수율 변화 추이**")
+                        if not target.empty:
+                            trend = target.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index().sort_values(['연도', '월'])
+                            trend['누적수율'] = (trend.groupby('연도')['이론금액'].cumsum() / trend.groupby('연도')['실제금액'].cumsum() * 100).round(2)
+                            trend['월표시'] = trend['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
+                            trend_piv = trend.pivot(index='월표시', columns='연도', values='누적수율').reset_index()
+                            
+                            fig = go.Figure()
+                            for yr_label in sorted(trend['연도'].unique()):
+                                y_data = trend[trend['연도'] == yr_label].copy()
+                                text_positions = []
+                                for idx, row in y_data.iterrows():
+                                    m_lbl = row['월표시']
+                                    current_val = row['누적수율']
+                                    match_row = trend_piv[trend_piv['월표시'] == m_lbl]
+                                    if not match_row.empty and '25년 누적' in trend_piv.columns and '26년 누적' in trend_piv.columns:
+                                        val_25 = match_row['25년 누적'].values[0]
+                                        val_26 = match_row['26년 누적'].values[0]
+                                        if yr_label == '26년 누적':
+                                            text_positions.append('top center' if current_val >= val_25 else 'bottom center')
+                                        else:
+                                            text_positions.append('top center' if current_val > val_26 else 'bottom center')
+                                    else:
+                                        text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
+                                
+                                fig.add_trace(go.Scatter(
+                                    x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
+                                    text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), 
+                                    textposition=text_positions, textfont=dict(size=14, weight='bold'),
+                                    line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=4), marker=dict(size=10)
+                                ))
+                            y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
+                            fig.update_layout(height=280, margin=dict(l=100,r=80,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[y_min-3, y_max+3], gridcolor='rgba(128,128,128,0.1)', zeroline=False, ticksuffix="  "), xaxis=dict(type='category', range=[-0.5, len(trend['월표시'].unique())-0.5], gridcolor='rgba(128,128,128,0.1)'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                            st.plotly_chart(fig, use_container_width=True)
+
+            st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
+
+            # --- 섹션 2: 실시간 비교 및 리스크 분석 ---
+            st.markdown('<div class="section-header"><h2>📊 실시간 비교 및 리스크 분석</h2></div>', unsafe_allow_html=True)
+            r2c1, r2c2 = st.columns(2)
+            with r2c1:
+                st.subheader("📍 부문별 수율 비교")
+                s_col1, _ = st.columns([0.45, 0.55])
+                with s_col1: m_opt = st.selectbox("조회 자재 선택", ["원자재", "부자재", "반제품"], key="m_opt")
+                f_df = team_df[team_df['자재 유형 내역'] == m_opt]
+                if not f_df.empty:
+                    ds = f_df.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
+                    ds['수율'] = (ds['이론금액'] / ds['실제금액'] * 100).round(2)
+                    fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
+                    fig1.update_traces(texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold', size=13))
+                    fig1.update_layout(height=330, margin=dict(l=80, r=20, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='rgba(128,128,128,0.1)'), xaxis_title=None)
+                    st.plotly_chart(fig1, use_container_width=True)
+            with r2c2:
+                st.subheader("🔍 수율 리스크 매트릭스")
+                s_col3, _ = st.columns([0.45, 0.55])
+                with s_col3: s_dept = st.selectbox("조회 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="s_dept")
+                p_df = team_df.copy() if s_dept == "전체 1팀" else team_df[team_df['생산부문명'] == s_dept].copy()
+                if not p_df.empty:
+                    isc = p_df.groupby(['연도', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+                    isc['수율'] = (isc['이론금액'] / isc['실제금액'] * 100).round(2)
+                    isc['억'] = isc['실제금액'] / 100000000
+                    def amc(row):
+                        if row['연도'] == '26년 누적' and row['억'] >= 4.0 and row['수율'] <= 98.0: return '🚨 집중 관리 대상'
+                        return row['연도']
+                    isc['분류'] = isc.apply(amc, axis=1)
+                    fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '🚨 집중 관리 대상': ALERT_RED})
+                    fig3.update_traces(marker=dict(size=15, line=dict(width=1, color='white')))
+                    fig3.update_layout(height=330, margin=dict(l=80, r=20, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)", legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02))
+                    st.plotly_chart(fig3, use_container_width=True)
+
+            st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
+
+            # --- 섹션 3: 리스크 리스트 ---
+            st.markdown('<div class="section-header"><h2>🚨 집중 관리 자재 리스크 Top 5</h2></div>', unsafe_allow_html=True)
+            chart_block = st.container()
+            
+            v_m = st.radio("📊 데이터 조회 방식 선택", ["📊 선택 기간 전체 누적", "🎯 특정 년월 단독"], horizontal=True)
+            if v_m == "🎯 특정 년월 단독":
+                s_col_filter, _ = st.columns([0.3, 0.7])
+                with s_col_filter:
+                    t_m = st.selectbox("📅 분석 대상 년월 선택", options=sorted(selected_months))
+            else:
+                t_m = "전체"
+                
+            with chart_block:
+                t26, t25 = st.tabs(["📅 2026년 실적 분석", "📅 2025년 실적 분석"])
+                for ty, tc in [("26년 누적", t26), ("25년 누적", t25)]:
+                    with tc:
+                        ydf = team_df[team_df['월'] == t_m] if v_m == "🎯 특정 년월 단독" else team_df[team_df['연도'] == ty]
+                        if not ydf.empty:
+                            isum = ydf[ydf['생산부문명'] != '스프실'].groupby(['생산부문명', '하위품목 텍스트'])[['이론금액', '실제금액']].sum().reset_index()
+                            isum['수율'] = (isum['이론금액'] / isum['실제금액'] * 100).round(2)
+                            cc1, cc2 = st.columns(2)
+                            for idx, d_name in enumerate(['면 1과', '면 5과']):
+                                with [cc1, cc2][idx]:
+                                    st.markdown(f"**📍 {d_name} 중점 관리 리스트**")
+                                    m_d = isum[isum['생산부문명'] == d_name].sort_values('실제금액', ascending=False).head(15).sort_values('수율').head(5)
+                                    fig_m = px.bar(m_d, x='수율', y='하위품목 텍스트', orientation='h', text='수율')
+                                    fig_m.update_traces(marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold'))
+                                    fig_m.update_layout(height=340, margin=dict(l=150, r=60, t=20, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 140], gridcolor='rgba(128,128,128,0.1)'))
+                                    st.plotly_chart(fig_m, use_container_width=True, key=f"t5_{ty}_{d_name}")
+    else:
+        st.warning("📂 분석 대상 년월을 선택해 주세요.")
