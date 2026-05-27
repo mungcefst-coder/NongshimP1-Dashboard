@@ -6,7 +6,7 @@ import urllib.parse
 from datetime import datetime
 
 # ==============================================================================
-# 1. 전역 데이터 소스 및 기본 설정
+# 1. 전역 데이터 소스 및 설정
 # ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 ALL_MONTHS = [
@@ -15,12 +15,21 @@ ALL_MONTHS = [
     "26.01", "26.02", "26.03", "26.04"
 ]
 
+YIELD_THRESHOLD = {
+    '면 1과': 98.92, 
+    '면 5과': 97.93, 
+    '면 종합': 98.42, 
+    '스프실': 99.53, 
+    '전체 총합': 98.73
+}
+
 MAIN_BLUE = "#3B82F6"       
 COMP_GRAY = "#94A3B8"       
 ALERT_RED = "#EF4444"       
 SUCCESS_GREEN = "#10B981"   
 
-st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 Portal")
+# 상단 웹 브라우저 탭 타이틀도 동시 수정
+st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
 # CSS 프리미엄 스타일링
 st.markdown(f"""
@@ -104,7 +113,7 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 앱 인터페이스 구조 라우팅 (줄 맞춤 오류 수정)
+# 4. 앱 인터페이스 구조 라우팅
 # ------------------------------------------------------------------------------
 if not st.session_state['logged_in']:
     col1, col2, col3 = st.columns([1, 1, 1])
@@ -115,27 +124,21 @@ if not st.session_state['logged_in']:
         st.text_input("비밀번호", type="password", key="password")
         st.button("로그인", on_click=login, use_container_width=True)
 else:
-    # --- 사이드바 및 권한별 제어 패널 가구 배치 ---
     with st.sidebar:
         if st.session_state['is_admin']:
             st.markdown("<span style='background-color:#EF4444; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
-            
-            # 🔥 [관리자 전용 실시간 기준선 조절 메뉴 가구 배치]
             st.markdown("### 🎯 관리자 전용: 목표 설정")
             adm_m1 = st.number_input("면 1과 목표수율(%)", value=98.92, step=0.01)
             adm_m5 = st.number_input("면 5과 목표수율(%)", value=97.93, step=0.01)
             adm_sp = st.number_input("스프실 목표수율(%)", value=99.53, step=0.01)
             adm_tot = st.number_input("전체 총합 목표(%)", value=98.73, step=0.01)
-            
-            YIELD_THRESHOLD = {'면 1과': adm_m1, '면 5과': adm_m5, '스프실': adm_sp, '전체 총합': adm_tot}
-            
-            # 🔗 구글 원본 데이터 링크 버튼 배치
-            st.markdown(f"[📂 구글 스프레드시트 원본 바로가기](https://docs.google.com/spreadsheets/d/{SHEET_ID})")
+            adm_mtot = st.number_input("면 종합 통합 목표(%)", value=98.42, step=0.01)
+            YIELD_THRESHOLD = {'면 1과': adm_m1, '면 5과': adm_m5, '면 종합': adm_mtot, '스프실': adm_sp, '전체 총합': adm_tot}
+            st.markdown(f"[📂 구글 시트 원본](https://docs.google.com/spreadsheets/d/{SHEET_ID})")
             st.markdown("---")
         else:
             st.markdown("<span style='background-color:#3B82F6; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>TEAM MEMBER</span>", unsafe_allow_html=True)
-            # 일반 계정은 소스코드 고정 기준값 사용 (입력창 숨김)
-            YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '전체 총합': 98.73}
+            YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '면 종합': 98.42, '스프실': 99.53, '전체 총합': 98.73}
 
         st.header("⚙️ SYSTEM ADMIN")
         st.markdown("<div style='color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
@@ -145,13 +148,13 @@ else:
         st.markdown("---")
         search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
 
-    # 헤더 및 실시간 라이브 표시부
+    # 헤더 타이틀 렌더링 구역 (★메인 타이틀 명칭 변경 반영 완료★)
     h_left, h_right = st.columns([4.5, 1])
     with h_left:
         st.markdown(f"""
             <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
             <h1 style="color: var(--text-color); font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-                생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> Portal
+                생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
             </h1>
         """, unsafe_allow_html=True)
     with h_right:
@@ -164,9 +167,6 @@ else:
 
     st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
 
-    # --------------------------------------------------------------------------
-    # 5. 메인 데이터 연산 및 시각화 렌더링 구역
-    # --------------------------------------------------------------------------
     if selected_months:
         active_dfs = [load_single_month_cached(SHEET_ID, m) for m in selected_months]
         active_dfs = [d for d in active_dfs if not d.empty]
@@ -175,7 +175,7 @@ else:
             team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
             if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-            # KPI 핵심 연산
+            # 최상단 3열 KPI 연산
             df_26_kpi = team_df[team_df['연도'] == '26년 누적']
             if not df_26_kpi.empty:
                 k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
@@ -212,13 +212,16 @@ else:
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
             st.markdown('<div class="section-header"><h2>📋 생산1팀 수율 종합 상황판</h2></div>', unsafe_allow_html=True)
             
-            # 수율 종합 상황판 멀티 탭 가동
-            departments = ['면 1과', '면 5과', '스프실', '전체 총합']
+            # 수율 종합 상황판 5개 탭 가동 (면 종합 포함)
+            departments = ['면 1과', '면 5과', '면 종합', '스프실', '전체 총합']
             tabs = st.tabs(departments)
             for i, d in enumerate(departments):
                 with tabs[i]:
                     c1, c2 = st.columns(2)
-                    target = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
+                    if d == '전체 총합': target = team_df
+                    elif d == '면 종합': target = team_df[team_df['생산부문명'].isin(['면 1과', '면 5과'])]
+                    else: target = team_df[team_df['생산부문명'] == d]
+                        
                     with c1:
                         st.markdown(f"**📊 {d} 상세 실적**")
                         if not target.empty:
@@ -256,7 +259,6 @@ else:
                             st.dataframe(styled_df, use_container_width=True)
                         else: st.caption("데이터 없음")
                         
-                        # 하단 안내 텍스트 밀착 배치 (동적 기준선과 정상 연동)
                         st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
                     with c2:
                         st.markdown(f"**📈 {d} 수율 변화 추이**")
