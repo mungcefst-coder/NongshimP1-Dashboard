@@ -18,8 +18,8 @@ ALL_MONTHS = [
 YIELD_THRESHOLD = {
     '면 1과': 98.92, 
     '면 5과': 97.93, 
+    '스프실': 99.53,
     '면 종합': 98.42, 
-    '스프실': 99.53, 
     '전체 총합': 98.73
 }
 
@@ -28,7 +28,6 @@ COMP_GRAY = "#94A3B8"
 ALERT_RED = "#EF4444"       
 SUCCESS_GREEN = "#10B981"   
 
-# 상단 웹 브라우저 탭 타이틀도 동시 수정
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
 # CSS 프리미엄 스타일링
@@ -131,14 +130,14 @@ else:
             adm_m1 = st.number_input("면 1과 목표수율(%)", value=98.92, step=0.01)
             adm_m5 = st.number_input("면 5과 목표수율(%)", value=97.93, step=0.01)
             adm_sp = st.number_input("스프실 목표수율(%)", value=99.53, step=0.01)
-            adm_tot = st.number_input("전체 총합 목표(%)", value=98.73, step=0.01)
             adm_mtot = st.number_input("면 종합 통합 목표(%)", value=98.42, step=0.01)
-            YIELD_THRESHOLD = {'면 1과': adm_m1, '면 5과': adm_m5, '면 종합': adm_mtot, '스프실': adm_sp, '전체 총합': adm_tot}
+            adm_tot = st.number_input("전체 총합 목표(%)", value=98.73, step=0.01)
+            YIELD_THRESHOLD = {'면 1과': adm_m1, '면 5과': adm_m5, '스프실': adm_sp, '면 종합': adm_mtot, '전체 총합': adm_tot}
             st.markdown(f"[📂 구글 시트 원본](https://docs.google.com/spreadsheets/d/{SHEET_ID})")
             st.markdown("---")
         else:
             st.markdown("<span style='background-color:#3B82F6; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>TEAM MEMBER</span>", unsafe_allow_html=True)
-            YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '면 종합': 98.42, '스프실': 99.53, '전체 총합': 98.73}
+            YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '면 종합': 98.42, '전체 총합': 98.73}
 
         st.header("⚙️ SYSTEM ADMIN")
         st.markdown("<div style='color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
@@ -148,7 +147,7 @@ else:
         st.markdown("---")
         search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
 
-    # 헤더 타이틀 렌더링 구역 (★메인 타이틀 명칭 변경 반영 완료★)
+    # 헤더 타이틀 렌더링 구역
     h_left, h_right = st.columns([4.5, 1])
     with h_left:
         st.markdown(f"""
@@ -175,7 +174,7 @@ else:
             team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
             if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-            # 최상단 3열 KPI 연산
+            # KPI 연산 부문
             df_26_kpi = team_df[team_df['연도'] == '26년 누적']
             if not df_26_kpi.empty:
                 k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
@@ -212,8 +211,8 @@ else:
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
             st.markdown('<div class="section-header"><h2>📋 생산1팀 수율 종합 상황판</h2></div>', unsafe_allow_html=True)
             
-            # 수율 종합 상황판 5개 탭 가동 (면 종합 포함)
-            departments = ['면 1과', '면 5과', '면 종합', '스프실', '전체 총합']
+            # --- [★개선 지점] 요청하신 대로 탭 순서를 정교하게 변경했습니다. ---
+            departments = ['면 1과', '면 5과', '스프실', '면 종합', '전체 총합']
             tabs = st.tabs(departments)
             for i, d in enumerate(departments):
                 with tabs[i]:
