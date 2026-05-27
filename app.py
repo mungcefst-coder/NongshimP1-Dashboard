@@ -1,4 +1,4 @@
-import streamlit st
+import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -194,7 +194,6 @@ else:
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
             st.markdown('<div class="section-header"><h2>📋 생산1팀 수율 종합 상황판</h2></div>', unsafe_allow_html=True)
             
-            # --- [★NameError 완벽 조치 구역] 깔끔하고 정돈된 리스트 바인딩으로 전면 수정 ---
             departments = ['면 1과', '면 5과', '스프실', '전체 총합']
             tabs = st.tabs(departments)
             for i, d in enumerate(departments):
