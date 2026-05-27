@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -59,7 +59,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 2. 이원화 로그인 시스템 세션 제어 (아이디/비번 데이터 유지)
+# 2. 이원화 로그인 시스템 세션 제어
 # ------------------------------------------------------------------------------
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'is_admin' not in st.session_state: st.session_state['is_admin'] = False
@@ -194,18 +194,16 @@ else:
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
             st.markdown('<div class="section-header"><h2>📋 생산1팀 수율 종합 상황판</h2></div>', unsafe_allow_html=True)
             
-            # --- [★완벽 복구 구역] 기존의 디테일한 종합 상황판 표 연산 블록 복원 ---
-            tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
-            for i, d in enumerate(['면 1과', '면 5 과' if d == '면 5과' else '면 5과', '스프실', '전체 총합']):
-                # 실제 데이터 명칭 맵핑용 안전 장치
-                d_key = '면 5과' if d in ['면 5 과', '면 5과'] else d
+            # --- [★NameError 완벽 조치 구역] 깔끔하고 정돈된 리스트 바인딩으로 전면 수정 ---
+            departments = ['면 1과', '면 5과', '스프실', '전체 총합']
+            tabs = st.tabs(departments)
+            for i, d in enumerate(departments):
                 with tabs[i]:
                     c1, c2 = st.columns(2)
-                    target = team_df if d_key == '전체 총합' else team_df[team_df['생산부문명'] == d_key]
+                    target = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
                     with c1:
-                        st.markdown(f"**📊 {d_key} 상세 실적**")
+                        st.markdown(f"**📊 {d} 상세 실적**")
                         if not target.empty:
-                            # 기존 원부자재 수율 및 다차원 피벗 테이블 빌드 로직 완벽 적용
                             summ = target.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
                             extra_rows = []
                             for yr in summ['연도'].unique():
@@ -217,17 +215,15 @@ else:
                             summ = pd.concat([summ, pd.DataFrame(extra_rows)], ignore_index=True)
                             summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
                             
-                            # 25년/26년 다중 컬럼 피벗 빌드
                             pivot = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
                             reorder_cols = [(v, y) for y in ['25년 누적', '26년 누적'] for v in ['이론금액', '실제금액', '수율']]
                             pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
                             pivot.columns = [f"{yr[:3]} {v}" for v, yr in pivot.columns]
                             pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
                             
-                            current_threshold = YIELD_THRESHOLD[d_key]
+                            current_threshold = YIELD_THRESHOLD[d]
                             yield_cols = [c for c in pivot.columns if '수율' in c]
                             
-                            # 데이터 그리드 포맷 및 하이라이팅 마스크 바인딩
                             styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                             
                             def style_yield_cells(val):
@@ -242,11 +238,11 @@ else:
                             st.dataframe(styled_df, use_container_width=True)
                         else: st.caption("데이터 없음")
                         
-                        st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d_key} 기준 : {YIELD_THRESHOLD[d_key]:.2f}% 이상</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
                     with c2:
-                        st.markdown(f"**📈 {d_key} 수율 변화 추이**")
+                        st.markdown(f"**📈 {d} 수율 변화 추이**")
                         if not target.empty:
-                            trend = target.groupby(['연度' if '연度' in target.columns else '연도', '월'])[['이론금액', '실제금액']].sum().reset_index()
+                            trend = target.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index()
                             trend['누적수율'] = (trend.groupby('연도')['이론금액'].cumsum() / trend.groupby('연도')['실제금액'].cumsum() * 100).round(2)
                             trend['월표시'] = trend['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                             trend_piv = trend.pivot(index='월표시', columns='연도', values='누적수율').reset_index()
