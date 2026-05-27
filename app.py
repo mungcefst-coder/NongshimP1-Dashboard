@@ -59,7 +59,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 2. 이원화 로그인 시스템 세션 제어
+# 2. 이원화 로그인 시스템 세션 제어 (아이디/비번 데이터 유지)
 # ------------------------------------------------------------------------------
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'is_admin' not in st.session_state: st.session_state['is_admin'] = False
@@ -67,17 +67,12 @@ if 'is_admin' not in st.session_state: st.session_state['is_admin'] = False
 def login():
     uid = st.session_state.username
     upw = st.session_state.password
-    
-    # [관리자 마스터 계정 검증]
     if uid == "admin" and upw == "admin5678":
         st.session_state['logged_in'] = True
         st.session_state['is_admin'] = True
-    
-    # [일반 팀원 공용 계정 검증]
     elif uid == "busan1" and upw == "team1234":
         st.session_state['logged_in'] = True
         st.session_state['is_admin'] = False
-        
     else: 
         st.error("⚠️ 아이디 또는 비밀번호가 틀렸습니다.")
 
@@ -111,9 +106,8 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 포털 라우팅 인터페이스
+# 4. 앱 인터페이스 구조 라우팅
 # ------------------------------------------------------------------------------
-# --- CASE A. 로그인 거부 상태 (로그인 창 표출) ---
 if not st.session_state['logged_in']:
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
@@ -122,11 +116,8 @@ if not st.session_state['logged_in']:
         st.text_input("아이디", key="username")
         st.text_input("비밀번호", type="password", key="password")
         st.button("로그인", on_click=login, use_container_width=True)
-
-# --- CASE B. 로그인 성공 상태 (대시보드 메인 포털 표출) ---
 else:
     with st.sidebar:
-        # 접속한 권한에 따라 뱃지 표출 분기
         if st.session_state['is_admin']:
             st.markdown("<span style='background-color:#EF4444; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
         else:
@@ -140,7 +131,6 @@ else:
         st.markdown("---")
         search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
 
-    # 헤더 타이틀 및 시스템 모니터링 라이브 상태 표출
     h_left, h_right = st.columns([4.5, 1])
     with h_left:
         st.markdown(f"""
@@ -159,9 +149,6 @@ else:
 
     st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
 
-    # --------------------------------------------------------------------------
-    # 5. 메인 대시보드 그래픽 구동 렌더링 부
-    # --------------------------------------------------------------------------
     if selected_months:
         active_dfs = [load_single_month_cached(SHEET_ID, m) for m in selected_months]
         active_dfs = [d for d in active_dfs if not d.empty]
@@ -170,7 +157,7 @@ else:
             team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
             if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-            # 최상단 3열 KPI 핵심 연산
+            # KPI 연산 부문
             df_26_kpi = team_df[team_df['연도'] == '26년 누적']
             if not df_26_kpi.empty:
                 k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
@@ -207,41 +194,66 @@ else:
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
             st.markdown('<div class="section-header"><h2>📋 생산1팀 수율 종합 상황판</h2></div>', unsafe_allow_html=True)
             
-            # 종합 상황판 탭 시스템 구동
+            # --- [★완벽 복구 구역] 기존의 디테일한 종합 상황판 표 연산 블록 복원 ---
             tabs = st.tabs(['면 1과', '면 5과', '스프실', '전체 총합'])
-            for i, d in enumerate(['면 1과', '면 5과', '스프실', '전체 총합']):
+            for i, d in enumerate(['면 1과', '면 5 과' if d == '면 5과' else '면 5과', '스프실', '전체 총합']):
+                # 실제 데이터 명칭 맵핑용 안전 장치
+                d_key = '면 5과' if d in ['면 5 과', '면 5과'] else d
                 with tabs[i]:
                     c1, c2 = st.columns(2)
-                    target = team_df if d == '전체 총합' else team_df[team_df['생산부문명'] == d]
+                    target = team_df if d_key == '전체 총합' else team_df[team_df['생산부문명'] == d_key]
                     with c1:
+                        st.markdown(f"**📊 {d_key} 상세 실적**")
                         if not target.empty:
+                            # 기존 원부자재 수율 및 다차원 피벗 테이블 빌드 로직 완벽 적용
                             summ = target.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
+                            extra_rows = []
+                            for yr in summ['연도'].unique():
+                                yr_data = summ[summ['연도'] == yr]
+                                rb_data = yr_data[yr_data['자재 유형 내역'].isin(['원자재', '부자재'])]
+                                if not rb_data.empty: 
+                                    extra_rows.append({'연도': yr, '자재 유형 내역': '원부자재 수율', '이론금액': rb_data['이론금액'].sum(), '실제금액': rb_data['실제금액'].sum()})
+                                extra_rows.append({'연도': yr, '자재 유형 내역': '전체 수율', '이론금액': yr_data['이론금액'].sum(), '실제금액': yr_data['실제금액'].sum()})
+                            summ = pd.concat([summ, pd.DataFrame(extra_rows)], ignore_index=True)
                             summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
-                            pivot = summ.pivot(index='자재 유형 내역', columns='연도', values='수율')
+                            
+                            # 25년/26년 다중 컬럼 피벗 빌드
+                            pivot = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
+                            reorder_cols = [(v, y) for y in ['25년 누적', '26년 누적'] for v in ['이론금액', '실제금액', '수율']]
+                            pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
+                            pivot.columns = [f"{yr[:3]} {v}" for v, yr in pivot.columns]
+                            pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
+                            
+                            current_threshold = YIELD_THRESHOLD[d_key]
+                            yield_cols = [c for c in pivot.columns if '수율' in c]
+                            
+                            # 데이터 그리드 포맷 및 하이라이팅 마스크 바인딩
+                            styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                             
                             def style_yield_cells(val):
                                 try:
                                     v = float(val)
-                                    if v > 0 and v < YIELD_THRESHOLD[d]:
+                                    if v > 0 and v < current_threshold:
                                         return f'color: {ALERT_RED}; background-color: rgba(239, 68, 68, 0.15);'
-                                    else:
-                                        return 'background-color: rgba(74, 144, 226, 0.12);'
-                                except: return ''
+                                    else: return 'background-color: rgba(74, 144, 226, 0.12);'
+                                except: return 'background-color: rgba(74, 144, 226, 0.12);'
                                 
-                            styled_df = pivot.style.format('{:.2f}%').map(style_yield_cells)
+                            styled_df = styled_df.map(style_yield_cells, subset=yield_cols)
                             st.dataframe(styled_df, use_container_width=True)
-                        st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
+                        else: st.caption("데이터 없음")
+                        
+                        st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d_key} 기준 : {YIELD_THRESHOLD[d_key]:.2f}% 이상</div>", unsafe_allow_html=True)
                     with c2:
-                        st.markdown(f"**📈 {d} 수율 변화 추이**")
+                        st.markdown(f"**📈 {d_key} 수율 변화 추이**")
                         if not target.empty:
-                            trend = target.groupby(['연도', '월'])[['이론금액', '실제금액']].sum().reset_index().sort_values(['연도', '월'])
+                            trend = target.groupby(['연度' if '연度' in target.columns else '연도', '월'])[['이론금액', '실제금액']].sum().reset_index()
                             trend['누적수율'] = (trend.groupby('연도')['이론금액'].cumsum() / trend.groupby('연도')['실제금액'].cumsum() * 100).round(2)
                             trend['월표시'] = trend['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                             trend_piv = trend.pivot(index='월표시', columns='연도', values='누적수율').reset_index()
                             
                             fig = go.Figure()
                             for yr_label in sorted(trend['연도'].unique()):
-                                y_data = trend[trend['연도'] == yr_label].copy()
+                                y_data = trend[trend['연도'] == yr_label].copy().sort_values('월')
                                 text_positions = []
                                 for idx, row in y_data.iterrows():
                                     m_lbl = row['월표시']
@@ -250,12 +262,9 @@ else:
                                     if not match_row.empty and '25년 누적' in trend_piv.columns and '26년 누적' in trend_piv.columns:
                                         val_25 = match_row['25년 누적'].values[0]
                                         val_26 = match_row['26년 누적'].values[0]
-                                        if yr_label == '26년 누적':
-                                            text_positions.append('top center' if current_val >= val_25 else 'bottom center')
-                                        else:
-                                            text_positions.append('top center' if current_val > val_26 else 'bottom center')
-                                    else:
-                                        text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
+                                        if yr_label == '26년 누적': text_positions.append('top center' if current_val >= val_25 else 'bottom center')
+                                        else: text_positions.append('top center' if current_val > val_26 else 'bottom center')
+                                    else: text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
                                 
                                 fig.add_trace(go.Scatter(
                                     x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
