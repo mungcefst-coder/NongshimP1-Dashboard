@@ -32,34 +32,35 @@ BRAND_NAVY = "#1E40AF"
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
 # ==============================================================================
-# 2. UI 스타일링 (유령 박스 제거 및 다크모드 폰트 컬러 가변형 전면 수정)
+# 2. UI 스타일링 (최신 Streamlit 구조 맞춤형 테두리 격벽 및 다크모드 대응 CSS)
 # ==============================================================================
 st.markdown(f"""
     <style>
-        /* 기본 라이트모드 배경 */
+        /* 기본 라이트모드 바탕 배경색 */
         .stApp {{ background-color: #F1F5F9; }}
         
-        /* 로그인 화면 정중앙 제어 격벽 */
-        .login-bg {{ display: flex; justify-content: center; align-items: center; padding-top: 60px; }}
-        
-        /* 로그인 박스용 스타일 */
-        .login-box-target {{
-            background-color: #ffffff !important;
-            border-radius: 16px !important;
-            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05) !important;
-            border-top: 6px solid {BRAND_NAVY} !important;
-            padding: 20px 10px !important;
+        /* [★버그 전면 수정] 유령 박스를 파괴하고 탭 내부 레이아웃을 하얀 카드로 강제 전환 */
+        div[data-testid="stHorizontalBlock"] {{
+            background-color: var(--background-color, #ffffff) !important;
+            border: 1px solid rgba(128, 128, 128, 0.15) !important;
+            border-radius: 12px !important;
+            padding: 24px 28px !important;
+            margin-top: 15px !important;
+            margin-bottom: 15px !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02) !important;
         }}
         
-        /* [1번 교정] 탭 안에서 유령 박스를 없애고 정렬을 맞추는 실제 카드 클래스 */
-        .content-card-box {{
-            background-color: var(--background-color, #ffffff) !important;
-            border: 1px solid rgba(128, 128, 128, 0.2) !important;
-            border-radius: 12px !important;
-            padding: 20px 25px !important;
-            margin-top: 15px !important;
-            margin-bottom: 20px !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02) !important;
+        /* 다크모드 활성화 시 카드 배경색과 글자색 유연화 처리 */
+        @media (prefers-color-scheme: dark) {{
+            .stApp {{ background-color: #0E1117; }}
+            div[data-testid="stHorizontalBlock"] {{
+                background-color: #1A1C23 !important;
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            }}
+            .section-header h2 {{ color: #F1F5F9 !important; }}
+            div[data-testid="stMarkdownContainer"] p, div[data-testid="stMarkdownContainer"] span {{
+                color: #F1F5F9 !important;
+            }}
         }}
         
         /* 프리미엄 인덱서 및 디바이더 */
@@ -71,9 +72,9 @@ st.markdown(f"""
             display: flex; align-items: center; margin-bottom: 22px;
             padding-left: 12px; border-left: 5px solid {BRAND_NAVY};
         }}
-        .section-header h2 {{ margin: 0 !important; font-size: 22px !important; font-weight: 800 !important; color: var(--text-color, #0F172A) !important; }}
+        .section-header h2 {{ margin: 0 !important; font-size: 22px !important; font-weight: 800 !important; color: #0F172A; }}
         
-        /* KPI 카드 그리드 */
+        /* 상단 슬림 KPI 대쉬 레이아웃 고도화 */
         .mes-kpi-wrapper {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 5px; }}
         .mes-kpi-card {{ 
             background-color: var(--background-color, #ffffff); color: var(--text-color, #1E293B); border: 1px solid rgba(128,128,128,0.2);
@@ -81,7 +82,7 @@ st.markdown(f"""
         }}
         .mes-kpi-label {{ font-size: 13px; font-weight: 700; color: #64748B; margin-bottom: 8px; }}
         .mes-kpi-value-box {{ display: flex; align-items: baseline; }}
-        .mes-kpi-value {{ font-size: 34px; font-weight: 800; line-height: 1.1; color: var(--text-color, #0F172A); }}
+        .mes-kpi-value {{ font-size: 34px; font-weight: 800; line-height: 1.1; }}
         .mes-kpi-unit {{ font-size: 14px; font-weight: 700; color: #64748B; margin-left: 6px; }}
         .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 10px; }}
         
@@ -95,11 +96,6 @@ st.markdown(f"""
         
         /* 라디오 간격 수정 */
         div[data-testid="stRadio"] {{ margin-top: 0px !important; padding-top: 0 !important; }}
-        
-        /* 다크모드 자동 컬러 변동 스위치 시스템 */
-        @media (prefers-color-scheme: dark) {{
-            .stApp {{ background-color: #0E1117; }}
-        }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -154,19 +150,17 @@ def load_single_month_cached(sheet_id, m):
 # 5. 앱 인터페이스 구조 라우팅
 # ==============================================================================
 if not st.session_state['logged_in']:
-    st.markdown('<div class="login-bg">', unsafe_allow_html=True)
     _, login_box, _ = st.columns([1.3, 1, 1.3])
     with login_box:
         st.markdown(f"""
-            <div class="login-box-target" style="border:none !important; box-shadow:none !important; padding:0 !important; text-align:center;">
+            <div style="background: white; padding: 35px 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); max-width: 380px; margin: 50px auto 20px auto; border-top: 6px solid {BRAND_NAVY}; text-align: center;">
                 <h2 style="color: #1E293B !important; font-weight: 800 !important; font-size: 24px !important; margin-bottom: 5px !important;">🔐 시스템 인증 로그인</h2>
-                <p style="color: #64748B; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; margin-bottom: 20px;">BUSAN PLANT PRODUCTION TEAM 1</p>
+                <p style="color: #64748B; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; margin-bottom: 10px;">BUSAN PLANT PRODUCTION TEAM 1</p>
             </div>
         """, unsafe_allow_html=True)
         st.text_input("사내 계정 ID", key="username", placeholder="ID를 입력하세요")
         st.text_input("비밀번호 Password", type="password", key="password", placeholder="PW를 입력하세요")
         st.button("보안 시스템 로그인", on_click=login, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     with st.sidebar:
@@ -183,7 +177,7 @@ else:
             st.markdown("---")
         else:
             st.markdown("<span style='background-color:#1E40AF; color:white; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;'>👥 TEAM MEMBER</span>", unsafe_allow_html=True)
-            YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '면 종합': 98.42, '전체 총합': 98.73}
+            YIELD_THRESHOLD = {'면 1과': 98.92, '면 5 과': 97.93, '스프실': 99.53, '면 종합': 98.42, '전체 총합': 98.73}
 
         st.header("⚙️ SYSTEM ADMIN")
         st.markdown("<div style='color: #64748B; font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
@@ -256,14 +250,12 @@ else:
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
             st.markdown('<div class="section-header"><h2>📋 생산1팀 수율 종합 상황판</h2></div>', unsafe_allow_html=True)
             
-            # --- [★2번 전면 리모델링 핵심 수정 구역] ---
+            # --- [★교정 완결] 가짜 div 카드 감싸기를 다 깨부수고 st.columns 자체가 카드가 되도록 묶음 ---
             departments = ['면 1과', '면 5과', '스프실', '면 종합', '전체 총합']
             tabs = st.tabs(departments)
             for i, d in enumerate(departments):
                 with tabs[i]:
-                    # 🎯 유령 박스 버그 해결: 탭 분기 명령문 "안쪽"으로 content-card 스킨을 이동시켰습니다.
-                    st.markdown('<div class="content-card-box">', unsafe_allow_html=True)
-                    c1, c2 = st.columns(2)
+                    c1, c2 = st.columns(2) # 👈 이 구역 자체가 CSS 마법으로 화이트 카드가 됩니다!
                     if d == '전체 총합': target = team_df
                     elif d == '면 종합': target = team_df[team_df['생산부문명'].isin(['면 1과', '면 5과'])]
                     else: target = team_df[team_df['생산부문명'] == d]
@@ -292,14 +284,14 @@ else:
                             yield_cols = [c for c in pivot.columns if '수율' in c]
                             styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                             
-                            # 🎯 다크모드 글자 실종 교정: 배경색 투명도를 부드럽게 조절하고 글자색을 명시적으로 시스템 연동처리
+                            # 🎯 다크모드 대응용 가변 컬러 수식 변경
                             def style_yield_cells(val):
                                 try:
                                     v = float(val)
                                     if v > 0 and v < current_threshold: 
                                         return f'color: #FFFFFF !important; background-color: {ALERT_RED} !important; font-weight: bold;'
                                     else: 
-                                        return 'background-color: rgba(59, 130, 246, 0.15) !important; color: var(--text-color, #1E293B);'
+                                        return 'background-color: rgba(59, 130, 246, 0.15) !important; color: var(--text-color);'
                                 except: return 'background-color: rgba(59, 130, 246, 0.15) !important;'
                                 
                             styled_df = styled_df.map(style_yield_cells, subset=yield_cols)
@@ -333,17 +325,14 @@ else:
                                     line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=4), marker=dict(size=8)
                                 ))
                             y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
-                            # 차트 라벨 색상도 다크모드 추종형으로 변경
                             fig.update_layout(height=280, margin=dict(l=60,r=40,t=30,b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[y_min-2, y_max+2], gridcolor='rgba(148,163,184,0.15)', zeroline=False, tickfont=dict(color='gray')), xaxis=dict(type='category', tickfont=dict(color='gray')), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='gray')))
                             st.plotly_chart(fig, use_container_width=True)
-                    st.markdown('</div>', unsafe_allow_html=True) # 카드 마감
 
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
 
             # --- 섹션 2: 실시간 비교 및 리스크 분석 ---
             st.markdown('<div class="section-header"><h2>📊 실시간 비교 및 리스크 분석</h2></div>', unsafe_allow_html=True)
             
-            st.markdown('<div class="content-card-box">', unsafe_allow_html=True)
             r2c1, r2c2 = st.columns(2)
             with r2c1:
                 st.markdown("**📍 부문별 수율 비교**")
@@ -373,14 +362,12 @@ else:
                     fig3.update_traces(marker=dict(size=14, line=dict(width=1, color='white')))
                     fig3.update_layout(height=320, margin=dict(l=50, r=10, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)", xaxis=dict(gridcolor='rgba(148,163,184,0.15)', tickfont=dict(color='gray')), yaxis=dict(gridcolor='rgba(148,163,184,0.15)', tickfont=dict(color='gray')), legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02, font=dict(color='gray')))
                     st.plotly_chart(fig3, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
 
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
 
             # --- 섹션 3: 리스크 리스트 ---
             st.markdown('<div class="section-header"><h2>🚨 집중 관리 자재 리스크 Top 5</h2></div>', unsafe_allow_html=True)
             
-            st.markdown('<div class="content-card-box">', unsafe_allow_html=True)
             chart_block = st.container()
             v_m = st.radio("📊 데이터 조회 방식 선택", ["📊 선택 기간 전체 누적", "🎯 특정 년월 단독"], horizontal=True)
             if v_m == "🎯 특정 년월 단독":
@@ -404,6 +391,5 @@ else:
                                     fig_m.update_traces(marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold'))
                                     fig_m.update_layout(height=320, margin=dict(l=150, r=50, t=10, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 130], gridcolor='rgba(148,163,184,0.15)', tickfont=dict(color='gray')), yaxis=dict(tickfont=dict(color='gray')))
                                     st.plotly_chart(fig_m, use_container_width=True, key=f"t5_{ty}_{d_name}")
-            st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.warning("📂 분석 대상 년월을 선택해 주세요.")
