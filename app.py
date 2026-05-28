@@ -27,35 +27,62 @@ MAIN_BLUE = "#3B82F6"
 COMP_GRAY = "#94A3B8"       
 ALERT_RED = "#EF4444"       
 SUCCESS_GREEN = "#10B981"   
-NAVY_BLUE = "#1E40AF"       # 로그인 카드 상단 포인트용 딥블루
+BRAND_NAVY = "#1E40AF"      # 농심 브랜드 아이덴티티에 맞춘 신뢰감 높은 딥블루
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
-# CSS 스타일링 (1번 로그인 전용 CSS 추가 및 기존 CSS 유지)
+# ==============================================================================
+# 2. 전면 개편된 UI 스타일링 (로그인 박스 일체화 및 밸런스 조정)
+# ==============================================================================
 st.markdown(f"""
     <style>
-        /* [1번 적용] 프리미엄 로그인 화면 전용 CSS 스타일 */
-        .login-wrapper {{
-            display: flex; justify-content: center; align-items: center; padding-top: 60px;
+        /* 기본 배경색을 차분한 밝은 톤으로 고정 */
+        .stApp {{ background-color: #F1F5F9; }}
+        
+        /* [개선] 입력창과 버튼을 일체형으로 가두는 단정한 슬림 카드 구조 */
+        .login-box-container {{
+            background: white; 
+            padding: 35px 40px; 
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); 
+            width: 400px;
+            margin: 70px auto 0 auto;
+            border-top: 6px solid {BRAND_NAVY};
+            text-align: center;
         }}
-        .login-card {{
-            background: white; padding: 40px; border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(30, 41, 59, 0.1); width: 450px;
-            border-top: 8px solid {NAVY_BLUE};
+        .login-title-text {{
+            color: #1E293B !important; font-weight: 800 !important; font-size: 24px !important; margin-bottom: 4px !important;
         }}
-        .login-header {{
-            text-align: center; margin-bottom: 25px;
+        .login-subtitle-text {{
+            color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 25px;
         }}
-        .login-header h2 {{
-            color: #1E293B !important; font-weight: 800 !important; font-size: 26px !important; margin-bottom: 6px !important;
+        
+        /* Streamlit 기본 입력창 테두리와 포커스 색상 밸런스 조정 */
+        div[data-testid="stTextInput"] input {{
+            border-radius: 8px !important;
+            border: 1px solid #CBD5E1 !important;
+            color: #1E293B !important;
         }}
-        .login-header p {{
-            color: #64748B; font-size: 13px; font-weight: 600; margin: 0;
+        div[data-testid="stTextInput"] input:focus {{
+            border-color: {BRAND_NAVY} !important;
+            box-shadow: 0 0 0 1px {BRAND_NAVY} !important;
         }}
-        div.stButton > button {{ font-weight: 700 !important; }}
+        
+        /* 로그인 버튼 디자인 밀착 제어 */
+        div.stButton > button {{ 
+            font-weight: 700 !important; 
+            border-radius: 8px !important;
+            background-color: {BRAND_NAVY} !important;
+            color: white !important;
+            border: none !important;
+            padding: 10px 0 !important;
+            margin-top: 10px;
+        }}
+        div.stButton > button:hover {{
+            background-color: #1D4ED8 !important; /* 약간 더 밝은 블루로 하이라이트 */
+        }}
 
-        /* 기존 대시보드 레이아웃 CSS 스타일 유지 */
-        .stApp {{ background-color: #F8FAFC; }}
+        /* 대시보드 메인 레이아웃 스타일 */
         .premium-divider {{
             height: 2px;
             background: linear-gradient(to right, {MAIN_BLUE}, rgba(148, 163, 184, 0.3), rgba(0,0,0,0));
@@ -78,16 +105,11 @@ st.markdown(f"""
         .mes-kpi-unit {{ font-size: 15px; font-weight: 600; color: #64748B; margin-left: 5px; }}
         .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 8px; }}
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
-        @media (prefers-color-scheme: dark) {{
-            .stApp {{ background-color: #0E1117; }}
-            .mes-kpi-card {{ background-color: #1A1C23; color: #F1F5F9; border: 1px solid #2D2F39; }}
-            .section-header h2 {{ color: #F1F5F9 !important; }}
-        }}
     </style>
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 2. 이원화 로그인 시스템 세션 제어
+# 3. 이원화 로그인 시스템 세션 제어
 # ------------------------------------------------------------------------------
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'is_admin' not in st.session_state: st.session_state['is_admin'] = False
@@ -102,14 +124,14 @@ def login():
         st.session_state['logged_in'] = True
         st.session_state['is_admin'] = False
     else: 
-        st.error("⚠️ 아이디 또는 비밀번호가 틀렸습니다.")
+        st.error("⚠️ 아이디 또는 비밀번호가 올바르지 않습니다.")
 
 def logout():
     st.session_state['logged_in'] = False
     st.session_state['is_admin'] = False
 
 # ------------------------------------------------------------------------------
-# 3. 데이터 로드 및 전처리 로직
+# 4. 데이터 로드 및 전처리 로직
 # ------------------------------------------------------------------------------
 def preprocess_df(df, month_label):
     if df.empty: return pd.DataFrame()
@@ -133,32 +155,28 @@ def load_single_month_cached(sheet_id, m):
         return preprocess_df(pd.read_csv(url), m)
     except: return pd.DataFrame()
 
-# ------------------------------------------------------------------------------
-# 4. 앱 인터페이스 구조 라우팅
-# ------------------------------------------------------------------------------
+# ==============================================================================
+# 5. 앱 인터페이스 구조 라우팅
+# ==============================================================================
 
-# --- [수정] CASE A. 로그인 거부 상태 (중앙 카드 집중형 리모델링 적용) ---
+# --- [★완벽 변신] CASE A. 로그인 거부 상태 (정렬 및 색상 언밸런스 완전 교정) ---
 if not st.session_state['logged_in']:
-    _, center_col, _ = st.columns([1, 1.2, 1])
-    with center_col:
-        st.markdown(f"""
-            <div class="login-wrapper">
-                <div class="login-card">
-                    <div class="login-header">
-                        <h2>🔐 시스템 인증 로그인</h2>
-                        <p>BUSAN PLANT PRODUCTION TEAM 1</p>
-                    </div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # 중앙 카드 프레임 안으로 인풋 창 밀착 정렬
-        st.text_input("아이디 (Username)", key="username", placeholder="ID를 입력하세요")
-        st.text_input("비밀번호 (Password)", type="password", key="password", placeholder="PW를 입력하세요")
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-        st.button("보안 시스템 로그인", on_click=login, use_container_width=True, type="primary")
+    # 화면 중앙 배치를 위한 트릭 걷어내고, 빈 구역(Container)을 커스텀 CSS 내부에서 마진 자동 연산으로 처리
+    st.markdown(f"""
+        <div class="login-box-container">
+            <div class="login-title-text">🔐 시스템 인증 로그인</div>
+            <div class="login-subtitle-text">BUSAN PLANT PRODUCTION TEAM 1</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # 콤팩트 카드 하단 영역에 칼같이 정렬되도록 나란히 배치
+    _, widget_col, _ = st.columns([1.2, 1, 1.2])
+    with widget_col:
+        st.text_input("아이디 (Username)", key="username", placeholder="사내 계정 ID 입력")
+        st.text_input("비밀번호 (Password)", type="password", key="password", placeholder="비밀번호 입력")
+        st.button("보안 시스템 로그인", on_click=login, use_container_width=True)
 
-# --- CASE B. 로그인 성공 상태 (대시보드 메인 화면 - 기존 구조 유지) ---
+# --- CASE B. 로그인 성공 상태 (대시보드 본문 - 기존 탭 순서 및 기능 완벽 보존) ---
 else:
     with st.sidebar:
         if st.session_state['is_admin']:
@@ -189,7 +207,7 @@ else:
     with h_left:
         st.markdown(f"""
             <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
-            <h1 style="color: var(--text-color); font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
+            <h1 style="color: #1E293B; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
                 생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
             </h1>
         """, unsafe_allow_html=True)
@@ -248,13 +266,14 @@ else:
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
             st.markdown('<div class="section-header"><h2>📋 생산1팀 수율 종합 상황판</h2></div>', unsafe_allow_html=True)
             
+            # 상황판 탭 정렬 시스템 구동
             departments = ['면 1과', '면 5과', '스프실', '면 종합', '전체 총합']
             tabs = st.tabs(departments)
             for i, d in enumerate(departments):
                 with tabs[i]:
                     c1, c2 = st.columns(2)
                     if d == '전체 총합': target = team_df
-                    elif d == '면 종합': target = team_df[team_df['生産部門명' if '生産部門명' in team_df.columns else '생산부문명'].isin(['면 1과', '면 5과'])]
+                    elif d == '면 종합': target = team_df[team_df['생산부문명'].isin(['면 1과', '면 5과'])]
                     else: target = team_df[team_df['생산부문명'] == d]
                         
                     with c1:
@@ -279,7 +298,6 @@ else:
                             
                             current_threshold = YIELD_THRESHOLD[d]
                             yield_cols = [c for c in pivot.columns if '수율' in c]
-                            
                             styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                             
                             def style_yield_cells(val):
