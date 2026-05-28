@@ -27,12 +27,34 @@ MAIN_BLUE = "#3B82F6"
 COMP_GRAY = "#94A3B8"       
 ALERT_RED = "#EF4444"       
 SUCCESS_GREEN = "#10B981"   
+NAVY_BLUE = "#1E40AF"       # 로그인 카드 상단 포인트용 딥블루
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
-# CSS 프리미엄 스타일링
+# CSS 스타일링 (1번 로그인 전용 CSS 추가 및 기존 CSS 유지)
 st.markdown(f"""
     <style>
+        /* [1번 적용] 프리미엄 로그인 화면 전용 CSS 스타일 */
+        .login-wrapper {{
+            display: flex; justify-content: center; align-items: center; padding-top: 60px;
+        }}
+        .login-card {{
+            background: white; padding: 40px; border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(30, 41, 59, 0.1); width: 450px;
+            border-top: 8px solid {NAVY_BLUE};
+        }}
+        .login-header {{
+            text-align: center; margin-bottom: 25px;
+        }}
+        .login-header h2 {{
+            color: #1E293B !important; font-weight: 800 !important; font-size: 26px !important; margin-bottom: 6px !important;
+        }}
+        .login-header p {{
+            color: #64748B; font-size: 13px; font-weight: 600; margin: 0;
+        }}
+        div.stButton > button {{ font-weight: 700 !important; }}
+
+        /* 기존 대시보드 레이아웃 CSS 스타일 유지 */
         .stApp {{ background-color: #F8FAFC; }}
         .premium-divider {{
             height: 2px;
@@ -114,14 +136,29 @@ def load_single_month_cached(sheet_id, m):
 # ------------------------------------------------------------------------------
 # 4. 앱 인터페이스 구조 라우팅
 # ------------------------------------------------------------------------------
+
+# --- [수정] CASE A. 로그인 거부 상태 (중앙 카드 집중형 리모델링 적용) ---
 if not st.session_state['logged_in']:
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
-        st.subheader("🔐 시스템 로그인")
-        st.text_input("아이디", key="username")
-        st.text_input("비밀번호", type="password", key="password")
-        st.button("로그인", on_click=login, use_container_width=True)
+    _, center_col, _ = st.columns([1, 1.2, 1])
+    with center_col:
+        st.markdown(f"""
+            <div class="login-wrapper">
+                <div class="login-card">
+                    <div class="login-header">
+                        <h2>🔐 시스템 인증 로그인</h2>
+                        <p>BUSAN PLANT PRODUCTION TEAM 1</p>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # 중앙 카드 프레임 안으로 인풋 창 밀착 정렬
+        st.text_input("아이디 (Username)", key="username", placeholder="ID를 입력하세요")
+        st.text_input("비밀번호 (Password)", type="password", key="password", placeholder="PW를 입력하세요")
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        st.button("보안 시스템 로그인", on_click=login, use_container_width=True, type="primary")
+
+# --- CASE B. 로그인 성공 상태 (대시보드 메인 화면 - 기존 구조 유지) ---
 else:
     with st.sidebar:
         if st.session_state['is_admin']:
@@ -217,11 +254,10 @@ else:
                 with tabs[i]:
                     c1, c2 = st.columns(2)
                     if d == '전체 총합': target = team_df
-                    elif d == '면 종합': target = team_df[team_df['생산부문명'].isin(['면 1과', '면 5과'])]
+                    elif d == '면 종합': target = team_df[team_df['生産部門명' if '生産部門명' in team_df.columns else '생산부문명'].isin(['면 1과', '면 5과'])]
                     else: target = team_df[team_df['생산부문명'] == d]
                         
                     with c1:
-                        # [참고] 상황판 부제목 스타일: ** 텍스트 **
                         st.markdown(f"**📊 {d} 상세 실적**")
                         if not target.empty:
                             summ = target.groupby(['연도', '자재 유형 내역'])[['이론금액', '실제금액']].sum().reset_index()
@@ -234,23 +270,30 @@ else:
                                 extra_rows.append({'연도': yr, '자재 유형 내역': '전체 수율', '이론금액': yr_data['이론금액'].sum(), '실제금액': yr_data['실제금액'].sum()})
                             summ = pd.concat([summ, pd.DataFrame(extra_rows)], ignore_index=True)
                             summ['수율'] = (summ['이론금액'] / summ['실제금액'] * 100)
+                            
                             pivot = summ.pivot(index='자재 유형 내역', columns='연도', values=['이론금액', '실제금액', '수율'])
                             reorder_cols = [(v, y) for y in ['25년 누적', '26년 누적'] for v in ['이론금액', '실제금액', '수율']]
                             pivot = pivot.reindex(columns=reorder_cols, fill_value=0)
                             pivot.columns = [f"{yr[:3]} {v}" for v, yr in pivot.columns]
                             pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
+                            
                             current_threshold = YIELD_THRESHOLD[d]
                             yield_cols = [c for c in pivot.columns if '수율' in c]
+                            
                             styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
+                            
                             def style_yield_cells(val):
                                 try:
                                     v = float(val)
-                                    if v > 0 and v < current_threshold: return f'color: {ALERT_RED}; background-color: rgba(239, 68, 68, 0.15);'
+                                    if v > 0 and v < current_threshold:
+                                        return f'color: {ALERT_RED}; background-color: rgba(239, 68, 68, 0.15);'
                                     else: return 'background-color: rgba(74, 144, 226, 0.12);'
                                 except: return 'background-color: rgba(74, 144, 226, 0.12);'
+                                
                             styled_df = styled_df.map(style_yield_cells, subset=yield_cols)
                             st.dataframe(styled_df, use_container_width=True)
                         else: st.caption("데이터 없음")
+                        
                         st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
                     with c2:
                         st.markdown(f"**📈 {d} 수율 변화 추이**")
@@ -259,18 +302,28 @@ else:
                             trend['누적수율'] = (trend.groupby('연도')['이론금액'].cumsum() / trend.groupby('연도')['실제금액'].cumsum() * 100).round(2)
                             trend['월표시'] = trend['월'].apply(lambda x: f"{int(x.split('.')[1])}월")
                             trend_piv = trend.pivot(index='월표시', columns='연도', values='누적수율').reset_index()
+                            
                             fig = go.Figure()
                             for yr_label in sorted(trend['연도'].unique()):
                                 y_data = trend[trend['연도'] == yr_label].copy().sort_values('월')
                                 text_positions = []
                                 for idx, row in y_data.iterrows():
-                                    m_lbl = row['월표시']; current_val = row['누적수율']; match_row = trend_piv[trend_piv['월표시'] == m_lbl]
+                                    m_lbl = row['월표시']
+                                    current_val = row['누적수율']
+                                    match_row = trend_piv[trend_piv['월표시'] == m_lbl]
                                     if not match_row.empty and '25년 누적' in trend_piv.columns and '26년 누적' in trend_piv.columns:
-                                        val_25 = match_row['25년 누적'].values[0]; val_26 = match_row['26년 누적'].values[0]
+                                        val_25 = match_row['25년 누적'].values[0]
+                                        val_26 = match_row['26년 누적'].values[0]
                                         if yr_label == '26년 누적': text_positions.append('top center' if current_val >= val_25 else 'bottom center')
                                         else: text_positions.append('top center' if current_val > val_26 else 'bottom center')
                                     else: text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
-                                fig.add_trace(go.Scatter(x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text', text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), textposition=text_positions, textfont=dict(size=14, weight='bold'), line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=4), marker=dict(size=10)))
+                                
+                                fig.add_trace(go.Scatter(
+                                    x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
+                                    text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), 
+                                    textposition=text_positions, textfont=dict(size=14, weight='bold'),
+                                    line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=4), marker=dict(size=10)
+                                ))
                             y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
                             fig.update_layout(height=280, margin=dict(l=100,r=80,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[y_min-3, y_max+3], gridcolor='rgba(128,128,128,0.1)', zeroline=False, ticksuffix="  "), xaxis=dict(type='category', range=[-0.5, len(trend['월표시'].unique())-0.5], gridcolor='rgba(128,128,128,0.1)'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
                             st.plotly_chart(fig, use_container_width=True)
@@ -281,7 +334,6 @@ else:
             st.markdown('<div class="section-header"><h2>📊 실시간 비교 및 리스크 분석</h2></div>', unsafe_allow_html=True)
             r2c1, r2c2 = st.columns(2)
             with r2c1:
-                # [★수정 지점] subheader 대신 상황판과 동일한 Bold Markdown 적용
                 st.markdown("**📍 부문별 수율 비교**")
                 s_col1, _ = st.columns([0.45, 0.55])
                 with s_col1: m_opt = st.selectbox("조회 자재 선택", ["원자재", "부자재", "반제품"], key="m_opt")
@@ -294,7 +346,6 @@ else:
                     fig1.update_layout(height=330, margin=dict(l=80, r=20, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='rgba(128,128,128,0.1)'), xaxis_title=None)
                     st.plotly_chart(fig1, use_container_width=True)
             with r2c2:
-                # [★수정 지점] subheader 대신 상황판과 동일한 Bold Markdown 적용
                 st.markdown("**🔍 수율 리스크 매트릭스**")
                 s_col3, _ = st.columns([0.45, 0.55])
                 with s_col3: s_dept = st.selectbox("조회 부서 선택", ["전체 1팀", "면 1과", "면 5과", "스프실"], key="s_dept")
