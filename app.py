@@ -27,62 +27,80 @@ MAIN_BLUE = "#3B82F6"
 COMP_GRAY = "#94A3B8"       
 ALERT_RED = "#EF4444"       
 SUCCESS_GREEN = "#10B981"   
-BRAND_NAVY = "#1E40AF"      # 농심 브랜드 아이덴티티에 맞춘 신뢰감 높은 딥블루
+BRAND_NAVY = "#1E40AF"      # 농심 브랜드 아이덴티티 딥블루
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
 # ==============================================================================
-# 2. 전면 개편된 UI 스타일링 (로그인 박스 일체화 및 밸런스 조정)
+# 2. 전면 개편된 UI 스타일링 (진짜 일체형 콤팩트 로그인 카드 구조)
 # ==============================================================================
 st.markdown(f"""
     <style>
-        /* 기본 배경색을 차분한 밝은 톤으로 고정 */
+        /* 대시보드 기본 배경색 연한 회색으로 변경 */
         .stApp {{ background-color: #F1F5F9; }}
         
-        /* [개선] 입력창과 버튼을 일체형으로 가두는 단정한 슬림 카드 구조 */
-        .login-box-container {{
-            background: white; 
-            padding: 35px 40px; 
+        /* [★대형 교정] 입력창과 버튼을 품는 완벽한 일체형 콤팩트 박스 */
+        .premium-login-container {{
+            max-width: 380px;
+            margin: 80px auto;
+            background: #ffffff;
+            padding: 40px 35px;
             border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); 
-            width: 400px;
-            margin: 70px auto 0 auto;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
             border-top: 6px solid {BRAND_NAVY};
-            text-align: center;
         }}
-        .login-title-text {{
-            color: #1E293B !important; font-weight: 800 !important; font-size: 24px !important; margin-bottom: 4px !important;
+        .login-brand-title {{
+            color: #1E293B !important; font-weight: 800 !important; font-size: 24px !important; 
+            text-align: center; margin-bottom: 4px !important;
         }}
-        .login-subtitle-text {{
-            color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 25px;
+        .login-brand-subtitle {{
+            color: #64748B; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; 
+            text-align: center; margin-bottom: 30px;
         }}
         
-        /* Streamlit 기본 입력창 테두리와 포커스 색상 밸런스 조정 */
+        /* 카드 내부 폼 라벨 스타일 */
+        .form-label {{
+            font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px; text-align: left;
+        }}
+        
+        /* Streamlit 인풋 위젯을 카드 내부에 동화시키기 위한 강제 CSS 주입 */
+        div[data-testid="stTextInput"] {{
+            margin-bottom: -10px !important;
+        }}
+        div[data-testid="stTextInput"] label {{
+            display: none !important; /* 기본 라벨 숨김 (커스텀 라벨 사용) */
+        }}
         div[data-testid="stTextInput"] input {{
             border-radius: 8px !important;
             border: 1px solid #CBD5E1 !important;
+            padding: 10px 12px !important;
+            background-color: #F8FAFC !important;
             color: #1E293B !important;
         }}
         div[data-testid="stTextInput"] input:focus {{
             border-color: {BRAND_NAVY} !important;
+            background-color: #ffffff !important;
             box-shadow: 0 0 0 1px {BRAND_NAVY} !important;
         }}
         
-        /* 로그인 버튼 디자인 밀착 제어 */
+        /* 카드 내 일체형 버튼 디자인 마스터링 */
         div.stButton > button {{ 
             font-weight: 700 !important; 
+            font-size: 14px !important;
             border-radius: 8px !important;
             background-color: {BRAND_NAVY} !important;
-            color: white !important;
+            color: #ffffff !important;
             border: none !important;
-            padding: 10px 0 !important;
-            margin-top: 10px;
+            padding: 12px 0 !important;
+            margin-top: 25px !important;
+            box-shadow: 0 4px 6px -1px rgba(30, 64, 175, 0.2) !important;
         }}
         div.stButton > button:hover {{
-            background-color: #1D4ED8 !important; /* 약간 더 밝은 블루로 하이라이트 */
+            background-color: #1D4ED8 !important;
+            color: #ffffff !important;
         }}
 
-        /* 대시보드 메인 레이아웃 스타일 */
+        /* 대시보드 메인 본문용 레이아웃 */
         .premium-divider {{
             height: 2px;
             background: linear-gradient(to right, {MAIN_BLUE}, rgba(148, 163, 184, 0.3), rgba(0,0,0,0));
@@ -159,22 +177,27 @@ def load_single_month_cached(sheet_id, m):
 # 5. 앱 인터페이스 구조 라우팅
 # ==============================================================================
 
-# --- [★완벽 변신] CASE A. 로그인 거부 상태 (정렬 및 색상 언밸런스 완전 교정) ---
+# --- [★디자인 완전 통일] CASE A. 하나의 카드 안에 위젯을 완전 동화시킨 레이아웃 ---
 if not st.session_state['logged_in']:
-    # 화면 중앙 배치를 위한 트릭 걷어내고, 빈 구역(Container)을 커스텀 CSS 내부에서 마진 자동 연산으로 처리
-    st.markdown(f"""
-        <div class="login-box-container">
-            <div class="login-title-text">🔐 시스템 인증 로그인</div>
-            <div class="login-subtitle-text">BUSAN PLANT PRODUCTION TEAM 1</div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # 콤팩트 카드 하단 영역에 칼같이 정렬되도록 나란히 배치
-    _, widget_col, _ = st.columns([1.2, 1, 1.2])
-    with widget_col:
-        st.text_input("아이디 (Username)", key="username", placeholder="사내 계정 ID 입력")
-        st.text_input("비밀번호 (Password)", type="password", key="password", placeholder="비밀번호 입력")
+    # 외부 레이아웃 분할을 완전히 제거하고, 단 하나의 컬럼 내부에 정밀 삽입
+    _, login_grid, _ = st.columns([1.3, 1, 1.3])
+    with login_grid:
+        st.markdown(f"""
+            <div class="premium-login-container">
+                <div class="login-brand-title">🔐 시스템 인증 로그인</div>
+                <div class="login-brand-subtitle">BUSAN PLANT PRODUCTION TEAM 1</div>
+                <div class="form-label">사내 계정 ID</div>
+            </div>
+        """, unsafe_allow_html=True)
+        st.text_input("Username", key="username", placeholder="ID를 입력하세요")
+        
+        st.markdown('<div style="max-width:380px; margin:-10px auto 0 auto; background:white; padding:0 35px;"><div class="form-label" style="margin-top:15px;">비밀번호 Password</div></div>', unsafe_allow_html=True)
+        st.text_input("Password", type="password", key="password", placeholder="PW를 입력하세요")
+        
+        # 버튼까지 화이트 프레임 안으로 밀착 연동
+        st.markdown('<div style="max-width:380px; margin:-10px auto 0 auto; background:white; padding:0 35px 20px 35px;">', unsafe_allow_html=True)
         st.button("보안 시스템 로그인", on_click=login, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # --- CASE B. 로그인 성공 상태 (대시보드 본문 - 기존 탭 순서 및 기능 완벽 보존) ---
 else:
