@@ -96,7 +96,7 @@ def preprocess_df(df, month_label):
     rename_map = {'生産部門명': '생산부문명', '生産部門名': '생산부문명', '資재 유형 내역': '자재 유형 내역', '資재 유형내역': '자재 유형 내역', '品목텍스트': '하위품목 텍스트', '품목 텍스트': '하위품목 텍스트', '理論金額': '이론금액', '實際金額': '실제금액'}
     df.rename(columns=rename_map, inplace=True)
     if '생산부문명' in df.columns:
-        dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
+        dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5 과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
         df = df[df['생산부문명'].isin(dept_map.keys())].copy()
         df['생산부문명'] = df['생산부문명'].map(dept_map)
     for col in ['이론금액', '실제금액']:
@@ -112,13 +112,12 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 라우터 (정밀 튜닝된 일체형 유리 질감 로그인 UI)
+# 4. 라우터 (눈모양 박스 완벽 박멸 마스터 CSS 포함)
 # ------------------------------------------------------------------------------
 if not st.session_state['logged_in']:
-    # 🎨 일체형 유리 패널 및 눈 모양 아이콘 버그 완벽 수정 CSS
     st.markdown("""
         <style>
-            /* 1. 입력창과 버튼을 포함한 '전체 Form'을 유리 카드로 만들기 */
+            /* 1. 전체 폼을 유리 카드로 지정 */
             div[data-testid="stForm"] {
                 background: rgba(255, 255, 255, 0.06) !important;
                 backdrop-filter: blur(20px) !important;
@@ -131,14 +130,14 @@ if not st.session_state['logged_in']:
                 margin: 8vh auto 0 auto;
             }
             
-            /* 2. 어두운 배경에서 입력창 라벨(Username, Password) 글자색 최적화 */
+            /* 2. 입력창 상단 글자색 화이트 */
             div[data-testid="stForm"] label p {
                 color: #E2E8F0 !important;
                 font-weight: 600 !important;
                 font-size: 14px !important;
             }
             
-            /* 3. 입력창 자체의 내부 스타일 정의 */
+            /* 3. 입력창 내부 본체 스타일 */
             div[data-testid="stForm"] input {
                 background-color: rgba(15, 23, 42, 0.6) !important;
                 color: #FFFFFF !important;
@@ -146,45 +145,50 @@ if not st.session_state['logged_in']:
                 border-radius: 10px !important;
             }
             
-            /* 4. [정밀 해결] 비밀번호 입력창 우측 눈모양 컨테이너 구역 강제 투명화 */
+            /* 🔥 [마스터 해결책] 비밀번호 우측 영역에 존재하는 모든 배경색과 테두리 박멸 */
             div[data-testid="stForm"] div[data-relative-input="true"] div,
-            div[data-testid="stForm"] div[data-relative-input="true"] div:has(button) {
+            div[data-testid="stForm"] div[data-relative-input="true"] div * {
                 background-color: transparent !important;
-                border: none !important;
                 background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
             }
 
-            /* 5. 눈 모양 버튼 배경 제거 및 회색 매칭 */
+            /* 4. 눈 모양 버튼 자체의 마우스 아웃 상태 스타일 */
             div[data-testid="stForm"] button[aria-label="Show password"],
             div[data-testid="stForm"] button[aria-label="Hide password"] {
-                background-color: transparent !important;
                 background: transparent !important;
                 color: #94A3B8 !important;
                 border: none !important;
                 box-shadow: none !important;
-                margin-right: 5px !important;
+                margin-right: 6px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
             }
             
-            /* 눈 모양 버튼 마우스 오버 효과 */
+            /* 눈 모양 버튼 마우스 오버 시 */
             div[data-testid="stForm"] button[aria-label="Show password"]:hover,
             div[data-testid="stForm"] button[aria-label="Hide password"]:hover {
                 color: #FFFFFF !important;
-                background-color: rgba(255, 255, 255, 0.1) !important;
+                background-color: rgba(255, 255, 255, 0.12) !important;
                 border-radius: 50% !important;
             }
 
-            /* 6. 눈 모양 SVG 그래픽 색상 자체를 강제 통제 (기본 파란색 차단) */
+            /* 5. 눈 모양 내부 선(SVG) 그래픽 색상 제어 */
             div[data-testid="stForm"] button[aria-label="Show password"] svg,
             div[data-testid="stForm"] button[aria-label="Hide password"] svg {
                 fill: #94A3B8 !important;
-                transition: fill 0.2s ease !important;
+                color: #94A3B8 !important;
+                transition: all 0.2s ease !important;
             }
             div[data-testid="stForm"] button[aria-label="Show password"]:hover svg,
             div[data-testid="stForm"] button[aria-label="Hide password"]:hover svg {
                 fill: #FFFFFF !important;
+                color: #FFFFFF !important;
             }
             
-            /* 7. 메인 로그인 버튼 기본 상태 (일렉트릭 블루) */
+            /* 6. 로그인 제출 버튼 기본 스타일 */
             div[data-testid="stForm"] button:not([aria-label="Show password"]):not([aria-label="Hide password"]) {
                 background-color: #3B82F6 !important;
                 color: #FFFFFF !important;
@@ -197,7 +201,7 @@ if not st.session_state['logged_in']:
                 transition: all 0.3s ease !important;
             }
             
-            /* 메인 로그인 버튼 마우스 올렸을 때 (네온 효과) */
+            /* 로그인 제출 버튼 마우스 오버 시 네온 효과 */
             div[data-testid="stForm"] button:not([aria-label="Show password"]):not([aria-label="Hide password"]):hover {
                 background-color: #1D4ED8 !important;
                 color: #FFFFFF !important;
@@ -206,12 +210,11 @@ if not st.session_state['logged_in']:
         </style>
     """, unsafe_allow_html=True)
 
-    # 🏢 레이아웃 중앙 정렬 배치
+    # 🏢 레이아웃 배치
     _, login_container, _ = st.columns([1, 1.5, 1])
     
     with login_container:
         with st.form("login_form"):
-            # 카드 내부 일체형 타이틀 디자인
             st.markdown("""
                 <div style="text-align: center; margin-bottom: 30px;">
                     <div style="color: #FFFFFF; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">🔐 SYSTEM ACCESS</div>
@@ -219,13 +222,12 @@ if not st.session_state['logged_in']:
                 </div>
             """, unsafe_allow_html=True)
             
-            # 입력 컴포넌트
             st.text_input("Username", key="username", placeholder="ID를 입력하세요")
             st.text_input("Password", type="password", key="password", placeholder="PW를 입력하세요")
             st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
 else:
     # --------------------------------------------------------------------------
-    # 5. 메인 대시보드 구역 (로그인 완료 시 구동)
+    # 5. 메인 대시보드 구역 (기존과 완벽히 동일)
     # --------------------------------------------------------------------------
     with st.sidebar:
         if st.session_state['is_admin']:
@@ -251,7 +253,6 @@ else:
         st.markdown("---")
         search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
 
-    # 대시보드 헤더 영역 설정 (텍스트 컬러 화이트 최적화)
     h_left, h_right = st.columns([4.5, 1])
     with h_left:
         st.markdown(f"""
@@ -278,8 +279,7 @@ else:
             team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
             if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
-            # KPI 연산 부문
-            df_26_kpi = team_df[team_df['연도'] == '26년 누적']
+            df_26_kpi = team_df[team_df['연度'] == '26년 누적'] if '연度' in team_df.columns else team_df[team_df['연도'] == '26년 누적']
             if not df_26_kpi.empty:
                 k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
                 total_26_yd = (k_th / k_ac * 100) if k_ac > 0 else 0
