@@ -23,8 +23,8 @@ YIELD_THRESHOLD = {
     '전체 총합': 98.73
 }
 
-# 🎨 [수정 포인트] 너무 쨍한 블루 톤을 한 단계 낮춰 눈이 편안한 모던 테크 블루로 정밀 조율
-MAIN_BLUE = "#2563EB"       # 눈이 편안하고 차분한 미드 블루
+# 라이트 모드 전용 하이 테크 팔레트
+MAIN_BLUE = "#2563EB"       
 COMP_GRAY = "#64748B"       
 ALERT_RED = "#DC2626"       
 SUCCESS_GREEN = "#16A34A"   
@@ -289,7 +289,7 @@ else:
         st.markdown(f"""
             <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
             <h1 style="color: #0F172A; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-                생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
+                생산1팀 <span style="color:#2563EB;">Smart 수율 모니터링</span> System
             </h1>
         """, unsafe_allow_html=True)
     with h_right:
@@ -324,17 +324,17 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-            # 🎯 [1번 수정 포인트] 멘트를 단순화하고 조건별 폰트 컬러를 동적으로 강제 바인딩
+            # 🎯 [요청정밀수정] 화살표 결합 멘트화 및 정확한 색상 타겟 바인딩 완성
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
                 kpi_color = SUCCESS_GREEN
-                kpi_status_label = "목표 달성"
-                status_font_color = "#1E40AF"  # 달성 시 파란색 글씨
+                kpi_status_label = "▲ 목표 달성"
+                status_font_color = "#2563EB"  # 달성 시 완벽한 파란색 글씨
             else:
                 kpi_color = ALERT_RED
-                kpi_status_label = "목표 미달"
-                status_font_color = "#DC2626"  # 미달 시 붉은색 글씨
+                kpi_status_label = "▼ 목표 미달"
+                status_font_color = "#DC2626"  # 미달 시 완벽한 붉은색 글씨
 
-            # 마우스 오버 시 빛나는 3대 핵심 화이트 네온 KPI 파트
+            # 마우스 오버 시 실시간 반응하는 3대 핵심 네온 하이라이트 카드 패널
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
                     <div class="mes-kpi-card card-yield">
@@ -343,7 +343,7 @@ else:
                             <span class="mes-kpi-value" style="color: {kpi_color};">{total_26_yd:.2f}</span>
                             <span class="mes-kpi-unit">%</span>
                         </div>
-                        <div class="mes-kpi-status" style="color: {status_font_color} !important; font-weight: 800;">{kpi_status_label}</div>
+                        <div class="mes-kpi-status" style="color: {status_font_color} !important; font-weight: 800; font-size: 14px;">{kpi_status_label}</div>
                     </div>
                     <div class="mes-kpi-card card-cost">
                         <div class="mes-kpi-label">26년 누적 실제 투입 금액</div>
