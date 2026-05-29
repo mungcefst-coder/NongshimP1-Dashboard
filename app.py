@@ -111,99 +111,43 @@ def load_single_month_cached(sheet_id, m):
         return preprocess_df(pd.read_csv(url), m)
     except: return pd.DataFrame()
 
-# ------------------------------------------------------------------------------
-# 4. 라우터 (이 구역 전체를 아래 코드로 교체하세요!)
-# ------------------------------------------------------------------------------
-if not st.session_state['logged_in']:
-    # 🎨 일체형 유리 패널 및 다크모드 가독성 최적화 CSS
-    st.markdown("""
-        <style>
-            /* 1. 입력창과 버튼을 포함한 '전체 Form'을 유리 카드로 만들기 */
-            div[data-testid="stForm"] {
-                background: rgba(255, 255, 255, 0.06) !important;
-                backdrop-filter: blur(20px) !important;
-                -webkit-backdrop-filter: blur(20px) !important;
-                border: 1px solid rgba(255, 255, 255, 0.12) !important;
-                border-radius: 24px !important;
-                padding: 45px 40px !important;
-                box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4) !important;
-                max-width: 450px;
-                margin: 8vh auto 0 auto; /* 중앙 배치 및 상단 여백 */
-            }
+/* 🔍 [정밀 타격] 비밀번호 눈 모양 영역 완전 투명화 및 스타일 조율 */
             
-            /* 2. 어두운 배경에서 입력창 라벨(Username, Password) 글자색을 화이트로! */
-            div[data-testid="stForm"] label p {
-                color: #E2E8F0 !important;
-                font-weight: 600 !important;
-                font-size: 14px !important;
-            }
-            
-            /* 3. 입력창 자체의 스타일도 어두운 톤에 맞춰 살짝 반투명하게 */
-            div[data-testid="stForm"] input {
-                background-color: rgba(15, 23, 42, 0.6) !important;
-                color: #FFFFFF !important;
-                border: 1px solid rgba(255, 255, 255, 0.15) !important;
-                border-radius: 10px !important;
-            }
-            
-            /* 4. 로그인 버튼 기본 상태 (일렉트릭 블루) */
-            div[data-testid="stForm"] button {
-                background-color: #3B82F6 !important;
-                color: #FFFFFF !important;
+            /* 1. 눈 모양을 감싸고 있는 우측 내부 컨테이너 배경 지우기 */
+            div[data-testid="stForm"] div[data-relative-input="true"] div {
+                background-color: transparent !important;
                 border: none !important;
-                border-radius: 10px !important;
-                padding: 10px 0 !important;
-                font-weight: 700 !important;
-                font-size: 16px !important;
-                margin-top: 15px !important;
-                transition: all 0.3s ease !important;
             }
-            
-            /* 5. 로그인 버튼 마우스 올렸을 때 (Hover 네온 효과) */
-            div[data-testid="stForm"] button:hover {
-                background-color: #1D4ED8 !important;
-                color: #FFFFFF !important;
-                box-shadow: 0 0 20px rgba(59, 130, 246, 0.6) !important;
-            }
-            
-            /* 🔍 비밀번호 눈 모양 아이콘 버튼 스타일 완전 정복 */
+
+            /* 2. 눈 모양 버튼 자체의 배경 제거 및 기본 색상을 은은한 회색으로 */
             div[data-testid="stForm"] button[aria-label="Show password"],
             div[data-testid="stForm"] button[aria-label="Hide password"] {
-                background-color: transparent !important; /* 배경 투명하게 */
-                color: #94A3B8 !important;             /* 아이콘 색상을 얌전한 회색으로 변경 */
+                background-color: transparent !important;
+                color: #94A3B8 !important;
                 border: none !important;
-                box-shadow: none !important;             /* 푸른 광채 제거 */
-                transition: color 0.2s ease !important;
+                box-shadow: none !important;
+                margin-right: 5px !important;
             }
             
-            /* 눈 모양 버튼에 마우스 올렸을 때 */
+            /* 3. 마우스를 올렸을 때만 선명한 화이트로 반응 */
             div[data-testid="stForm"] button[aria-label="Show password"]:hover,
             div[data-testid="stForm"] button[aria-label="Hide password"]:hover {
-                color: #FFFFFF !important;             /* 마우스 올리면 선명한 화이트로 반응 */
-                background-color: rgba(255, 255, 255, 0.1) !important; /* 살짝 동그란 미세 배경 효과 */
+                color: #FFFFFF !important;
+                background-color: rgba(255, 255, 255, 0.1) !important;
+                border-radius: 50% !important; /* 동그랗게 피드백 효과 */
             }
-            }
-        </style>
-    """, unsafe_allow_html=True)
 
-    # 🏢 레이아웃 중앙 정렬
-    _, login_container, _ = st.columns([1, 1.5, 1])
-    
-    with login_container:
-        # 폼 내부로 제목과 입력창을 다 같이 집어넣습니다!
-        with st.form("login_form"):
-            # 카드 상단 디자인을 Form 안으로 배치하여 일체형으로 만듦
-            st.markdown("""
-                <div style="text-align: center; margin-bottom: 30px;">
-                    <div style="color: #FFFFFF; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">🔐 SYSTEM ACCESS</div>
-                    <div style="color: #94A3B8; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; margin-top: 4px; text-transform: uppercase;">Busan Plant Production Team 1</div>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # 입력 컴포넌트
-            st.text_input("Username", key="username", placeholder="ID를 입력하세요")
-            st.text_input("Password", type="password", key="password", placeholder="PW를 입력하세요")
-            st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
+            /* 4. Streamlit 내부에 강제로 심어진 파란색 피드백 아이콘 색상 강제 제어 */
+            div[data-testid="stForm"] button[aria-label="Show password"] svg,
+            div[data-testid="stForm"] button[aria-label="Hide password"] svg {
+                fill: #94A3B8 !important; /* 아이콘 선 색상을 은은한 회색으로 */
+                transition: fill 0.2s ease !important;
+            }
+
+            div[data-testid="stForm"] button[aria-label="Show password"]:hover svg,
+            div[data-testid="stForm"] button[aria-label="Hide password"]:hover svg {
+                fill: #FFFFFF !important; /* 마우스 올리면 아이콘 선도 화이트로 */
+            }
 else:
     # --------------------------------------------------------------------------
     # 5. 메인 대시보드 구역 (로그인 완료 시 구동)
