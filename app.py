@@ -28,29 +28,29 @@ MAIN_BLUE = "#1E40AF"
 COMP_GRAY = "#64748B"       
 ALERT_RED = "#DC2626"       
 SUCCESS_GREEN = "#16A34A"   
-LIGHT_BG = "#F1F5F9"        # 산뜻한 연회색 바탕
-CARD_BG = "#FFFFFF"         # 순백색 카드 바탕
+LIGHT_BG = "#F1F5F9"        
+CARD_BG = "#FFFFFF"         
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
-# 🚀 [스타일 튜닝] 연회색 배경 유지, 화이트 카드 LED 발광 효과, 선택 박스 컬러 정상화
+# 🚀 [사이드바 및 글자 크기 동기화 튜닝]
 st.markdown(f"""
     <style>
-        /* 🎨 전체 배경: 연한 회색 고정 */
+        /* 🎨 전체 배경 */
         .stApp {{
             background-color: {LIGHT_BG} !important;
         }}
         
-        /* 🖤 글자색: 진한 차콜/슬레이트 계열로 선명하게 잠금 */
+        /* 🖤 글로벌 텍스트 컬러 잠금 */
         .stApp, .stApp p, .stApp label, .stApp div, .stApp span, .stApp h1, .stApp h3, .stApp h4 {{
             color: #1E293B !important;
         }}
         
-        /* 🗂️ 테이블(st.dataframe) 글자색 선명화 */
+        /* 🗂️ 테이블 내부 텍스트 선명화 */
         [data-testid="stTable"] {{ color: #1E293B !important; }}
         [data-testid="stDataFrameDataCell"] {{ color: #1E293B !important; font-size: 14px !important; }}
         
-        /* 탭(Tab) 스타일 밸런스 */
+        /* 탭(Tab) 스타일 정의 */
         button[data-baseweb="tab"] p {{
             color: #64748B !important;
             font-weight: 600 !important;
@@ -60,11 +60,7 @@ st.markdown(f"""
             font-weight: 800 !important;
         }}
         
-        /* 🎛️ [2번 수정 포인트] 사이드바 내 멀티셀렉트/인풋 박스 컬러 정상화 (레드 컬러 제거 및 톤 매칭) */
-        div[data-testid="stSidebar"] div[data-baseweb="select"] {{
-            border-color: #CBD5E1 !important;
-        }}
-        /* 선택된 태그 요소를 빨간색이 아닌 차분한 네이비/슬레이트 계열로 변경 */
+        /* 멀티셀렉트 태그 색상 매칭 */
         span[data-baseweb="tag"] {{
             background-color: #E2E8F0 !important;
             color: #1E40AF !important;
@@ -74,14 +70,33 @@ st.markdown(f"""
             color: #1E40AF !important;
         }}
         
-        /* 사이드바 프리미엄 정돈 */
+        /* 🏢 사이드바 프리미엄 베이스 래핑 */
         section[data-testid="stSidebar"] {{
             background-color: #E2E8F0 !important;
             border-right: 1px solid #CBD5E1;
             padding-top: 20px !important;
         }}
         section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {{ color: #0F172A !important; }}
-        section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label p {{ color: #334155 !important; font-weight: 600; }}
+        
+        /* 🎯 [3번 수정 포인트] 사이드바 내 모든 일반 텍스트 및 제목 라벨 폰트 크기 동기화 (14px 표준화) */
+        section[data-testid="stSidebar"] p, 
+        section[data-testid="stSidebar"] label p, 
+        .sidebar-sync-title {{ 
+            color: #334155 !important; 
+            font-size: 14px !important; 
+            font-weight: 600 !important; 
+            margin-bottom: 0px !important;
+        }}
+        
+        /* 🛠️ [4번 수정 포인트] TEAM MEMBER 파란 음영 제거 및 시인성 높은 다크 본문 텍스트 형태로 전환 */
+        .badge-team-member {{
+            color: #1E40AF !important;
+            font-size: 13px !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: 5px !important;
+        }}
 
         /* 구분선 및 섹션 헤더 */
         .premium-divider {{
@@ -96,7 +111,7 @@ st.markdown(f"""
         }}
         .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #0F172A !important; }}
         
-        /* ⚡ 연회색 배경용 화이트 네온 라이트닝 카드 시스템 */
+        /* KPI 화이트 네온 하이라이트 시스템 */
         .mes-kpi-wrapper {{ 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
@@ -111,19 +126,14 @@ st.markdown(f"""
             box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04) !important; 
             transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
         }}
-        
-        /* ✨ 마우스 오버 시 소프트 네온 보더 발광 */
         .mes-kpi-card:hover {{
             transform: translateY(-5px) !important;
             border-color: transparent !important;
         }}
-        
         .card-yield {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
         .card-yield:hover {{ box-shadow: 0 14px 30px rgba(22, 163, 74, 0.18), 0 0 0 2px {SUCCESS_GREEN} !important; }}
-        
         .card-cost {{ border-top: 4px solid #2563EB !important; }}
         .card-cost:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.18), 0 0 0 2px #2563EB !important; }}
-        
         .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
         .card-risk:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.18), 0 0 0 2px {ALERT_RED} !important; }}
         
@@ -185,7 +195,7 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 라우터 (로그인 화면)
+# 4. 라우터 (로그인 화면 구역)
 # ------------------------------------------------------------------------------
 if not st.session_state['logged_in']:
     st.markdown("""
@@ -241,23 +251,35 @@ if not st.session_state['logged_in']:
             st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
 else:
     # --------------------------------------------------------------------------
-    # 5. 메인 대시보드 구역
+    # 5. 메인 대시보드 구역 (요청 사항에 맞춰 사이드바 전면 재배치)
     # --------------------------------------------------------------------------
-    
-    # 🚀 [1번 수정 포인트] 두 필터를 다시 대시보드 밖 좌측 사이드바로 안전하게 이전
     with st.sidebar:
-        st.markdown("### 🗓️ 관제 조건 설정")
-        selected_months = st.multiselect(
-            "관제 대상 년월 선택", 
-            options=ALL_MONTHS, 
-            default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"]
-        )
-        search_keyword = st.text_input("🔍 품목 실시간 검색 필터", placeholder="검색할 품목명을 입력하세요...")
+        # 📌 [1번 & 4번 수정 포인트] 배지 음영 제거 및 로그아웃 버튼을 사이드바 최상단으로 이주
+        if st.session_state['is_admin']:
+            st.markdown("<span style='background-color:#DC2626; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="badge-team-member">👤 TEAM MEMBER</div>', unsafe_allow_html=True)
+            
+        st.header("⚙️ SYSTEM ADMIN")
+        st.button("🔓 로그아웃", on_click=logout, use_container_width=True)
         
         st.markdown("---")
         
+        # 📌 [2번 & 3번 수정 포인트] 타이틀 이름 변경 및 아래 중복 라벨 삭제, 폰트 크기 일치화 완료
+        st.markdown('<div class="sidebar-sync-title">🗓️ 대상 연월 선택</div>', unsafe_allow_html=True)
+        selected_months = st.multiselect(
+            "label_hidden_via_empty", # 기존의 투박한 개별 라벨 문구를 지우고 공백 렌더링으로 우회 처리
+            options=ALL_MONTHS, 
+            default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"],
+            label_visibility="collapsed"
+        )
+        
+        # 하부 필터 인풋 컴포넌트 (상단 타이틀과 글자 크기가 14px로 균형을 이룸)
+        search_keyword = st.text_input("🔍 품목 실시간 검색 필터", placeholder="검색할 품목명을 입력하세요...")
+        
+        # 관리자 전용 데이터 제어 섹션
         if st.session_state['is_admin']:
-            st.markdown("<span style='background-color:#DC2626; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
+            st.markdown("---")
             st.markdown("### 🎯 관리자 목표 제어")
             adm_m1 = st.number_input("면 1과 목표수율(%)", value=98.92, step=0.01)
             adm_m5 = st.number_input("면 5과 목표수율(%)", value=97.93, step=0.01)
@@ -266,19 +288,12 @@ else:
             adm_tot = st.number_input("전체 총합 목표(%)", value=98.73, step=0.01)
             YIELD_THRESHOLD = {'면 1과': adm_m1, '면 5과': adm_m5, '스프실': adm_sp, '면 종합': adm_mtot, '전체 총합': adm_tot}
             st.markdown(f"[📂 구글 시트 원본](https://docs.google.com/spreadsheets/d/{SHEET_ID})")
-            st.markdown("---")
-        else:
-            st.markdown("<span style='background-color:#1E40AF; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>TEAM MEMBER</span>", unsafe_allow_html=True)
-            YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '면 종합': 98.42, '전체 총합': 98.73}
 
-        st.header("⚙️ SYSTEM ADMIN")
-        st.button("🔓 로그아웃", on_click=logout, use_container_width=True)
-
-    # 헤더 타이틀 부문
+    # 메인 본문 타이틀 영역
     h_left, h_right = st.columns([4.5, 1])
     with h_left:
         st.markdown(f"""
-            <div style="color: #2563EB; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
+            <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
             <h1 style="color: #0F172A; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
                 생산1팀 <span style="color:#2563EB;">Smart 수율 모니터링</span> System
             </h1>
@@ -319,7 +334,6 @@ else:
                 kpi_color = ALERT_RED
                 kpi_text = "▼ 종합 목표 미달 (집중 분석 필요)"
 
-            # 마우스 오버 시 빛나는 3대 핵심 화이트 네온 KPI 파트
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
                     <div class="mes-kpi-card card-yield">
