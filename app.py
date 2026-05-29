@@ -24,7 +24,7 @@ YIELD_THRESHOLD = {
 }
 
 # 라이트 모드 전용 하이 테크 팔레트
-MAIN_BLUE = "#2563EB"       
+MAIN_BLUE = "#2563EB"       # 눈이 편안하고 차분한 미드 블루
 COMP_GRAY = "#64748B"       
 ALERT_RED = "#DC2626"       
 SUCCESS_GREEN = "#16A34A"   
@@ -40,8 +40,8 @@ st.markdown(f"""
             background-color: {LIGHT_BG} !important;
         }}
         
-        /* 🖤 기본 글자색 잠금 */
-        .stApp, .stApp p, .stApp label, .stApp div, .stApp span, .stApp h1, .stApp h3, .stApp h4 {{
+        /* 🖤 기본 글자색 잠금 범위 최적화 */
+        .stApp, .stApp p, .stApp label, .stApp h1, .stApp h3, .stApp h4 {{
             color: #1E293B !important;
         }}
         
@@ -127,8 +127,12 @@ st.markdown(f"""
             transform: translateY(-5px) !important;
             border-color: transparent !important;
         }}
-        .card-yield {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
-        .card-yield:hover {{ box-shadow: 0 14px 30px rgba(22, 163, 74, 0.15), 0 0 0 2px {SUCCESS_GREEN} !important; }}
+        /* 🎯 달성 시 카드 상단 띠도 메인 블루와 통일 */
+        .card-yield-success {{ border-top: 4px solid {MAIN_BLUE} !important; }}
+        .card-yield-success:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.15), 0 0 0 2px {MAIN_BLUE} !important; }}
+        
+        .card-yield-alert {{ border-top: 4px solid {ALERT_RED} !important; }}
+        .card-yield-alert:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.15), 0 0 0 2px {ALERT_RED} !important; }}
         
         .card-cost {{ border-top: 4px solid {MAIN_BLUE} !important; }}
         .card-cost:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.15), 0 0 0 2px {MAIN_BLUE} !important; }}
@@ -325,22 +329,23 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-            # 🎯 [1번 완벽 수정] 분기문 내부에서 인라인 인젝션 스타일 코드를 다이렉트로 결합
+            # 🎯 [파란색 핏 매칭 완료] 달성/미달 조건에 맞춰 인라인 글자색 스타일 패키징 변경
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
-                kpi_color = SUCCESS_GREEN
-                # 인라인 스타일로 태그 자체에 강제 주입하여 스트림릿 차콜 규칙 무력화
+                kpi_color = MAIN_BLUE
+                yield_card_class = "card-yield-success"
                 status_html = f"<div style='color: {MAIN_BLUE} !important; font-weight: 800; font-size: 14px; margin-top: 12px;'>▲ 목표 달성</div>"
             else:
                 kpi_color = ALERT_RED
+                yield_card_class = "card-yield-alert"
                 status_html = f"<div style='color: {ALERT_RED} !important; font-weight: 800; font-size: 14px; margin-top: 12px;'>▼ 목표 미달</div>"
 
             # 마우스 오버 시 실시간 반응하는 3대 핵심 네온 하이라이트 카드 패널
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
-                    <div class="mes-kpi-card card-yield">
+                    <div class="mes-kpi-card {yield_card_class}">
                         <div class="mes-kpi-label">26년 종합 수율 실적</div>
                         <div class="mes-kpi-value-box">
-                            <span class="mes-kpi-value" style="color: {kpi_color};">{total_26_yd:.2f}</span>
+                            <span class="mes-kpi-value" style="color: {kpi_color} !important;">{total_26_yd:.2f}</span>
                             <span class="mes-kpi-unit">%</span>
                         </div>
                         {status_html}
@@ -348,7 +353,7 @@ else:
                     <div class="mes-kpi-card card-cost">
                         <div class="mes-kpi-label">26년 누적 실제 투입 금액</div>
                         <div class="mes-kpi-value-box">
-                            <span class="mes-kpi-value" style="color: {MAIN_BLUE};">{cost_billion:,.1f}</span>
+                            <span class="mes-kpi-value" style="color: {MAIN_BLUE} !important;">{cost_billion:,.1f}</span>
                             <span class="mes-kpi-unit">억 원</span>
                         </div>
                         <div class="mes-kpi-status" style="color: #475569 !important;">🏭 생산1팀 생산 Scale</div>
@@ -356,7 +361,7 @@ else:
                     <div class="mes-kpi-card card-risk">
                         <div class="mes-kpi-label">집중 관리 고위험 자재 수</div>
                         <div class="mes-kpi-value-box">
-                            <span class="mes-kpi-value" style="color: {ALERT_RED};">{risk_cnt:02d}</span>
+                            <span class="mes-kpi-value" style="color: {ALERT_RED} !important;">{risk_cnt:02d}</span>
                             <span class="mes-kpi-unit">건</span>
                         </div>
                         <div class="mes-kpi-status" style="color: {ALERT_RED} !important; font-weight: 700;">⚠️ 즉시 분석 필요</div>
