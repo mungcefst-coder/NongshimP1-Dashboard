@@ -31,12 +31,51 @@ BRAND_NAVY = "#1E40AF"
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
-# 프리미엄 다크/그레이 톤 배경 및 기본 대시보드 컴포넌트 CSS 스타일 정의
+# 🚀 [글자색 보정 및 스타일 업그레이드] 어두운 배경에서 모든 텍스트가 잘 보이도록 강력 제어
 st.markdown(f"""
     <style>
+        /* 🎨 전체 배경 딥 네이비 그라데이션 */
         .stApp {{
             background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
         }}
+        
+        /* ⚪ [🔥 핵심 수정] 스트림릿 기본 텍스트, 라벨, 사이드바 글자색 화이트 통일 */
+        .stApp, .stApp p, .stApp label, .stApp div, .stApp span {{
+            color: #F8FAFC !important;
+        }}
+        
+        /* 🗂️ 테이블(st.dataframe) 내부 텍스트 강제 화이트/라이트그레이 및 가독성 튜닝 */
+        [data-testid="stTable"] {{
+            color: #F8FAFC !important;
+        }}
+        [data-testid="stDataFrameDataCell"] {{
+            color: #F8FAFC !important;
+            font-size: 14px !important;
+        }}
+        
+        /* 탭(Tab) 글자색 및 활성화 색상 고정 */
+        button[data-baseweb="tab"] p {{
+            color: #94A3B8 !important;
+            font-weight: 600 !important;
+        }}
+        button[data-baseweb="tab"][aria-selected="true"] p {{
+            color: {MAIN_BLUE} !important;
+            font-weight: 800 !important;
+        }}
+        
+        /* 사이드바 전용 스타일 정돈 (배경과 분리감 부여) */
+        section[data-testid="stSidebar"] {{
+            background-color: rgba(15, 23, 42, 0.8) !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+        }}
+        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {{
+            color: #F8FAFC !important;
+        }}
+        section[data-testid="stSidebar"] .stApp p, section[data-testid="stSidebar"] label p {{
+            color: #CBD5E1 !important;
+        }}
+
+        /* 구분선 및 섹션 헤더 */
         .premium-divider {{
             height: 2px;
             background: linear-gradient(to right, {MAIN_BLUE}, rgba(148, 163, 184, 0.3), rgba(0,0,0,0));
@@ -49,16 +88,15 @@ st.markdown(f"""
         }}
         .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #F1F5F9 !important; }}
         
+        /* 3열 KPI 카드 디자인 */
         .mes-kpi-wrapper {{ 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
             gap: 24px; 
             margin-bottom: 15px; 
         }}
-        
         .mes-kpi-card {{ 
-            background: rgba(30, 41, 59, 0.45) !important;
-            color: #F1F5F9; 
+            background: rgba(30, 41, 59, 0.55) !important;
             border: 1px solid rgba(255, 255, 255, 0.08) !important;
             border-radius: 16px !important; 
             padding: 24px 28px !important; 
@@ -69,26 +107,22 @@ st.markdown(f"""
             position: relative;
             overflow: hidden;
         }}
-        
         .mes-kpi-card:hover {{
             transform: translateY(-6px) !important;
-            background: rgba(30, 41, 59, 0.65) !important;
+            background: rgba(30, 41, 59, 0.75) !important;
             border-color: rgba(255, 255, 255, 0.18) !important;
         }}
-        
         .card-yield {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
         .card-yield:hover {{ box-shadow: 0 15px 35px rgba(16, 185, 129, 0.25) !important; }}
-        
         .card-cost {{ border-top: 4px solid {MAIN_BLUE} !important; }}
         .card-cost:hover {{ box-shadow: 0 15px 35px rgba(59, 130, 246, 0.25) !important; }}
-        
         .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
         .card-risk:hover {{ box-shadow: 0 15px 35px rgba(239, 68, 68, 0.25) !important; }}
         
-        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #94A3B8; margin-bottom: 8px; letter-spacing: 0.5px; }}
+        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #94A3B8 !important; margin-bottom: 8px; letter-spacing: 0.5px; }}
         .mes-kpi-value-box {{ display: flex; align-items: baseline; margin-top: 2px; }}
         .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
-        .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #94A3B8; margin-left: 6px; }}
+        .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #94A3B8 !important; margin-left: 6px; }}
         .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
         
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
@@ -296,7 +330,7 @@ else:
                             <span class="mes-kpi-value" style="color: {MAIN_BLUE};">{cost_billion:,.1f}</span>
                             <span class="mes-kpi-unit">억 원</span>
                         </div>
-                        <div class="mes-kpi-status" style="color: #94A3B8;">🏭 부산공장 생산 자재 스케일</div>
+                        <div class="mes-kpi-status" style="color: #CBD5E1;">🏭 부산공장 생산 자재 스케일</div>
                     </div>
                     <div class="mes-kpi-card card-risk">
                         <div class="mes-kpi-label">집중 관리 고위험 자재 수</div>
@@ -345,19 +379,20 @@ else:
                             yield_cols = [c for c in pivot.columns if '수율' in c]
                             styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                             
+                            # 🚀 [3번 수정 포인트 적용] 글자색 전면 보정 및 행 배경 밸런스 조정
                             def style_yield_cells(val):
                                 try:
                                     v = float(val)
                                     if v > 0 and v < current_threshold:
-                                        return f'color: {ALERT_RED}; background-color: rgba(239, 68, 68, 0.15);'
-                                    else: return 'background-color: rgba(74, 144, 226, 0.12);'
-                                except: return 'background-color: rgba(74, 144, 226, 0.12);'
+                                        return f'color: #FFFFFF !important; background-color: rgba(239, 68, 68, 0.35); font-weight: 800;'
+                                    else: return 'color: #F8FAFC !important; background-color: rgba(59, 130, 246, 0.15);'
+                                except: return 'color: #F8FAFC !important; background-color: rgba(59, 130, 246, 0.05);'
                                 
                             styled_df = styled_df.map(style_yield_cells, subset=yield_cols)
                             st.dataframe(styled_df, use_container_width=True)
                         else: st.caption("데이터 없음")
                         
-                        st.markdown(f"<div style='color: #94A3B8; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='color: #CBD5E1; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
                     with c2:
                         st.markdown(f"**📈 {d} 수율 변화 추이**")
                         if not target.empty:
@@ -381,7 +416,6 @@ else:
                                         else: text_positions.append('top center' if current_val > val_26 else 'bottom center')
                                     else: text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
                                 
-                                # 🚀 [2번 수정 포인트] 선 그래프 한국어 가독성 툴팁 포맷 정의
                                 custom_hovertemplate = (
                                     f"<b>{yr_label} 실적</b><br>" +
                                     "📅 기간: %{x}<br>" +
@@ -398,20 +432,11 @@ else:
                                 ))
                             y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
                             
-                            # 🚀 [2번 수정 포인트] 추이 그래프 다크모드 축/그리드 연하게 최적화
                             fig.update_layout(
                                 height=280, margin=dict(l=100,r=80,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                                 font=dict(color='#F8FAFC'), 
-                                yaxis=dict(
-                                    range=[y_min-3, y_max+3], 
-                                    gridcolor='rgba(255,255,255,0.05)', # 그리드 투명도 최적화
-                                    zeroline=False, ticksuffix="  "
-                                ), 
-                                xaxis=dict(
-                                    type='category', 
-                                    range=[-0.5, len(trend['월표시'].unique())-0.5], 
-                                    gridcolor='rgba(255,255,255,0.05)'
-                                ), 
+                                yaxis=dict(range=[y_min-3, y_max+3], gridcolor='rgba(255,255,255,0.05)', zeroline=False, ticksuffix="  "), 
+                                xaxis=dict(type='category', range=[-0.5, len(trend['월표시'].unique())-0.5], gridcolor='rgba(255,255,255,0.05)'), 
                                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                             )
                             st.plotly_chart(fig, use_container_width=True)
@@ -429,16 +454,14 @@ else:
                 if not f_df.empty:
                     ds = f_df.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                     ds['수율'] = (ds['이론금액'] / ds['실제금액'] * 100).round(2)
-                    fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
+                    fig1 = px.bar(ds, x='생산부문명', y='수율', color='연度', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
                     
-                    # 🚀 [2번 수정 포인트] 막대 그래프 한국어 가독성 툴팁 포맷 정의
                     fig1.update_traces(
                         texttemplate='%{text:.2f}%', textposition='outside', 
                         textfont=dict(weight='bold', size=13, color='#F8FAFC'),
                         hovertemplate="<b>%{x} (%{data.name})</b><br>🎯 마스킹 수율: <b>%{y:.2f}%</b><extra></extra>"
                     )
                     
-                    # 🚀 [2번 수정 포인트] 막대 그래프 다크모드 축/그리드 세부 조정
                     fig1.update_layout(
                         height=330, margin=dict(l=80, r=20, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                         font=dict(color='#F8FAFC'), 
@@ -461,13 +484,11 @@ else:
                     isc['분류'] = isc.apply(amc, axis=1)
                     fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '🚨 집중 관리 대상': ALERT_RED})
                     
-                    # 🚀 [2번 수정 포인트] 리스크 매트릭스 산점도 마커 테두리 강조 및 한글 툴팁 포맷팅
                     fig3.update_traces(
                         marker=dict(size=14, line=dict(width=1.5, color='#F8FAFC')),
                         hovertemplate="<b>📦 품목: %{hovertext}</b><br>💰 투입 금액: %{x:.2f}억 원<br>📉 마스킹 수율: %{y:.2f}%<br>🔍 상태: %{data.name}<extra></extra>"
                     )
                     
-                    # 🚀 [2번 수정 포인트] 리스크 매트릭스 레이아웃 그리드 투명도 조정
                     fig3.update_layout(
                         height=330, margin=dict(l=80, r=20, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                         font=dict(color='#F8FAFC'), xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)", 
@@ -502,7 +523,6 @@ else:
                                     m_d = isum[isum['생산부문명'] == d_name].sort_values('실제금액', ascending=False).head(15).sort_values('수율').head(5)
                                     fig_m = px.bar(m_d, x='수율', y='하위품목 텍스트', orientation='h', text='수율')
                                     
-                                    # 🚀 [2번 수정 포인트] 리스크 횡형 바 차트 툴팁 한글화 및 축 최적화
                                     fig_m.update_traces(
                                         marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, 
                                         texttemplate='%{text:.2f}%', textposition='outside', 
