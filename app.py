@@ -297,7 +297,7 @@ else:
             <div style='text-align: right; margin-top: 15px;'>
                 <div style='background: #FFFFFF; color: #1E293B; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid #CBD5E1; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);'>
                     <span style='color: #00D2FF !important; text-shadow: 0 0 8px rgba(0,210,255,0.7); margin-right: 4px;'>●</span> 
-                    <span style='color: #1E40AF !important;'>SYSTEM LIVE</span>
+                    <span style='color: #004EA2 !important;'>SYSTEM LIVE</span>
                 </div>
                 <div style='color: #64748B; font-size: 11px; margin-top: 10px; font-weight: 600;'>Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
             </div>
