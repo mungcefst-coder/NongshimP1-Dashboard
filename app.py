@@ -24,7 +24,7 @@ YIELD_THRESHOLD = {
 }
 
 # 라이트 모드 전용 하이 테크 팔레트
-MAIN_BLUE = "#2563EB"       # 눈이 편안하고 차분한 미드 블루
+MAIN_BLUE = "#2563EB"       
 COMP_GRAY = "#64748B"       
 ALERT_RED = "#DC2626"       
 SUCCESS_GREEN = "#16A34A"   
@@ -40,7 +40,7 @@ st.markdown(f"""
             background-color: {LIGHT_BG} !important;
         }}
         
-        /* 🖤 기본 글자색 잠금 범위 최적화 */
+        /* 🖤 기본 글자색 범위 최적화 (가장 표준적인 요소만 타겟 지정) */
         .stApp, .stApp p, .stApp label, .stApp h1, .stApp h3, .stApp h4 {{
             color: #1E293B !important;
         }}
@@ -127,7 +127,6 @@ st.markdown(f"""
             transform: translateY(-5px) !important;
             border-color: transparent !important;
         }}
-        /* 🎯 달성 시 카드 상단 띠도 메인 블루와 통일 */
         .card-yield-success {{ border-top: 4px solid {MAIN_BLUE} !important; }}
         .card-yield-success:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.15), 0 0 0 2px {MAIN_BLUE} !important; }}
         
@@ -145,7 +144,8 @@ st.markdown(f"""
         .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
         .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #64748B !important; margin-left: 6px; }}
         
-        .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
+        /* 🚨 하단 안내문 전용 마진 가이드 구조 */
+        .mes-kpi-status-container {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
         
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
     </style>
@@ -329,15 +329,15 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-            # 🎯 [파란색 핏 매칭 완료] 달성/미달 조건에 맞춰 인라인 글자색 스타일 패키징 변경
+            # 🎯 [핵심 완치 포인트] 스트림릿이 분석하지 못하도록 태그 자체에 인라인 강제 색상 코드를 폰트 태그(<font color>)로 2중 주입
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
                 kpi_color = MAIN_BLUE
                 yield_card_class = "card-yield-success"
-                status_html = f"<div style='color: {MAIN_BLUE} !important; font-weight: 800; font-size: 14px; margin-top: 12px;'>▲ 목표 달성</div>"
+                status_html = f"<div class='mes-kpi-shadow-clean' style='margin-top: 12px; font-size: 14px; font-weight: 800;'><font color='{MAIN_BLUE}'>▲ 목표 달성</font></div>"
             else:
                 kpi_color = ALERT_RED
                 yield_card_class = "card-yield-alert"
-                status_html = f"<div style='color: {ALERT_RED} !important; font-weight: 800; font-size: 14px; margin-top: 12px;'>▼ 목표 미달</div>"
+                status_html = f"<div class='mes-kpi-shadow-clean' style='margin-top: 12px; font-size: 14px; font-weight: 800;'><font color='{ALERT_RED}'>▼ 목표 미달</font></div>"
 
             # 마우스 오버 시 실시간 반응하는 3대 핵심 네온 하이라이트 카드 패널
             st.markdown(f"""
@@ -356,7 +356,7 @@ else:
                             <span class="mes-kpi-value" style="color: {MAIN_BLUE} !important;">{cost_billion:,.1f}</span>
                             <span class="mes-kpi-unit">억 원</span>
                         </div>
-                        <div class="mes-kpi-status" style="color: #475569 !important;">🏭 생산1팀 생산 Scale</div>
+                        <div class="mes-kpi-status-container" style="color: #475569 !important;">🏭 생산1팀 생산 Scale</div>
                     </div>
                     <div class="mes-kpi-card card-risk">
                         <div class="mes-kpi-label">집중 관리 고위험 자재 수</div>
@@ -364,7 +364,7 @@ else:
                             <span class="mes-kpi-value" style="color: {ALERT_RED} !important;">{risk_cnt:02d}</span>
                             <span class="mes-kpi-unit">건</span>
                         </div>
-                        <div class="mes-kpi-status" style="color: {ALERT_RED} !important; font-weight: 700;">⚠️ 즉시 분석 필요</div>
+                        <div class="mes-kpi-status-container" style="color: {ALERT_RED} !important; font-weight: 700;">⚠️ 즉시 분석 필요</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
