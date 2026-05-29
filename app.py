@@ -31,9 +31,13 @@ BRAND_NAVY = "#1E40AF"
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
+# 프리미엄 다크/그레이 톤 배경 및 기본 대시보드 컴포넌트 CSS 스타일 정의
 st.markdown(f"""
     <style>
-        .stApp {{ background-color: #F8FAFC; }}
+        /* 🎨 전체 배경을 세련된 딥 네이비 그라데이션 야간 모드로 변경 */
+        .stApp {{
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+        }}
         .premium-divider {{
             height: 2px;
             background: linear-gradient(to right, {MAIN_BLUE}, rgba(148, 163, 184, 0.3), rgba(0,0,0,0));
@@ -44,16 +48,17 @@ st.markdown(f"""
             display: flex; align-items: center; margin-bottom: 20px;
             padding-left: 10px; border-left: 5px solid {MAIN_BLUE};
         }}
-        .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #1E293B !important; }}
+        /* 야간 모드에 잘 보이도록 메인 텍스트 색상을 화이트 계열로 조정 */
+        .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #F1F5F9 !important; }}
         .mes-kpi-wrapper {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 5px; }}
         .mes-kpi-card {{ 
-            background-color: white; color: #1E293B; border: 1px solid #E2E8F0;
-            border-radius: 12px; padding: 18px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+            background-color: rgba(255, 255, 255, 0.05); color: #F1F5F9; border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px; padding: 18px 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); backdrop-filter: blur(8px);
         }}
-        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #64748B; margin-bottom: 6px; }}
+        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #94A3B8; margin-bottom: 6px; }}
         .mes-kpi-value-box {{ display: flex; align-items: baseline; }}
         .mes-kpi-value {{ font-size: 32px; font-weight: 800; line-height: 1.1; }}
-        .mes-kpi-unit {{ font-size: 15px; font-weight: 600; color: #64748B; margin-left: 5px; }}
+        .mes-kpi-unit {{ font-size: 15px; font-weight: 600; color: #94A3B8; margin-left: 5px; }}
         .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 8px; }}
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
     </style>
@@ -93,7 +98,7 @@ def preprocess_df(df, month_label):
     if '생산부문명' in df.columns:
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
         df = df[df['생산부문명'].isin(dept_map.keys())].copy()
-        df['생산부문명'] = df['생산부문명'].map(dept_map)
+        df['생산부문명'] = df['생산부num명'].map(dept_map) if '생산부num명' in df.columns else df['생산부문명'].map(dept_map)
     for col in ['이론금액', '실제금액']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
@@ -107,21 +112,65 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 라우터
+# 4. 라우터 (개선된 유리 질감 로그인 UI 연결)
 # ------------------------------------------------------------------------------
 if not st.session_state['logged_in']:
-    _, login_grid, _ = st.columns([1.3, 1, 1.3])
-    with login_grid:
-        st.markdown(f"""
-            <div style="background: white; padding: 35px 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); max-width: 380px; margin: 8px auto; border-top: 6px solid {BRAND_NAVY}; text-align: center;">
-                <div style="color: #1E293B !important; font-weight: 800 !important; font-size: 24px !important; margin-bottom: 4px !important;">🔐 시스템 인증 로그인</div>
-                <div style="color: #64748B; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; margin-bottom: 30px;">BUSAN PLANT PRODUCTION TEAM 1</div>
+    # 🎨 유리 질감(Glassmorphism) 카드 전용 커스텀 CSS 적용
+    st.markdown("""
+        <style>
+            .glass-login-card {
+                background: rgba(255, 255, 255, 0.08);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+                text-align: center;
+                margin-top: 10vh;
+            }
+            .card-title {
+                color: #FFFFFF !important;
+                font-size: 28px !important;
+                font-weight: 800 !important;
+                margin-bottom: 4px !important;
+                letter-spacing: -0.5px;
+            }
+            .card-subtitle {
+                color: #94A3B8 !important;
+                font-size: 11px !important;
+                font-weight: 700 !important;
+                letter-spacing: 1.5px;
+                margin-bottom: 30px !important;
+            }
+            div[data-testid="stForm"] {
+                border: none !important;
+                padding: 0 !important;
+                background: transparent !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 🏢 레이아웃 중앙 정렬 배치
+    _, login_container, _ = st.columns([1, 1.2, 1])
+    
+    with login_container:
+        st.markdown("""
+            <div class="glass-login-card">
+                <div class="card-title">🔐 SYSTEM ACCESS</div>
+                <div class="card-subtitle">BUSAN PLANT PRODUCTION TEAM 1</div>
             </div>
         """, unsafe_allow_html=True)
-        st.text_input("Username", key="username", placeholder="ID를 입력하세요")
-        st.text_input("Password", type="password", key="password", placeholder="PW를 입력하세요")
-        st.button("보안 시스템 로그인", on_click=login, use_container_width=True)
+        
+        # 입력 양식 컨테이너
+        with st.form("login_form"):
+            st.text_input("Username", key="username", placeholder="ID를 입력하세요")
+            st.text_input("Password", type="password", key="password", placeholder="PW를 입력하세요")
+            st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
 else:
+    # --------------------------------------------------------------------------
+    # 5. 메인 대시보드 구역 (로그인 완료 시 구동)
+    # --------------------------------------------------------------------------
     with st.sidebar:
         if st.session_state['is_admin']:
             st.markdown("<span style='background-color:#EF4444; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
@@ -139,25 +188,26 @@ else:
             YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '면 종합': 98.42, '전체 총합': 98.73}
 
         st.header("⚙️ SYSTEM ADMIN")
-        st.markdown("<div style='color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color: #94A3B8; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
         st.button("🔓 로그아웃", on_click=logout, use_container_width=True)
         st.markdown("---")
         selected_months = st.multiselect("🗓️ 관제 대상 년월", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
         st.markdown("---")
         search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
 
+    # 대시보드 헤더 영역 설정 (텍스트 컬러 화이트 최적화)
     h_left, h_right = st.columns([4.5, 1])
     with h_left:
         st.markdown(f"""
             <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
-            <h1 style="color: #1E293B; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
+            <h1 style="color: #F8FAFC; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
                 생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
             </h1>
         """, unsafe_allow_html=True)
     with h_right:
         st.markdown(f"""
             <div style='text-align: right; margin-top: 15px;'>
-                <div style='background: white; color: {MAIN_BLUE}; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid {MAIN_BLUE}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>● SYSTEM LIVE</div>
+                <div style='background: rgba(255,255,255,0.05); color: {MAIN_BLUE}; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid {MAIN_BLUE}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>● SYSTEM LIVE</div>
                 <div style='color: #94A3B8; font-size: 11px; margin-top: 10px; font-weight: 600;'>Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
             </div>
         """, unsafe_allow_html=True)
@@ -196,7 +246,7 @@ else:
                     <div class="mes-kpi-card" style="border-top: 4px solid {MAIN_BLUE};">
                         <div class="mes-kpi-label">누적 실제 투입 금액</div>
                         <div class="mes-kpi-value-box"><span class="mes-kpi-value">{cost_billion:,.1f}</span><span class="mes-kpi-unit">억 원</span></div>
-                        <div class="mes-kpi-status" style="color: #64748B;">생산 운영 스케일</div>
+                        <div class="mes-kpi-status" style="color: #94A3B8;">생산 운영 스케일</div>
                     </div>
                     <div class="mes-kpi-card" style="border-top: 4px solid {ALERT_RED};">
                         <div class="mes-kpi-label">고위험 자재 건수</div>
@@ -254,7 +304,7 @@ else:
                             st.dataframe(styled_df, use_container_width=True)
                         else: st.caption("데이터 없음")
                         
-                        st.markdown(f"<div style='color: #64748B; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='color: #94A3B8; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
                     with c2:
                         st.markdown(f"**📈 {d} 수율 변화 추이**")
                         if not target.empty:
@@ -281,11 +331,11 @@ else:
                                 fig.add_trace(go.Scatter(
                                     x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
                                     text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), 
-                                    textposition=text_positions, textfont=dict(size=14, weight='bold'),
+                                    textposition=text_positions, textfont=dict(size=14, color='#F8FAFC', weight='bold'),
                                     line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=4), marker=dict(size=10)
                                 ))
                             y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
-                            fig.update_layout(height=280, margin=dict(l=100,r=80,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[y_min-3, y_max+3], gridcolor='rgba(128,128,128,0.1)', zeroline=False, ticksuffix="  "), xaxis=dict(type='category', range=[-0.5, len(trend['월표시'].unique())-0.5], gridcolor='rgba(128,128,128,0.1)'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                            fig.update_layout(height=280, margin=dict(l=100,r=80,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#F8FAFC'), yaxis=dict(range=[y_min-3, y_max+3], gridcolor='rgba(255,255,255,0.1)', zeroline=False, ticksuffix="  "), xaxis=dict(type='category', range=[-0.5, len(trend['월표시'].unique())-0.5], gridcolor='rgba(255,255,255,0.1)'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
                             st.plotly_chart(fig, use_container_width=True)
 
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
@@ -302,8 +352,8 @@ else:
                     ds = f_df.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                     ds['수율'] = (ds['이론금액'] / ds['실제금액'] * 100).round(2)
                     fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
-                    fig1.update_traces(texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold', size=13))
-                    fig1.update_layout(height=330, margin=dict(l=80, r=20, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='rgba(128,128,128,0.1)'), xaxis_title=None)
+                    fig1.update_traces(texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold', size=13, color='#F8FAFC'))
+                    fig1.update_layout(height=330, margin=dict(l=80, r=20, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#F8FAFC'), yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='rgba(255,255,255,0.1)'), xaxis_title=None)
                     st.plotly_chart(fig1, use_container_width=True)
             with r2c2:
                 st.markdown("**🔍 수율 리스크 매트릭스**")
@@ -319,7 +369,7 @@ else:
                     isc['분류'] = isc.apply(amc, axis=1)
                     fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '🚨 집중 관리 대상': ALERT_RED})
                     fig3.update_traces(marker=dict(size=15, line=dict(width=1, color='white')))
-                    fig3.update_layout(height=330, margin=dict(l=80, r=20, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)", legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02))
+                    fig3.update_layout(height=330, margin=dict(l=80, r=20, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#F8FAFC'), xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)", gridcolor='rgba(255,255,255,0.1)', legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02))
                     st.plotly_chart(fig3, use_container_width=True)
 
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
@@ -346,8 +396,8 @@ else:
                                     st.markdown(f"**📍 {d_name} 중점 관리 리스트**")
                                     m_d = isum[isum['생산부문명'] == d_name].sort_values('실제금액', ascending=False).head(15).sort_values('수율').head(5)
                                     fig_m = px.bar(m_d, x='수율', y='하위품목 텍스트', orientation='h', text='수율')
-                                    fig_m.update_traces(marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold'))
-                                    fig_m.update_layout(height=340, margin=dict(l=150, r=60, t=20, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(range=[0, 140], gridcolor='rgba(128,128,128,0.1)'))
+                                    fig_m.update_traces(marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold', color='#F8FAFC'))
+                                    fig_m.update_layout(height=340, margin=dict(l=150, r=60, t=20, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#F8FAFC'), xaxis=dict(range=[0, 140], gridcolor='rgba(255,255,255,0.1)'))
                                     st.plotly_chart(fig_m, use_container_width=True, key=f"t5_{ty}_{d_name}")
     else:
         st.warning("📂 분석 대상 년월을 선택해 주세요.")
