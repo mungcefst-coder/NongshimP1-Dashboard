@@ -141,7 +141,7 @@ st.markdown(f"""
         .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
         .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #64748B !important; margin-left: 6px; }}
         
-        /* 🚨 [핵심 해결책] 스트림릿 글로벌 차콜 규칙을 깨부수고 색상을 강제할 전용 상태 래퍼 정의 */
+        /* 🚨 스트림릿 글로벌 차콜 규칙을 깨부수고 색상을 강제할 전용 상태 래퍼 정의 */
         .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
         .status-force-blue, .status-force-blue * {{ color: {MAIN_BLUE} !important; }}
         .status-force-red, .status-force-red * {{ color: {ALERT_RED} !important; }}
@@ -470,7 +470,7 @@ else:
 
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
 
-            /* 이하 그래프 및 부속 렌더링 로직 기존과 완벽 동일하여 생략 가능 구역이나 전체 작동 보증을 위해 보존 */
+            # #️⃣ 부속 렌더링 그래프 로직 파이썬 전용 주석으로 안전하게 수정 완료
             st.markdown('<div class="section-header"><h2>📊 실시간 비교 및 리스크 분석</h2></div>', unsafe_allow_html=True)
             r2c1, r2c2 = st.columns(2)
             with r2c1:
