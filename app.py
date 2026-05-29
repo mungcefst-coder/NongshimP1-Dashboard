@@ -27,7 +27,7 @@ YIELD_THRESHOLD = {
 MAIN_BLUE = "#2563EB"       
 COMP_GRAY = "#64748B"       
 ALERT_RED = "#DC2626"       
-SUCCESS_GREEN = "#16A34A"   
+SUCCESS_GREEN = "#16A34A"   # 금액 카드와 연동될 선명한 공장 합격 녹색
 LIGHT_BG = "#F1F5F9"        
 CARD_BG = "#FFFFFF"         
 
@@ -40,7 +40,7 @@ st.markdown(f"""
             background-color: {LIGHT_BG} !important;
         }}
         
-        /* 🖤 기본 글자색 범위 최적화 (가장 표준적인 요소만 타겟 지정) */
+        /* 🖤 기본 글자색 범위 최적화 */
         .stApp, .stApp p, .stApp label, .stApp h1, .stApp h3, .stApp h4 {{
             color: #1E293B !important;
         }}
@@ -127,15 +127,19 @@ st.markdown(f"""
             transform: translateY(-5px) !important;
             border-color: transparent !important;
         }}
+        
+        /* 수율 카드 테두리 */
         .card-yield-success {{ border-top: 4px solid {MAIN_BLUE} !important; }}
         .card-yield-success:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.15), 0 0 0 2px {MAIN_BLUE} !important; }}
         
         .card-yield-alert {{ border-top: 4px solid {ALERT_RED} !important; }}
         .card-yield-alert:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.15), 0 0 0 2px {ALERT_RED} !important; }}
         
-        .card-cost {{ border-top: 4px solid {MAIN_BLUE} !important; }}
-        .card-cost:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.15), 0 0 0 2px {MAIN_BLUE} !important; }}
+        /* 🎯 [2번 수정 포인트] 금액 카드의 호버 테두리 박스 효과를 파란색에서 싱그러운 녹색으로 전면 변경 */
+        .card-cost {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
+        .card-cost:hover {{ box-shadow: 0 14px 30px rgba(22, 163, 74, 0.15), 0 0 0 2px {SUCCESS_GREEN} !important; }}
         
+        /* 리스크 카드 테두리 */
         .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
         .card-risk:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.15), 0 0 0 2px {ALERT_RED} !important; }}
         
@@ -144,7 +148,6 @@ st.markdown(f"""
         .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
         .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #64748B !important; margin-left: 6px; }}
         
-        /* 🚨 하단 안내문 전용 마진 가이드 구조 */
         .mes-kpi-status-container {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
         
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
@@ -329,7 +332,6 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-            # 🎯 [핵심 완치 포인트] 스트림릿이 분석하지 못하도록 태그 자체에 인라인 강제 색상 코드를 폰트 태그(<font color>)로 2중 주입
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
                 kpi_color = MAIN_BLUE
                 yield_card_class = "card-yield-success"
@@ -353,7 +355,7 @@ else:
                     <div class="mes-kpi-card card-cost">
                         <div class="mes-kpi-label">26년 누적 실제 투입 금액</div>
                         <div class="mes-kpi-value-box">
-                            <span class="mes-kpi-value" style="color: {MAIN_BLUE} !important;">{cost_billion:,.1f}</span>
+                            <span class="mes-kpi-value" style="color: {SUCCESS_GREEN} !important;">{cost_billion:,.1f}</span>
                             <span class="mes-kpi-unit">억 원</span>
                         </div>
                         <div class="mes-kpi-status-container" style="color: #475569 !important;">🏭 생산1팀 생산 Scale</div>
