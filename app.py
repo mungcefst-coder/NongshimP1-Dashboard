@@ -27,7 +27,7 @@ YIELD_THRESHOLD = {
 MAIN_BLUE = "#2563EB"       
 COMP_GRAY = "#64748B"       
 ALERT_RED = "#DC2626"       
-SUCCESS_GREEN = "#16A34A"   # 금액 카드와 연동될 선명한 공장 합격 녹색
+SUCCESS_GREEN = "#16A34A"   # 금액 카드 지표 전용 선명한 세인츠 녹색
 LIGHT_BG = "#F1F5F9"        
 CARD_BG = "#FFFFFF"         
 
@@ -128,18 +128,18 @@ st.markdown(f"""
             border-color: transparent !important;
         }}
         
-        /* 수율 카드 테두리 */
+        /* 수율 카드 클래스군 */
         .card-yield-success {{ border-top: 4px solid {MAIN_BLUE} !important; }}
         .card-yield-success:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.15), 0 0 0 2px {MAIN_BLUE} !important; }}
         
         .card-yield-alert {{ border-top: 4px solid {ALERT_RED} !important; }}
         .card-yield-alert:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.15), 0 0 0 2px {ALERT_RED} !important; }}
         
-        /* 🎯 [2번 수정 포인트] 금액 카드의 호버 테두리 박스 효과를 파란색에서 싱그러운 녹색으로 전면 변경 */
+        /* 금액 카드 클래스군 */
         .card-cost {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
         .card-cost:hover {{ box-shadow: 0 14px 30px rgba(22, 163, 74, 0.15), 0 0 0 2px {SUCCESS_GREEN} !important; }}
         
-        /* 리스크 카드 테두리 */
+        /* 리스크 카드 클래스군 */
         .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
         .card-risk:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.15), 0 0 0 2px {ALERT_RED} !important; }}
         
@@ -148,6 +148,7 @@ st.markdown(f"""
         .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
         .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #64748B !important; margin-left: 6px; }}
         
+        .mes-kpi-shadow-clean {{ margin-top: 12px; font-size: 14px; font-weight: 800; }}
         .mes-kpi-status-container {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
         
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
@@ -335,11 +336,11 @@ else:
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
                 kpi_color = MAIN_BLUE
                 yield_card_class = "card-yield-success"
-                status_html = f"<div class='mes-kpi-shadow-clean' style='margin-top: 12px; font-size: 14px; font-weight: 800;'><font color='{MAIN_BLUE}'>▲ 목표 달성</font></div>"
+                status_html = f"<div class='mes-kpi-shadow-clean'><font color='{MAIN_BLUE}'>▲ 목표 달성</font></div>"
             else:
                 kpi_color = ALERT_RED
                 yield_card_class = "card-yield-alert"
-                status_html = f"<div class='mes-kpi-shadow-clean' style='margin-top: 12px; font-size: 14px; font-weight: 800;'><font color='{ALERT_RED}'>▼ 목표 미달</font></div>"
+                status_html = f"<div class='mes-kpi-shadow-clean'><font color='{ALERT_RED}'>▼ 목표 미달</font></div>"
 
             # 마우스 오버 시 실시간 반응하는 3대 핵심 네온 하이라이트 카드 패널
             st.markdown(f"""
