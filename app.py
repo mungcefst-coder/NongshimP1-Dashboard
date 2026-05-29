@@ -219,12 +219,16 @@ if not st.session_state['logged_in']:
                 border: 1px solid #CBD5E1 !important;
                 border-radius: 10px !important;
             }}
+            /* 🎯 [최종 조율] 로그인 버튼 파란색 배경 위 글자색 흰색(#FFFFFF) 고정 잠금 및 텍스트 섀도우 소거 */
             div[data-testid="stForm"] button {{
                 background-color: {MAIN_BLUE} !important;
                 color: #FFFFFF !important;
                 border-radius: 10px !important;
                 font-weight: 700 !important;
                 margin-top: 25px !important;
+            }}
+            div[data-testid="stForm"] button p {{
+                color: #FFFFFF !important;
             }}
             div[data-testid="stForm"] button:hover {{
                 box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
@@ -250,7 +254,8 @@ if not st.session_state['logged_in']:
                     }
                 </style>
             """, unsafe_allow_html=True)
-            st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
+            # 🎯 문구 명칭 변경 적용: "보안 시스템 로그인" -> "시스템 로그인"
+            st.form_submit_button("시스템 로그인", on_click=login, use_container_width=True)
 else:
     # --------------------------------------------------------------------------
     # 5. 메인 대시보드 구역
@@ -328,7 +333,7 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-            # 🎯 [2중 인라인 밀봉] 분기문 내부에서 폰트 색상을 클래스가 아닌 독립된 스타일 코드로 완전 격리 바인딩
+            # 폰트 색상을 클래스가 아닌 독립된 스타일 코드로 완전 격리 바인딩
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
                 kpi_color = MAIN_BLUE
                 yield_card_class = "card-yield-success"
