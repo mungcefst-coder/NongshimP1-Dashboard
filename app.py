@@ -27,7 +27,7 @@ YIELD_THRESHOLD = {
 MAIN_BLUE = "#2563EB"       
 COMP_GRAY = "#64748B"       
 ALERT_RED = "#DC2626"       
-SUCCESS_GREEN = "#16A34A"   # 금액 카드 지표 전용 선명한 세인츠 녹색
+SUCCESS_GREEN = "#16A34A"   
 LIGHT_BG = "#F1F5F9"        
 CARD_BG = "#FFFFFF"         
 
@@ -40,7 +40,7 @@ st.markdown(f"""
             background-color: {LIGHT_BG} !important;
         }}
         
-        /* 🖤 기본 글자색 범위 최적화 */
+        /* 🖤 기본 글자색 범위 가이드 유지 */
         .stApp, .stApp p, .stApp label, .stApp h1, .stApp h3, .stApp h4 {{
             color: #1E293B !important;
         }}
@@ -128,18 +128,16 @@ st.markdown(f"""
             border-color: transparent !important;
         }}
         
-        /* 수율 카드 클래스군 */
+        /* 각 카드 상단 띠 테두리 조명 효과 */
         .card-yield-success {{ border-top: 4px solid {MAIN_BLUE} !important; }}
         .card-yield-success:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.15), 0 0 0 2px {MAIN_BLUE} !important; }}
         
         .card-yield-alert {{ border-top: 4px solid {ALERT_RED} !important; }}
         .card-yield-alert:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.15), 0 0 0 2px {ALERT_RED} !important; }}
         
-        /* 금액 카드 클래스군 */
         .card-cost {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
         .card-cost:hover {{ box-shadow: 0 14px 30px rgba(22, 163, 74, 0.15), 0 0 0 2px {SUCCESS_GREEN} !important; }}
         
-        /* 리스크 카드 클래스군 */
         .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
         .card-risk:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.15), 0 0 0 2px {ALERT_RED} !important; }}
         
@@ -147,9 +145,6 @@ st.markdown(f"""
         .mes-kpi-value-box {{ display: flex; align-items: baseline; margin-top: 2px; }}
         .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
         .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #64748B !important; margin-left: 6px; }}
-        
-        .mes-kpi-shadow-clean {{ margin-top: 12px; font-size: 14px; font-weight: 800; }}
-        .mes-kpi-status-container {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
         
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
     </style>
@@ -333,14 +328,15 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
+            # 🎯 [2중 인라인 밀봉] 분기문 내부에서 폰트 색상을 클래스가 아닌 독립된 스타일 코드로 완전 격리 바인딩
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
                 kpi_color = MAIN_BLUE
                 yield_card_class = "card-yield-success"
-                status_html = f"<div class='mes-kpi-shadow-clean'><font color='{MAIN_BLUE}'>▲ 목표 달성</font></div>"
+                status_html = f"<div style='margin-top: 12px; font-size: 14px; font-weight: 800;'><span style='color: {MAIN_BLUE} !important;'><font color='{MAIN_BLUE}'>▲ 목표 달성</font></span></div>"
             else:
                 kpi_color = ALERT_RED
                 yield_card_class = "card-yield-alert"
-                status_html = f"<div class='mes-kpi-shadow-clean'><font color='{ALERT_RED}'>▼ 목표 미달</font></div>"
+                status_html = f"<div style='margin-top: 12px; font-size: 14px; font-weight: 800;'><span style='color: {ALERT_RED} !important;'><font color='{ALERT_RED}'>▼ 목표 미달</font></span></div>"
 
             # 마우스 오버 시 실시간 반응하는 3대 핵심 네온 하이라이트 카드 패널
             st.markdown(f"""
@@ -348,7 +344,7 @@ else:
                     <div class="mes-kpi-card {yield_card_class}">
                         <div class="mes-kpi-label">26년 종합 수율 실적</div>
                         <div class="mes-kpi-value-box">
-                            <span class="mes-kpi-value" style="color: {kpi_color} !important;">{total_26_yd:.2f}</span>
+                            <span class="mes-kpi-value" style="color: {kpi_color} !important;"><font color="{kpi_color}">{total_26_yd:.2f}</font></span>
                             <span class="mes-kpi-unit">%</span>
                         </div>
                         {status_html}
@@ -356,18 +352,18 @@ else:
                     <div class="mes-kpi-card card-cost">
                         <div class="mes-kpi-label">26년 누적 실제 투입 금액</div>
                         <div class="mes-kpi-value-box">
-                            <span class="mes-kpi-value" style="color: {SUCCESS_GREEN} !important;">{cost_billion:,.1f}</span>
+                            <span class="mes-kpi-value" style="color: {SUCCESS_GREEN} !important;"><font color="{SUCCESS_GREEN}">{cost_billion:,.1f}</font></span>
                             <span class="mes-kpi-unit">억 원</span>
                         </div>
-                        <div class="mes-kpi-status-container" style="color: #475569 !important;">🏭 생산1팀 생산 Scale</div>
+                        <div style="margin-top: 12px; font-size: 13px; font-weight: 700; color: #475569 !important;"><font color="#475569">🏭 생산1팀 생산 Scale</font></div>
                     </div>
                     <div class="mes-kpi-card card-risk">
                         <div class="mes-kpi-label">집중 관리 고위험 자재 수</div>
                         <div class="mes-kpi-value-box">
-                            <span class="mes-kpi-value" style="color: {ALERT_RED} !important;">{risk_cnt:02d}</span>
+                            <span class="mes-kpi-value" style="color: {ALERT_RED} !important;"><font color="{ALERT_RED}">{risk_cnt:02d}</font></span>
                             <span class="mes-kpi-unit">건</span>
                         </div>
-                        <div class="mes-kpi-status-container" style="color: {ALERT_RED} !important; font-weight: 700;">⚠️ 즉시 분석 필요</div>
+                        <div style="margin-top: 12px; font-size: 13px; font-weight: 800; color: {ALERT_RED} !important;"><span style="color: {ALERT_RED} !important;"><font color="{ALERT_RED}">⚠️ 즉시 분석 필요</font></span></div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
