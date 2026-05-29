@@ -112,12 +112,13 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 라우터 (개선된 유리 질감 로그인 UI 연결)
+# 4. 라우터 (이 스타일 구역만 기존 위치에 덮어씌우세요!)
 # ------------------------------------------------------------------------------
 if not st.session_state['logged_in']:
-    # 🎨 유리 질감(Glassmorphism) 카드 전용 커스텀 CSS 적용
+    # 🎨 유리 질감 카드 및 버튼 호버(Hover) 버그 수정 CSS
     st.markdown("""
         <style>
+            /* 1. 로그인 카드 스타일 */
             .glass-login-card {
                 background: rgba(255, 255, 255, 0.08);
                 backdrop-filter: blur(16px);
@@ -143,15 +144,31 @@ if not st.session_state['logged_in']:
                 letter-spacing: 1.5px;
                 margin-bottom: 30px !important;
             }
+            
+            /* 2. Streamlit 기본 폼 테두리 제거 */
             div[data-testid="stForm"] {
                 border: none !important;
                 padding: 0 !important;
                 background: transparent !important;
             }
+
+            /* 🎯 3. [핵심] 로그인 버튼 마우스 오버(Hover) 버그 수정 */
+            div[data-testid="stForm"] button {
+                background-color: #3B82F6 !important; /* 기본 버튼 색상: 선명한 블루 */
+                color: #FFFFFF !important;             /* 글자 색상: 화이트 */
+                border: none !important;
+                transition: all 0.3s ease !important;
+            }
+            
+            div[data-testid="stForm"] button:hover {
+                background-color: #1D4ED8 !important; /* 마우스 올렸을 때: 조금 더 짙은 블루 */
+                color: #FFFFFF !important;             /* 마우스 올렸을 때도 글자는 무조건 화이트! */
+                box-shadow: 0 0 15px rgba(59, 130, 246, 0.6) !important; /* 은은한 푸른빛 네온 효과 */
+            }
         </style>
     """, unsafe_allow_html=True)
 
-    # 🏢 레이아웃 중앙 정렬 배치
+    # 🏢 레이아웃 중앙 정렬 배치 (기존과 동일)
     _, login_container, _ = st.columns([1, 1.2, 1])
     
     with login_container:
@@ -162,7 +179,6 @@ if not st.session_state['logged_in']:
             </div>
         """, unsafe_allow_html=True)
         
-        # 입력 양식 컨테이너
         with st.form("login_form"):
             st.text_input("Username", key="username", placeholder="ID를 입력하세요")
             st.text_input("Password", type="password", key="password", placeholder="PW를 입력하세요")
