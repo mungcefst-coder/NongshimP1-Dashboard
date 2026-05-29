@@ -34,7 +34,6 @@ st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터�
 # 프리미엄 다크/그레이 톤 배경 및 기본 대시보드 컴포넌트 CSS 스타일 정의
 st.markdown(f"""
     <style>
-        /* 🎨 전체 배경을 세련된 딥 네이비 그라데이션 야간 모드로 변경 */
         .stApp {{
             background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
         }}
@@ -50,7 +49,6 @@ st.markdown(f"""
         }}
         .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #F1F5F9 !important; }}
         
-        /* 🚀 [1번 수정 포인트] 3열 KPI 카드 컨테이너 배치 */
         .mes-kpi-wrapper {{ 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
@@ -58,7 +56,6 @@ st.markdown(f"""
             margin-bottom: 15px; 
         }}
         
-        /* 🔥 미래형 프리미엄 글래스모피즘 KPI 카드 기본 스타일 */
         .mes-kpi-card {{ 
             background: rgba(30, 41, 59, 0.45) !important;
             color: #F1F5F9; 
@@ -68,19 +65,17 @@ st.markdown(f"""
             box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important; 
             backdrop-filter: blur(12px) !important;
             -webkit-backdrop-filter: blur(12px) !important;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important; /* 부드러운 애니메이션 효과 */
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
             position: relative;
             overflow: hidden;
         }}
         
-        /* ✨ 마우스를 올렸을 때(Hover) 동적 반응 효과 및 네온 그림자 */
         .mes-kpi-card:hover {{
-            transform: translateY(-6px) !important; /* 살짝 위로 떠오름 */
+            transform: translateY(-6px) !important;
             background: rgba(30, 41, 59, 0.65) !important;
             border-color: rgba(255, 255, 255, 0.18) !important;
         }}
         
-        /* 각 카드별 상단 네온 하이라이팅 라인 및 호버 시 빛나는 광채 효과 */
         .card-yield {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
         .card-yield:hover {{ box-shadow: 0 15px 35px rgba(16, 185, 129, 0.25) !important; }}
         
@@ -90,7 +85,6 @@ st.markdown(f"""
         .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
         .card-risk:hover {{ box-shadow: 0 15px 35px rgba(239, 68, 68, 0.25) !important; }}
         
-        /* KPI 내부 폰트 정밀 정렬 */
         .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #94A3B8; margin-bottom: 8px; letter-spacing: 0.5px; }}
         .mes-kpi-value-box {{ display: flex; align-items: baseline; margin-top: 2px; }}
         .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
@@ -279,7 +273,6 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-            # 목표 달성 여부에 따른 동적 텍스트 및 하이라이트 트리거 설정
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
                 kpi_color = SUCCESS_GREEN
                 kpi_text = "▲ 종합 목표 달성 완료"
@@ -287,7 +280,6 @@ else:
                 kpi_color = ALERT_RED
                 kpi_text = "▼ 종합 목표 미달 (집중 분석 필요)"
 
-            # 🔥 [1번 수정 포인트 적용] 네온 호버 효과가 적용된 새로운 HTML 구조 렌더링
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
                     <div class="mes-kpi-card card-yield">
@@ -389,14 +381,39 @@ else:
                                         else: text_positions.append('top center' if current_val > val_26 else 'bottom center')
                                     else: text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
                                 
+                                # 🚀 [2번 수정 포인트] 선 그래프 한국어 가독성 툴팁 포맷 정의
+                                custom_hovertemplate = (
+                                    f"<b>{yr_label} 실적</b><br>" +
+                                    "📅 기간: %{x}<br>" +
+                                    "📈 누적 수율: <b>%{y:.2f}%</b><br>" +
+                                    "<extra></extra>"
+                                )
+                                
                                 fig.add_trace(go.Scatter(
                                     x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
                                     text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), 
                                     textposition=text_positions, textfont=dict(size=14, color='#F8FAFC', weight='bold'),
-                                    line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=4), marker=dict(size=10)
+                                    line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=4), marker=dict(size=10),
+                                    hovertemplate=custom_hovertemplate
                                 ))
                             y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
-                            fig.update_layout(height=280, margin=dict(l=100,r=80,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#F8FAFC'), yaxis=dict(range=[y_min-3, y_max+3], gridcolor='rgba(255,255,255,0.1)', zeroline=False, ticksuffix="  "), xaxis=dict(type='category', range=[-0.5, len(trend['월표시'].unique())-0.5], gridcolor='rgba(255,255,255,0.1)'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                            
+                            # 🚀 [2번 수정 포인트] 추이 그래프 다크모드 축/그리드 연하게 최적화
+                            fig.update_layout(
+                                height=280, margin=dict(l=100,r=80,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                                font=dict(color='#F8FAFC'), 
+                                yaxis=dict(
+                                    range=[y_min-3, y_max+3], 
+                                    gridcolor='rgba(255,255,255,0.05)', # 그리드 투명도 최적화
+                                    zeroline=False, ticksuffix="  "
+                                ), 
+                                xaxis=dict(
+                                    type='category', 
+                                    range=[-0.5, len(trend['월표시'].unique())-0.5], 
+                                    gridcolor='rgba(255,255,255,0.05)'
+                                ), 
+                                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                            )
                             st.plotly_chart(fig, use_container_width=True)
 
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
@@ -413,8 +430,22 @@ else:
                     ds = f_df.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                     ds['수율'] = (ds['이론금액'] / ds['실제금액'] * 100).round(2)
                     fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
-                    fig1.update_traces(texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold', size=13, color='#F8FAFC'))
-                    fig1.update_layout(height=330, margin=dict(l=80, r=20, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#F8FAFC'), yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='rgba(255,255,255,0.1)'), xaxis_title=None)
+                    
+                    # 🚀 [2번 수정 포인트] 막대 그래프 한국어 가독성 툴팁 포맷 정의
+                    fig1.update_traces(
+                        texttemplate='%{text:.2f}%', textposition='outside', 
+                        textfont=dict(weight='bold', size=13, color='#F8FAFC'),
+                        hovertemplate="<b>%{x} (%{data.name})</b><br>🎯 마스킹 수율: <b>%{y:.2f}%</b><extra></extra>"
+                    )
+                    
+                    # 🚀 [2번 수정 포인트] 막대 그래프 다크모드 축/그리드 세부 조정
+                    fig1.update_layout(
+                        height=330, margin=dict(l=80, r=20, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                        font=dict(color='#F8FAFC'), 
+                        yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='rgba(255,255,255,0.05)'), 
+                        xaxis=dict(gridcolor='rgba(255,255,255,0.05)'),
+                        xaxis_title=None
+                    )
                     st.plotly_chart(fig1, use_container_width=True)
             with r2c2:
                 st.markdown("**🔍 수율 리스크 매트릭스**")
@@ -429,8 +460,21 @@ else:
                         return row['연도']
                     isc['분류'] = isc.apply(amc, axis=1)
                     fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '🚨 집중 관리 대상': ALERT_RED})
-                    fig3.update_traces(marker=dict(size=15, line=dict(width=1, color='white')))
-                    fig3.update_layout(height=330, margin=dict(l=80, r=20, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#F8FAFC'), xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)", gridcolor='rgba(255,255,255,0.1)', legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02))
+                    
+                    # 🚀 [2번 수정 포인트] 리스크 매트릭스 산점도 마커 테두리 강조 및 한글 툴팁 포맷팅
+                    fig3.update_traces(
+                        marker=dict(size=14, line=dict(width=1.5, color='#F8FAFC')),
+                        hovertemplate="<b>📦 품목: %{hovertext}</b><br>💰 투입 금액: %{x:.2f}억 원<br>📉 마스킹 수율: %{y:.2f}%<br>🔍 상태: %{data.name}<extra></extra>"
+                    )
+                    
+                    # 🚀 [2번 수정 포인트] 리스크 매트릭스 레이아웃 그리드 투명도 조정
+                    fig3.update_layout(
+                        height=330, margin=dict(l=80, r=20, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                        font=dict(color='#F8FAFC'), xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)", 
+                        xaxis=dict(gridcolor='rgba(255,255,255,0.05)'),
+                        yaxis=dict(gridcolor='rgba(255,255,255,0.05)'),
+                        legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02)
+                    )
                     st.plotly_chart(fig3, use_container_width=True)
 
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
@@ -457,8 +501,20 @@ else:
                                     st.markdown(f"**📍 {d_name} 중점 관리 리스트**")
                                     m_d = isum[isum['생산부문명'] == d_name].sort_values('실제금액', ascending=False).head(15).sort_values('수율').head(5)
                                     fig_m = px.bar(m_d, x='수율', y='하위품목 텍스트', orientation='h', text='수율')
-                                    fig_m.update_traces(marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, texttemplate='%{text:.2f}%', textposition='outside', textfont=dict(weight='bold', color='#F8FAFC'))
-                                    fig_m.update_layout(height=340, margin=dict(l=150, r=60, t=20, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#F8FAFC'), xaxis=dict(range=[0, 140], gridcolor='rgba(255,255,255,0.1)'))
+                                    
+                                    # 🚀 [2번 수정 포인트] 리스크 횡형 바 차트 툴팁 한글화 및 축 최적화
+                                    fig_m.update_traces(
+                                        marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, 
+                                        texttemplate='%{text:.2f}%', textposition='outside', 
+                                        textfont=dict(weight='bold', color='#F8FAFC'),
+                                        hovertemplate="<b>품목: %{y}</b><br>⚠️ 리스크 수율: <b>%{x:.2f}%</b><extra></extra>"
+                                    )
+                                    fig_m.update_layout(
+                                        height=340, margin=dict(l=150, r=60, t=20, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                                        font=dict(color='#F8FAFC'), 
+                                        xaxis=dict(range=[0, 140], gridcolor='rgba(255,255,255,0.05)'),
+                                        yaxis=dict(gridcolor='rgba(255,255,255,0.05)')
+                                    )
                                     st.plotly_chart(fig_m, use_container_width=True, key=f"t5_{ty}_{d_name}")
     else:
         st.warning("📂 분석 대상 년월을 선택해 주세요.")
