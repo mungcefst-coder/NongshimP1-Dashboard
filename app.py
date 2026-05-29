@@ -24,12 +24,12 @@ YIELD_THRESHOLD = {
 }
 
 # 라이트 모드 전용 하이 테크 팔레트
-MAIN_BLUE = "#1E40AF"       
+MAIN_BLUE = "#004EA2"       # 🎯 기존 #1E40AF 대신 농심 시그니처 블루 코드로 교체!
 COMP_GRAY = "#64748B"       
 ALERT_RED = "#DC2626"       
 SUCCESS_GREEN = "#16A34A"   
 LIGHT_BG = "#F1F5F9"        
-CARD_BG = "#FFFFFF"         
+CARD_BG = "#FFFFFF"   
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
