@@ -23,74 +23,75 @@ YIELD_THRESHOLD = {
     '전체 총합': 98.73
 }
 
-# 라이트 모드에 최적화된 고급 컬러 팔레트
-MAIN_BLUE = "#1E40AF"       # 신뢰감을 주는 진한 네이비 블루
-COMP_GRAY = "#64748B"       # 차분한 슬레이트 그레이
-ALERT_RED = "#DC2626"       # 경고용 진한 레드
-SUCCESS_GREEN = "#16A34A"   # 달성용 진한 그린
-LIGHT_BG = "#F1F5F9"        # 메인 배경 (연한 회색)
-CARD_BG = "#FFFFFF"         # 컴포넌트 배경 (화이트)
+# 라이트 모드 전용 하이 테크 팔레트
+MAIN_BLUE = "#1E40AF"       
+COMP_GRAY = "#64748B"       
+ALERT_RED = "#DC2626"       
+SUCCESS_GREEN = "#16A34A"   
+LIGHT_BG = "#F1F5F9"        # 산뜻한 연회색 바탕
+CARD_BG = "#FFFFFF"         # 순백색 카드 바탕
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
-# 🚀 [라이트 모드 스타일 제어] 연회색 배경 및 다크 텍스트 전면 적용
+# 🚀 [정밀 튜닝] 연회색 배경 상태에서 화이트 카드가 LED 조명을 켠 것처럼 발광하는 스타일 정의
 st.markdown(f"""
     <style>
-        /* 🎨 전체 배경 연한 회색 (Slate 100) */
+        /* 🎨 전체 배경: 연한 회색 고정 */
         .stApp {{
             background-color: {LIGHT_BG} !important;
         }}
         
-        /* 🖤 기본 텍스트 및 라벨 색상을 진한 차콜색으로 통일하여 가독성 확보 */
+        /* 🖤 글자색: 진한 차콜/슬레이트 계열로 선명하게 잠금 */
         .stApp, .stApp p, .stApp label, .stApp div, .stApp span, .stApp h1, .stApp h3, .stApp h4 {{
             color: #1E293B !important;
         }}
         
-        /* 🗂️ 테이블(st.dataframe) 내부 가독성 스타일링 */
-        [data-testid="stTable"] {{
-            color: #1E293B !important;
-        }}
-        [data-testid="stDataFrameDataCell"] {{
-            color: #1E293B !important;
-            font-size: 14px !important;
-        }}
+        /* 🗂️ 테이블(st.dataframe) 글자색 선명화 */
+        [data-testid="stTable"] {{ color: #1E293B !important; }}
+        [data-testid="stDataFrameDataCell"] {{ color: #1E293B !important; font-size: 14px !important; }}
         
-        /* 탭(Tab) 글자색 밸런스 조정 */
+        /* 탭(Tab) 스타일 밸런스 */
         button[data-baseweb="tab"] p {{
             color: #64748B !important;
             font-weight: 600 !important;
         }}
         button[data-baseweb="tab"][aria-selected="true"] p {{
-            color: {MAIN_BLUE} !important;
+            color: #2563EB !important;
             font-weight: 800 !important;
         }}
         
-        /* 사이드바 스타일 정의 (메인 화면과 명확한 대비를 위해 은은한 미색 배치) */
+        /* 사이드바 미색 정돈 */
         section[data-testid="stSidebar"] {{
             background-color: #E2E8F0 !important;
             border-right: 1px solid #CBD5E1;
         }}
-        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {{
-            color: #0F172A !important;
-        }}
-        section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label p {{
-            color: #334155 !important;
+        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {{ color: #0F172A !important; }}
+        section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label p {{ color: #334155 !important; }}
+
+        /* 메인 상단 와이드 필터 바 컨테이너 */
+        .main-filter-box {{
+            background: {CARD_BG} !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 16px !important;
+            padding: 20px 24px !important;
+            margin-bottom: 30px !important;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03) !important;
         }}
 
         /* 구분선 및 섹션 헤더 */
         .premium-divider {{
             height: 2px;
-            background: linear-gradient(to right, {MAIN_BLUE}, rgba(100, 116, 139, 0.2), rgba(0,0,0,0));
+            background: linear-gradient(to right, #2563EB, rgba(100, 116, 139, 0.1), rgba(0,0,0,0));
             margin: 40px 0 25px 0;
             border-radius: 2px; opacity: 0.8;
         }}
         .section-header {{
             display: flex; align-items: center; margin-bottom: 20px;
-            padding-left: 10px; border-left: 5px solid {MAIN_BLUE};
+            padding-left: 10px; border-left: 5px solid #2563EB;
         }}
         .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #0F172A !important; }}
         
-        /* 3열 KPI 카드 디자인 (화이트 에센셜 카드) */
+        /* ⚡ [핵심] 연회색 배경용 화이트 네온 라이트닝 카드 시스템 */
         .mes-kpi-wrapper {{ 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
@@ -102,19 +103,26 @@ st.markdown(f"""
             border: 1px solid #E2E8F0 !important;
             border-radius: 16px !important; 
             padding: 24px 28px !important; 
-            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05) !important; 
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-            position: relative;
-            overflow: hidden;
+            /* 기본 상태에서는 부드러운 그림자로 그림자 입체감만 부여 */
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04) !important; 
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
         }}
+        
+        /* ✨ 마우스를 올렸을 때(Hover) 위로 뜨며 숨겨진 실루엣 LED 불빛이 뿜어져 나오는 효과 */
         .mes-kpi-card:hover {{
-            transform: translateY(-4px) !important;
-            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1) !important;
-            border-color: #CBD5E1 !important;
+            transform: translateY(-5px) !important;
+            border-color: transparent !important; /* 기본 테두리를 지워 LED가 더 돋보이게 함 */
         }}
+        
+        /* 각 카드별 라이트 모드 전용 부드러운 네온 보더 발광 레이어 */
         .card-yield {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
-        .card-cost {{ border-top: 4px solid {MAIN_BLUE} !important; }}
+        .card-yield:hover {{ box-shadow: 0 14px 30px rgba(22, 163, 74, 0.18), 0 0 0 2px {SUCCESS_GREEN} !important; }}
+        
+        .card-cost {{ border-top: 4px solid #2563EB !important; }}
+        .card-cost:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.18), 0 0 0 2px #2563EB !important; }}
+        
         .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
+        .card-risk:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.18), 0 0 0 2px {ALERT_RED} !important; }}
         
         .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #64748B !important; margin-bottom: 8px; letter-spacing: 0.5px; }}
         .mes-kpi-value-box {{ display: flex; align-items: baseline; margin-top: 2px; }}
@@ -174,7 +182,7 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 라우터 (로그인 화면 구역)
+# 4. 라우터 (로그인 화면 라이트 글래스모피즘 매칭)
 # ------------------------------------------------------------------------------
 if not st.session_state['logged_in']:
     st.markdown("""
@@ -184,36 +192,27 @@ if not st.session_state['logged_in']:
                 border: 1px solid #E2E8F0 !important;
                 border-radius: 24px !important;
                 padding: 45px 40px !important;
-                box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08) !important;
+                box-shadow: 0 20px 40px rgba(15, 23, 42, 0.06) !important;
                 max-width: 450px;
                 margin: 8vh auto 0 auto;
             }
-            div[data-testid="stForm"] label p {
-                color: #334155 !important;
-                font-weight: 600 !important;
-                font-size: 14px !important;
-            }
+            div[data-testid="stForm"] label p { color: #334155 !important; font-weight: 600; }
             div[data-testid="stForm"] input {
                 background-color: #F8FAFC !important;
                 color: #0F172A !important;
                 border: 1px solid #CBD5E1 !important;
                 border-radius: 10px !important;
-                padding: 10px 14px !important;
             }
             div[data-testid="stForm"] button {
                 background-color: #1E40AF !important;
                 color: #FFFFFF !important;
-                border: none !important;
                 border-radius: 10px !important;
-                padding: 10px 0 !important;
                 font-weight: 700 !important;
-                font-size: 16px !important;
                 margin-top: 25px !important;
-                transition: all 0.3s ease !important;
             }
             div[data-testid="stForm"] button:hover {
                 background-color: #1D4ED8 !important;
-                box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3) !important;
+                box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2) !important;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -239,12 +238,12 @@ if not st.session_state['logged_in']:
             st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
 else:
     # --------------------------------------------------------------------------
-    # 5. 메인 대시보드 구역
+    # 5. 메인 대시보드 구역 (라이트 하이테크 레이아웃 완비)
     # --------------------------------------------------------------------------
     with st.sidebar:
         if st.session_state['is_admin']:
             st.markdown("<span style='background-color:#DC2626; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
-            st.markdown("### 🎯 관리자 전용: 목표 설정")
+            st.markdown("### 🎯 관리자 목표 제어")
             adm_m1 = st.number_input("면 1과 목표수율(%)", value=98.92, step=0.01)
             adm_m5 = st.number_input("면 5과 목표수율(%)", value=97.93, step=0.01)
             adm_sp = st.number_input("스프실 목표수율(%)", value=99.53, step=0.01)
@@ -258,30 +257,35 @@ else:
             YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '면 종합': 98.42, '전체 총합': 98.73}
 
         st.header("⚙️ SYSTEM ADMIN")
-        st.markdown("<div style='color: #475569; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
         st.button("🔓 로그아웃", on_click=logout, use_container_width=True)
-        st.markdown("---")
-        selected_months = st.multiselect("🗓️ 관제 대상 년월", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
-        st.markdown("---")
-        search_keyword = st.text_input("🔍 품목 필터 검색", placeholder="품목명을 입력하세요...")
 
+    # 헤더 타이틀 부문
     h_left, h_right = st.columns([4.5, 1])
     with h_left:
         st.markdown(f"""
-            <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
+            <div style="color: #2563EB; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
             <h1 style="color: #0F172A; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-                생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
+                생산1팀 <span style="color:#2563EB;">Smart 수율 모니터링</span> System
             </h1>
         """, unsafe_allow_html=True)
     with h_right:
         st.markdown(f"""
             <div style='text-align: right; margin-top: 15px;'>
-                <div style='background: #FFFFFF; color: {MAIN_BLUE}; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid #CBD5E1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>● SYSTEM LIVE</div>
+                <div style='background: #FFFFFF; color: #2563EB; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid #CBD5E1; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);'>● SYSTEM LIVE</div>
                 <div style='color: #64748B; font-size: 11px; margin-top: 10px; font-weight: 600;'>Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
             </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom: 25px;'></div>", unsafe_allow_html=True)
+
+    # 🚀 [4번 아이디어 배치] 상단 와이드 필터 바 배치 구역
+    st.markdown('<div class="main-filter-box">', unsafe_allow_html=True)
+    f_col1, f_col2 = st.columns([6, 4])
+    with f_col1:
+        selected_months = st.multiselect("🗓️ 관제 대상 년월 선택 (다중 선택 가능)", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
+    with f_col2:
+        search_keyword = st.text_input("🔍 품목 실시간 검색 필터", placeholder="검색할 품목명을 입력하세요...")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     if selected_months:
         active_dfs = [load_single_month_cached(SHEET_ID, m) for m in selected_months]
@@ -291,6 +295,7 @@ else:
             team_df['연도'] = team_df['월'].apply(lambda x: '25년 누적' if str(x).startswith('25.') else '26년 누적')
             if search_keyword: team_df = team_df[team_df['하위품목 텍스트'].str.contains(search_keyword, na=False)]
 
+            # KPI 연산 부문
             df_26_kpi = team_df[team_df['연도'] == '26년 누적']
             if not df_26_kpi.empty:
                 k_th, k_ac = df_26_kpi['이론금액'].sum(), df_26_kpi['실제금액'].sum()
@@ -308,6 +313,7 @@ else:
                 kpi_color = ALERT_RED
                 kpi_text = "▼ 종합 목표 미달 (집중 분석 필요)"
 
+            # 🔥 [1번 수정 포인트 화이트 네온 적용] 마우스 오버 시 빛나는 3대 핵심 KPI 파트
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
                     <div class="mes-kpi-card card-yield">
@@ -321,7 +327,7 @@ else:
                     <div class="mes-kpi-card card-cost">
                         <div class="mes-kpi-label">26년 누적 실제 투입 금액</div>
                         <div class="mes-kpi-value-box">
-                            <span class="mes-kpi-value" style="color: {MAIN_BLUE};">{cost_billion:,.1f}</span>
+                            <span class="mes-kpi-value" style="color: #2563EB;">{cost_billion:,.1f}</span>
                             <span class="mes-kpi-unit">억 원</span>
                         </div>
                         <div class="mes-kpi-status" style="color: #475569;">🏭 부산공장 생산 자재 스케일</div>
@@ -373,13 +379,13 @@ else:
                             yield_cols = [c for c in pivot.columns if '수율' in c]
                             styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                             
-                            # 🚀 [라이트 모드 테이블 커스텀] 미달 행은 소프트한 연빨강, 통과 행은 소프트 블루 적용
+                            # [3번 테이블 스타일] 라이트 스케일 소프트 컬러링 매칭
                             def style_yield_cells(val):
                                 try:
                                     v = float(val)
                                     if v > 0 and v < current_threshold:
                                         return f'color: {ALERT_RED} !important; background-color: #FEE2E2; font-weight: 800;'
-                                    else: return f'color: {MAIN_BLUE} !important; background-color: #EFF6FF;'
+                                    else: return f'color: #1E40AF !important; background-color: #EFF6FF;'
                                 except: return 'color: #1E293B !important; background-color: #F1F5F9;'
                                 
                             styled_df = styled_df.map(style_yield_cells, subset=yield_cols)
@@ -410,6 +416,7 @@ else:
                                         else: text_positions.append('top center' if current_val > val_26 else 'bottom center')
                                     else: text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
                                 
+                                # [2번 한국어 툴팁 최적화]
                                 custom_hovertemplate = (
                                     f"<b>{yr_label} 실적</b><br>" +
                                     "📅 기간: %{x}<br>" +
@@ -426,7 +433,6 @@ else:
                                 ))
                             y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
                             
-                            # 🚀 라이트 배경 전용 Plotly 투명 레아아웃 및 그레이 차트 그리드 설정
                             fig.update_layout(
                                 height=280, margin=dict(l=100,r=80,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                                 font=dict(color='#0F172A'), 
@@ -449,7 +455,7 @@ else:
                 if not f_df.empty:
                     ds = f_df.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                     ds['수율'] = (ds['이론금액'] / ds['실제금액'] * 100).round(2)
-                    fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
+                    fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': '#2563EB'})
                     
                     fig1.update_traces(
                         texttemplate='%{text:.2f}%', textposition='outside', 
@@ -477,7 +483,7 @@ else:
                         if row['연도'] == '26년 누적' and row['억'] >= 4.0 and row['수율'] <= 98.0: return '🚨 집중 관리 대상'
                         return row['연도']
                     isc['분류'] = isc.apply(amc, axis=1)
-                    fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '🚨 집중 관리 대상': ALERT_RED})
+                    fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': '#2563EB', '🚨 집중 관리 대상': ALERT_RED})
                     
                     fig3.update_traces(
                         marker=dict(size=14, line=dict(width=1.5, color='#FFFFFF')),
@@ -496,7 +502,7 @@ else:
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
 
             # --- 섹션 3: 리스크 리스트 ---
-            st.markdown('<div class="section-header"><h2>🚨 집중 관리 자재 리스크 Top 5</h2></div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header"><h2><h2>🚨 집중 관리 자재 리스크 Top 5</h2></div>', unsafe_allow_html=True)
             chart_block = st.container()
             v_m = st.radio("📊 데이터 조회 방식 선택", ["📊 선택 기간 전체 누적", "🎯 특정 년월 단독"], horizontal=True)
             if v_m == "🎯 특정 년월 단독":
