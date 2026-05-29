@@ -112,74 +112,83 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 라우터 (이 스타일 구역만 기존 위치에 덮어씌우세요!)
+# 4. 라우터 (이 구역 전체를 아래 코드로 교체하세요!)
 # ------------------------------------------------------------------------------
 if not st.session_state['logged_in']:
-    # 🎨 유리 질감 카드 및 버튼 호버(Hover) 버그 수정 CSS
+    # 🎨 일체형 유리 패널 및 다크모드 가독성 최적화 CSS
     st.markdown("""
         <style>
-            /* 1. 로그인 카드 스타일 */
-            .glass-login-card {
-                background: rgba(255, 255, 255, 0.08);
-                backdrop-filter: blur(16px);
-                -webkit-backdrop-filter: blur(16px);
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 24px;
-                padding: 40px;
-                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-                text-align: center;
-                margin-top: 10vh;
-            }
-            .card-title {
-                color: #FFFFFF !important;
-                font-size: 28px !important;
-                font-weight: 800 !important;
-                margin-bottom: 4px !important;
-                letter-spacing: -0.5px;
-            }
-            .card-subtitle {
-                color: #94A3B8 !important;
-                font-size: 11px !important;
-                font-weight: 700 !important;
-                letter-spacing: 1.5px;
-                margin-bottom: 30px !important;
+            /* 1. 입력창과 버튼을 포함한 '전체 Form'을 유리 카드로 만들기 */
+            div[data-testid="stForm"] {
+                background: rgba(255, 255, 255, 0.06) !important;
+                backdrop-filter: blur(20px) !important;
+                -webkit-backdrop-filter: blur(20px) !important;
+                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                border-radius: 24px !important;
+                padding: 45px 40px !important;
+                box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4) !important;
+                max-width: 450px;
+                margin: 8vh auto 0 auto; /* 중앙 배치 및 상단 여백 */
             }
             
-            /* 2. Streamlit 기본 폼 테두리 제거 */
-            div[data-testid="stForm"] {
-                border: none !important;
-                padding: 0 !important;
-                background: transparent !important;
+            /* 2. 어두운 배경에서 입력창 라벨(Username, Password) 글자색을 화이트로! */
+            div[data-testid="stForm"] label p {
+                color: #E2E8F0 !important;
+                font-weight: 600 !important;
+                font-size: 14px !important;
             }
-
-            /* 🎯 3. [핵심] 로그인 버튼 마우스 오버(Hover) 버그 수정 */
+            
+            /* 3. 입력창 자체의 스타일도 어두운 톤에 맞춰 살짝 반투명하게 */
+            div[data-testid="stForm"] input {
+                background-color: rgba(15, 23, 42, 0.6) !important;
+                color: #FFFFFF !important;
+                border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                border-radius: 10px !important;
+            }
+            
+            /* 4. 로그인 버튼 기본 상태 (일렉트릭 블루) */
             div[data-testid="stForm"] button {
-                background-color: #3B82F6 !important; /* 기본 버튼 색상: 선명한 블루 */
-                color: #FFFFFF !important;             /* 글자 색상: 화이트 */
+                background-color: #3B82F6 !important;
+                color: #FFFFFF !important;
                 border: none !important;
+                border-radius: 10px !important;
+                padding: 10px 0 !important;
+                font-weight: 700 !important;
+                font-size: 16px !important;
+                margin-top: 15px !important;
                 transition: all 0.3s ease !important;
             }
             
+            /* 5. 로그인 버튼 마우스 올렸을 때 (Hover 네온 효과) */
             div[data-testid="stForm"] button:hover {
-                background-color: #1D4ED8 !important; /* 마우스 올렸을 때: 조금 더 짙은 블루 */
-                color: #FFFFFF !important;             /* 마우스 올렸을 때도 글자는 무조건 화이트! */
-                box-shadow: 0 0 15px rgba(59, 130, 246, 0.6) !important; /* 은은한 푸른빛 네온 효과 */
+                background-color: #1D4ED8 !important;
+                color: #FFFFFF !important;
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.6) !important;
+            }
+            
+            /* 비밀번호 보기/숨기기 아이콘 버튼 배경 투명화 */
+            div[data-testid="stForm"] button[aria-label="Show password"] {
+                background-color: transparent !important;
+                color: #94A3B8 !important;
             }
         </style>
     """, unsafe_allow_html=True)
 
-    # 🏢 레이아웃 중앙 정렬 배치 (기존과 동일)
-    _, login_container, _ = st.columns([1, 1.2, 1])
+    # 🏢 레이아웃 중앙 정렬
+    _, login_container, _ = st.columns([1, 1.5, 1])
     
     with login_container:
-        st.markdown("""
-            <div class="glass-login-card">
-                <div class="card-title">🔐 SYSTEM ACCESS</div>
-                <div class="card-subtitle">BUSAN PLANT PRODUCTION TEAM 1</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
+        # 폼 내부로 제목과 입력창을 다 같이 집어넣습니다!
         with st.form("login_form"):
+            # 카드 상단 디자인을 Form 안으로 배치하여 일체형으로 만듦
+            st.markdown("""
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="color: #FFFFFF; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">🔐 SYSTEM ACCESS</div>
+                    <div style="color: #94A3B8; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; margin-top: 4px; text-transform: uppercase;">Busan Plant Production Team 1</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # 입력 컴포넌트
             st.text_input("Username", key="username", placeholder="ID를 입력하세요")
             st.text_input("Password", type="password", key="password", placeholder="PW를 입력하세요")
             st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
