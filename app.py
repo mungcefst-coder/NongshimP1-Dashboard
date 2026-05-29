@@ -166,10 +166,22 @@ if not st.session_state['logged_in']:
                 box-shadow: 0 0 20px rgba(59, 130, 246, 0.6) !important;
             }
             
-            /* 비밀번호 보기/숨기기 아이콘 버튼 배경 투명화 */
-            div[data-testid="stForm"] button[aria-label="Show password"] {
-                background-color: transparent !important;
-                color: #94A3B8 !important;
+            /* 🔍 비밀번호 눈 모양 아이콘 버튼 스타일 완전 정복 */
+            div[data-testid="stForm"] button[aria-label="Show password"],
+            div[data-testid="stForm"] button[aria-label="Hide password"] {
+                background-color: transparent !important; /* 배경 투명하게 */
+                color: #94A3B8 !important;             /* 아이콘 색상을 얌전한 회색으로 변경 */
+                border: none !important;
+                box-shadow: none !important;             /* 푸른 광채 제거 */
+                transition: color 0.2s ease !important;
+            }
+            
+            /* 눈 모양 버튼에 마우스 올렸을 때 */
+            div[data-testid="stForm"] button[aria-label="Show password"]:hover,
+            div[data-testid="stForm"] button[aria-label="Hide password"]:hover {
+                color: #FFFFFF !important;             /* 마우스 올리면 선명한 화이트로 반응 */
+                background-color: rgba(255, 255, 255, 0.1) !important; /* 살짝 동그란 미세 배경 효과 */
+            }
             }
         </style>
     """, unsafe_allow_html=True)
