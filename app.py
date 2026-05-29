@@ -141,10 +141,7 @@ st.markdown(f"""
         .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
         .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #64748B !important; margin-left: 6px; }}
         
-        /* 🚨 스트림릿 글로벌 차콜 규칙을 깨부수고 색상을 강제할 전용 상태 래퍼 정의 */
         .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
-        .status-force-blue, .status-force-blue * {{ color: {MAIN_BLUE} !important; }}
-        .status-force-red, .status-force-red * {{ color: {ALERT_RED} !important; }}
         
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
     </style>
@@ -293,14 +290,14 @@ else:
         st.markdown(f"""
             <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
             <h1 style="color: #0F172A; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-                생산1팀 <span style="color:#2563EB;">Smart 수율 모니터링</span> System
+                생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
             </h1>
         """, unsafe_allow_html=True)
     with h_right:
         st.markdown(f"""
             <div style='text-align: right; margin-top: 15px;'>
-                <div style='background: #FFFFFF; color: #1E293B; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid #CBD5E1; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);'>
-                    <span style='color: {MAIN_BLUE} !important; font-weight: 900 !important; margin-right: 4px; font-size: 15px;'>●</span> 
+                <div style='background: #FFFFFF; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid #CBD5E1; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);'>
+                    <span style='margin-right: 4px; font-size: 13px; vertical-align: middle;'>🔵</span> 
                     <span style='color: #1E293B !important;'>SYSTEM LIVE</span>
                 </div>
                 <div style='color: #64748B; font-size: 11px; margin-top: 10px; font-weight: 600;'>Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
@@ -328,15 +325,14 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-            # 🎯 [텍스트 격리] 개별 강제 화이트 지정을 피해 색상이 전사되도록 전용 CSS 클래스 바인딩
+            # 🎯 [1번 완벽 수정] 분기문 내부에서 인라인 인젝션 스타일 코드를 다이렉트로 결합
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
                 kpi_color = SUCCESS_GREEN
-                kpi_status_label = "▲ 목표 달성"
-                force_color_class = "status-force-blue" # 파란색 전용 클래스 매칭
+                # 인라인 스타일로 태그 자체에 강제 주입하여 스트림릿 차콜 규칙 무력화
+                status_html = f"<div style='color: {MAIN_BLUE} !important; font-weight: 800; font-size: 14px; margin-top: 12px;'>▲ 목표 달성</div>"
             else:
                 kpi_color = ALERT_RED
-                kpi_status_label = "▼ 목표 미달"
-                force_color_class = "status-force-red"  # 붉은색 전용 클래스 매칭
+                status_html = f"<div style='color: {ALERT_RED} !important; font-weight: 800; font-size: 14px; margin-top: 12px;'>▼ 목표 미달</div>"
 
             # 마우스 오버 시 실시간 반응하는 3대 핵심 네온 하이라이트 카드 패널
             st.markdown(f"""
@@ -347,7 +343,7 @@ else:
                             <span class="mes-kpi-value" style="color: {kpi_color};">{total_26_yd:.2f}</span>
                             <span class="mes-kpi-unit">%</span>
                         </div>
-                        <div class="mes-kpi-status {force_color_class}" style="font-weight: 800; font-size: 14px;">{kpi_status_label}</div>
+                        {status_html}
                     </div>
                     <div class="mes-kpi-card card-cost">
                         <div class="mes-kpi-label">26년 누적 실제 투입 금액</div>
@@ -355,7 +351,7 @@ else:
                             <span class="mes-kpi-value" style="color: {MAIN_BLUE};">{cost_billion:,.1f}</span>
                             <span class="mes-kpi-unit">억 원</span>
                         </div>
-                        <div class="mes-kpi-status" style="color: #475569;">🏭 생산1팀 생산 Scale</div>
+                        <div class="mes-kpi-status" style="color: #475569 !important;">🏭 생산1팀 생산 Scale</div>
                     </div>
                     <div class="mes-kpi-card card-risk">
                         <div class="mes-kpi-label">집중 관리 고위험 자재 수</div>
@@ -363,7 +359,7 @@ else:
                             <span class="mes-kpi-value" style="color: {ALERT_RED};">{risk_cnt:02d}</span>
                             <span class="mes-kpi-unit">건</span>
                         </div>
-                        <div class="mes-kpi-status" style="color: {ALERT_RED};">⚠️ 즉시 분석 필요</div>
+                        <div class="mes-kpi-status" style="color: {ALERT_RED} !important; font-weight: 700;">⚠️ 즉시 분석 필요</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -469,8 +465,6 @@ else:
                             st.plotly_chart(fig, use_container_width=True)
 
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
-
-            # #️⃣ 부속 렌더링 그래프 로직 파이썬 전용 주석으로 안전하게 수정 완료
             st.markdown('<div class="section-header"><h2>📊 실시간 비교 및 리스크 분석</h2></div>', unsafe_allow_html=True)
             r2c1, r2c2 = st.columns(2)
             with r2c1:
