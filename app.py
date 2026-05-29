@@ -23,8 +23,8 @@ YIELD_THRESHOLD = {
     '전체 총합': 98.73
 }
 
-# 🎨 [수정 포인트] 대시보드를 화사하게 밝혀줄 쨍한 일렉트릭 네온 블루 톤업 세팅
-MAIN_BLUE = "#0066FF"       # 훨씬 더 밝고 청량한 파란색 고정
+# 🎨 [수정 포인트] 너무 쨍한 블루 톤을 한 단계 낮춰 눈이 편안한 모던 테크 블루로 정밀 조율
+MAIN_BLUE = "#2563EB"       # 눈이 편안하고 차분한 미드 블루
 COMP_GRAY = "#64748B"       
 ALERT_RED = "#DC2626"       
 SUCCESS_GREEN = "#16A34A"   
@@ -128,13 +128,13 @@ st.markdown(f"""
             border-color: transparent !important;
         }}
         .card-yield {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
-        .card-yield:hover {{ box-shadow: 0 14px 30px rgba(22, 163, 74, 0.18), 0 0 0 2px {SUCCESS_GREEN} !important; }}
+        .card-yield:hover {{ box-shadow: 0 14px 30px rgba(22, 163, 74, 0.15), 0 0 0 2px {SUCCESS_GREEN} !important; }}
         
         .card-cost {{ border-top: 4px solid {MAIN_BLUE} !important; }}
-        .card-cost:hover {{ box-shadow: 0 14px 30px rgba(0, 102, 255, 0.18), 0 0 0 2px {MAIN_BLUE} !important; }}
+        .card-cost:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.15), 0 0 0 2px {MAIN_BLUE} !important; }}
         
         .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
-        .card-risk:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.18), 0 0 0 2px {ALERT_RED} !important; }}
+        .card-risk:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.15), 0 0 0 2px {ALERT_RED} !important; }}
         
         .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #64748B !important; margin-bottom: 8px; letter-spacing: 0.5px; }}
         .mes-kpi-value-box {{ display: flex; align-items: baseline; margin-top: 2px; }}
@@ -175,7 +175,7 @@ def preprocess_df(df, month_label):
     if df.empty: return pd.DataFrame()
     df = df.copy(); df['월'] = month_label
     df.columns = [str(c).strip() for c in df.columns]
-    rename_map = {'生産部門명': '생산부문명', '生産部門名': '생산부문명', '資재 유형 내역': '자재 유형 내역', '資재 유형내역': '자재 유형내역', '品목텍스트': '하위품목 텍스트', '품목 텍스트': '하위품목 텍스트', '理論金額': '이론금액', '實際金額': '실제금액'}
+    rename_map = {'生産部門명': '생산부문명', '生産部門名': '생산부문명', '資재 유형 내역': '자재 유형 내역', '資재 유형내역': '자재 유형 내역', '品목텍스트': '하위품목 텍스트', '품목 텍스트': '하위품목 텍스트', '理論金額': '이론금액', '實際金額': '실제금액'}
     df.rename(columns=rename_map, inplace=True)
     if '생산부문명' in df.columns:
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
@@ -223,7 +223,7 @@ if not st.session_state['logged_in']:
                 margin-top: 25px !important;
             }}
             div[data-testid="stForm"] button:hover {{
-                box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2) !important;
+                box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
             }}
         </style>
     """, unsafe_allow_html=True)
@@ -296,7 +296,7 @@ else:
         st.markdown(f"""
             <div style='text-align: right; margin-top: 15px;'>
                 <div style='background: #FFFFFF; color: #1E293B; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid #CBD5E1; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);'>
-                    <span style='color: {MAIN_BLUE} !important; text-shadow: 0 0 6px rgba(0,102,255,0.4); margin-right: 4px;'>●</span> 
+                    <span style='color: {MAIN_BLUE} !important; font-weight: 900 !important; margin-right: 4px; font-size: 15px;'>●</span> 
                     <span style='color: #1E293B !important;'>SYSTEM LIVE</span>
                 </div>
                 <div style='color: #64748B; font-size: 11px; margin-top: 10px; font-weight: 600;'>Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
@@ -324,13 +324,17 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
+            # 🎯 [1번 수정 포인트] 멘트를 단순화하고 조건별 폰트 컬러를 동적으로 강제 바인딩
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
                 kpi_color = SUCCESS_GREEN
-                kpi_text = "▲ 종합 목표 달성 완료"
+                kpi_status_label = "목표 달성"
+                status_font_color = "#1E40AF"  # 달성 시 파란색 글씨
             else:
                 kpi_color = ALERT_RED
-                kpi_text = "▼ 종합 목표 미달 (집중 분석 필요)"
+                kpi_status_label = "목표 미달"
+                status_font_color = "#DC2626"  # 미달 시 붉은색 글씨
 
+            # 마우스 오버 시 빛나는 3대 핵심 화이트 네온 KPI 파트
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
                     <div class="mes-kpi-card card-yield">
@@ -339,7 +343,7 @@ else:
                             <span class="mes-kpi-value" style="color: {kpi_color};">{total_26_yd:.2f}</span>
                             <span class="mes-kpi-unit">%</span>
                         </div>
-                        <div class="mes-kpi-status" style="color: {kpi_color};">{kpi_text}</div>
+                        <div class="mes-kpi-status" style="color: {status_font_color} !important; font-weight: 800;">{kpi_status_label}</div>
                     </div>
                     <div class="mes-kpi-card card-cost">
                         <div class="mes-kpi-label">26년 누적 실제 투입 금액</div>
@@ -347,7 +351,7 @@ else:
                             <span class="mes-kpi-value" style="color: {MAIN_BLUE};">{cost_billion:,.1f}</span>
                             <span class="mes-kpi-unit">억 원</span>
                         </div>
-                        <div class="mes-kpi-status" style="color: #475569;">🏭 부산공장 생산 자재 스케일</div>
+                        <div class="mes-kpi-status" style="color: #475569;">🏭 생산1팀 생산 Scale</div>
                     </div>
                     <div class="mes-kpi-card card-risk">
                         <div class="mes-kpi-label">집중 관리 고위험 자재 수</div>
@@ -355,7 +359,7 @@ else:
                             <span class="mes-kpi-value" style="color: {ALERT_RED};">{risk_cnt:02d}</span>
                             <span class="mes-kpi-unit">건</span>
                         </div>
-                        <div class="mes-kpi-status" style="color: {ALERT_RED};">⚠️ 즉시 공정 분석 대기 중</div>
+                        <div class="mes-kpi-status" style="color: {ALERT_RED};">⚠️ 즉시 분석 필요</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
