@@ -23,39 +23,41 @@ YIELD_THRESHOLD = {
     '전체 총합': 98.73
 }
 
-MAIN_BLUE = "#3B82F6"       
-COMP_GRAY = "#94A3B8"       
-ALERT_RED = "#EF4444"       
-SUCCESS_GREEN = "#10B981"   
-BRAND_NAVY = "#1E40AF"      
+# 라이트 모드에 최적화된 고급 컬러 팔레트
+MAIN_BLUE = "#1E40AF"       # 신뢰감을 주는 진한 네이비 블루
+COMP_GRAY = "#64748B"       # 차분한 슬레이트 그레이
+ALERT_RED = "#DC2626"       # 경고용 진한 레드
+SUCCESS_GREEN = "#16A34A"   # 달성용 진한 그린
+LIGHT_BG = "#F1F5F9"        # 메인 배경 (연한 회색)
+CARD_BG = "#FFFFFF"         # 컴포넌트 배경 (화이트)
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
-# 🚀 [글자색 보정 및 스타일 업그레이드] 어두운 배경에서 모든 텍스트가 잘 보이도록 강력 제어
+# 🚀 [라이트 모드 스타일 제어] 연회색 배경 및 다크 텍스트 전면 적용
 st.markdown(f"""
     <style>
-        /* 🎨 전체 배경 딥 네이비 그라데이션 */
+        /* 🎨 전체 배경 연한 회색 (Slate 100) */
         .stApp {{
-            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            background-color: {LIGHT_BG} !important;
         }}
         
-        /* ⚪ [🔥 핵심 수정] 스트림릿 기본 텍스트, 라벨, 사이드바 글자색 화이트 통일 */
-        .stApp, .stApp p, .stApp label, .stApp div, .stApp span {{
-            color: #F8FAFC !important;
+        /* 🖤 기본 텍스트 및 라벨 색상을 진한 차콜색으로 통일하여 가독성 확보 */
+        .stApp, .stApp p, .stApp label, .stApp div, .stApp span, .stApp h1, .stApp h3, .stApp h4 {{
+            color: #1E293B !important;
         }}
         
-        /* 🗂️ 테이블(st.dataframe) 내부 텍스트 강제 화이트/라이트그레이 및 가독성 튜닝 */
+        /* 🗂️ 테이블(st.dataframe) 내부 가독성 스타일링 */
         [data-testid="stTable"] {{
-            color: #F8FAFC !important;
+            color: #1E293B !important;
         }}
         [data-testid="stDataFrameDataCell"] {{
-            color: #F8FAFC !important;
+            color: #1E293B !important;
             font-size: 14px !important;
         }}
         
-        /* 탭(Tab) 글자색 및 활성화 색상 고정 */
+        /* 탭(Tab) 글자색 밸런스 조정 */
         button[data-baseweb="tab"] p {{
-            color: #94A3B8 !important;
+            color: #64748B !important;
             font-weight: 600 !important;
         }}
         button[data-baseweb="tab"][aria-selected="true"] p {{
@@ -63,22 +65,22 @@ st.markdown(f"""
             font-weight: 800 !important;
         }}
         
-        /* 사이드바 전용 스타일 정돈 (배경과 분리감 부여) */
+        /* 사이드바 스타일 정의 (메인 화면과 명확한 대비를 위해 은은한 미색 배치) */
         section[data-testid="stSidebar"] {{
-            background-color: rgba(15, 23, 42, 0.8) !important;
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            background-color: #E2E8F0 !important;
+            border-right: 1px solid #CBD5E1;
         }}
         section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {{
-            color: #F8FAFC !important;
+            color: #0F172A !important;
         }}
-        section[data-testid="stSidebar"] .stApp p, section[data-testid="stSidebar"] label p {{
-            color: #CBD5E1 !important;
+        section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label p {{
+            color: #334155 !important;
         }}
 
         /* 구분선 및 섹션 헤더 */
         .premium-divider {{
             height: 2px;
-            background: linear-gradient(to right, {MAIN_BLUE}, rgba(148, 163, 184, 0.3), rgba(0,0,0,0));
+            background: linear-gradient(to right, {MAIN_BLUE}, rgba(100, 116, 139, 0.2), rgba(0,0,0,0));
             margin: 40px 0 25px 0;
             border-radius: 2px; opacity: 0.8;
         }}
@@ -86,9 +88,9 @@ st.markdown(f"""
             display: flex; align-items: center; margin-bottom: 20px;
             padding-left: 10px; border-left: 5px solid {MAIN_BLUE};
         }}
-        .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #F1F5F9 !important; }}
+        .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #0F172A !important; }}
         
-        /* 3열 KPI 카드 디자인 */
+        /* 3열 KPI 카드 디자인 (화이트 에센셜 카드) */
         .mes-kpi-wrapper {{ 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
@@ -96,33 +98,28 @@ st.markdown(f"""
             margin-bottom: 15px; 
         }}
         .mes-kpi-card {{ 
-            background: rgba(30, 41, 59, 0.55) !important;
-            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            background: {CARD_BG} !important;
+            border: 1px solid #E2E8F0 !important;
             border-radius: 16px !important; 
             padding: 24px 28px !important; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important; 
-            backdrop-filter: blur(12px) !important;
-            -webkit-backdrop-filter: blur(12px) !important;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05) !important; 
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
             position: relative;
             overflow: hidden;
         }}
         .mes-kpi-card:hover {{
-            transform: translateY(-6px) !important;
-            background: rgba(30, 41, 59, 0.75) !important;
-            border-color: rgba(255, 255, 255, 0.18) !important;
+            transform: translateY(-4px) !important;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1) !important;
+            border-color: #CBD5E1 !important;
         }}
         .card-yield {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
-        .card-yield:hover {{ box-shadow: 0 15px 35px rgba(16, 185, 129, 0.25) !important; }}
         .card-cost {{ border-top: 4px solid {MAIN_BLUE} !important; }}
-        .card-cost:hover {{ box-shadow: 0 15px 35px rgba(59, 130, 246, 0.25) !important; }}
         .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
-        .card-risk:hover {{ box-shadow: 0 15px 35px rgba(239, 68, 68, 0.25) !important; }}
         
-        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #94A3B8 !important; margin-bottom: 8px; letter-spacing: 0.5px; }}
+        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #64748B !important; margin-bottom: 8px; letter-spacing: 0.5px; }}
         .mes-kpi-value-box {{ display: flex; align-items: baseline; margin-top: 2px; }}
         .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
-        .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #94A3B8 !important; margin-left: 6px; }}
+        .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #64748B !important; margin-left: 6px; }}
         .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
         
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
@@ -183,30 +180,28 @@ if not st.session_state['logged_in']:
     st.markdown("""
         <style>
             div[data-testid="stForm"] {
-                background: rgba(255, 255, 255, 0.06) !important;
-                backdrop-filter: blur(20px) !important;
-                -webkit-backdrop-filter: blur(20px) !important;
-                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                background: #FFFFFF !important;
+                border: 1px solid #E2E8F0 !important;
                 border-radius: 24px !important;
                 padding: 45px 40px !important;
-                box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4) !important;
+                box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08) !important;
                 max-width: 450px;
                 margin: 8vh auto 0 auto;
             }
             div[data-testid="stForm"] label p {
-                color: #E2E8F0 !important;
+                color: #334155 !important;
                 font-weight: 600 !important;
                 font-size: 14px !important;
             }
             div[data-testid="stForm"] input {
-                background-color: rgba(15, 23, 42, 0.6) !important;
-                color: #FFFFFF !important;
-                border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                background-color: #F8FAFC !important;
+                color: #0F172A !important;
+                border: 1px solid #CBD5E1 !important;
                 border-radius: 10px !important;
                 padding: 10px 14px !important;
             }
             div[data-testid="stForm"] button {
-                background-color: #3B82F6 !important;
+                background-color: #1E40AF !important;
                 color: #FFFFFF !important;
                 border: none !important;
                 border-radius: 10px !important;
@@ -218,8 +213,7 @@ if not st.session_state['logged_in']:
             }
             div[data-testid="stForm"] button:hover {
                 background-color: #1D4ED8 !important;
-                color: #FFFFFF !important;
-                box-shadow: 0 0 20px rgba(59, 130, 246, 0.6) !important;
+                box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3) !important;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -229,8 +223,8 @@ if not st.session_state['logged_in']:
         with st.form("login_form"):
             st.markdown("""
                 <div style="text-align: center; margin-bottom: 30px;">
-                    <div style="color: #FFFFFF; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">🔐 SYSTEM ACCESS</div>
-                    <div style="color: #94A3B8; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; margin-top: 4px; text-transform: uppercase;">Busan Plant Production Team 1</div>
+                    <div style="color: #0F172A; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">🔐 SYSTEM ACCESS</div>
+                    <div style="color: #64748B; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; margin-top: 4px; text-transform: uppercase;">Busan Plant Production Team 1</div>
                 </div>
             """, unsafe_allow_html=True)
             st.text_input("Username", key="username", placeholder="ID를 입력하세요")
@@ -249,7 +243,7 @@ else:
     # --------------------------------------------------------------------------
     with st.sidebar:
         if st.session_state['is_admin']:
-            st.markdown("<span style='background-color:#EF4444; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
+            st.markdown("<span style='background-color:#DC2626; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
             st.markdown("### 🎯 관리자 전용: 목표 설정")
             adm_m1 = st.number_input("면 1과 목표수율(%)", value=98.92, step=0.01)
             adm_m5 = st.number_input("면 5과 목표수율(%)", value=97.93, step=0.01)
@@ -260,11 +254,11 @@ else:
             st.markdown(f"[📂 구글 시트 원본](https://docs.google.com/spreadsheets/d/{SHEET_ID})")
             st.markdown("---")
         else:
-            st.markdown("<span style='background-color:#3B82F6; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>TEAM MEMBER</span>", unsafe_allow_html=True)
+            st.markdown("<span style='background-color:#1E40AF; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>TEAM MEMBER</span>", unsafe_allow_html=True)
             YIELD_THRESHOLD = {'면 1과': 98.92, '면 5과': 97.93, '스프실': 99.53, '면 종합': 98.42, '전체 총합': 98.73}
 
         st.header("⚙️ SYSTEM ADMIN")
-        st.markdown("<div style='color: #94A3B8; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color: #475569; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; margin-top: -10px; margin-bottom: 20px;'>BUSAN PLANT PRODUCTION TEAM 1</div>", unsafe_allow_html=True)
         st.button("🔓 로그아웃", on_click=logout, use_container_width=True)
         st.markdown("---")
         selected_months = st.multiselect("🗓️ 관제 대상 년월", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
@@ -275,15 +269,15 @@ else:
     with h_left:
         st.markdown(f"""
             <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
-            <h1 style="color: #F8FAFC; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
+            <h1 style="color: #0F172A; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
                 생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
             </h1>
         """, unsafe_allow_html=True)
     with h_right:
         st.markdown(f"""
             <div style='text-align: right; margin-top: 15px;'>
-                <div style='background: rgba(255,255,255,0.05); color: {MAIN_BLUE}; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid {MAIN_BLUE}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>● SYSTEM LIVE</div>
-                <div style='color: #94A3B8; font-size: 11px; margin-top: 10px; font-weight: 600;'>Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
+                <div style='background: #FFFFFF; color: {MAIN_BLUE}; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid #CBD5E1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>● SYSTEM LIVE</div>
+                <div style='color: #64748B; font-size: 11px; margin-top: 10px; font-weight: 600;'>Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -330,7 +324,7 @@ else:
                             <span class="mes-kpi-value" style="color: {MAIN_BLUE};">{cost_billion:,.1f}</span>
                             <span class="mes-kpi-unit">억 원</span>
                         </div>
-                        <div class="mes-kpi-status" style="color: #CBD5E1;">🏭 부산공장 생산 자재 스케일</div>
+                        <div class="mes-kpi-status" style="color: #475569;">🏭 부산공장 생산 자재 스케일</div>
                     </div>
                     <div class="mes-kpi-card card-risk">
                         <div class="mes-kpi-label">집중 관리 고위험 자재 수</div>
@@ -379,20 +373,20 @@ else:
                             yield_cols = [c for c in pivot.columns if '수율' in c]
                             styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                             
-                            # 🚀 [3번 수정 포인트 적용] 글자색 전면 보정 및 행 배경 밸런스 조정
+                            # 🚀 [라이트 모드 테이블 커스텀] 미달 행은 소프트한 연빨강, 통과 행은 소프트 블루 적용
                             def style_yield_cells(val):
                                 try:
                                     v = float(val)
                                     if v > 0 and v < current_threshold:
-                                        return f'color: #FFFFFF !important; background-color: rgba(239, 68, 68, 0.35); font-weight: 800;'
-                                    else: return 'color: #F8FAFC !important; background-color: rgba(59, 130, 246, 0.15);'
-                                except: return 'color: #F8FAFC !important; background-color: rgba(59, 130, 246, 0.05);'
+                                        return f'color: {ALERT_RED} !important; background-color: #FEE2E2; font-weight: 800;'
+                                    else: return f'color: {MAIN_BLUE} !important; background-color: #EFF6FF;'
+                                except: return 'color: #1E293B !important; background-color: #F1F5F9;'
                                 
                             styled_df = styled_df.map(style_yield_cells, subset=yield_cols)
                             st.dataframe(styled_df, use_container_width=True)
                         else: st.caption("데이터 없음")
                         
-                        st.markdown(f"<div style='color: #CBD5E1; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='color: #475569; font-size: 13px; font-weight: 700; margin-top: -12px; margin-bottom: 10px; padding-left: 5px;'>💡 {d} 기준 : {YIELD_THRESHOLD[d]:.2f}% 이상</div>", unsafe_allow_html=True)
                     with c2:
                         st.markdown(f"**📈 {d} 수율 변화 추이**")
                         if not target.empty:
@@ -426,17 +420,18 @@ else:
                                 fig.add_trace(go.Scatter(
                                     x=y_data['월표시'], y=y_data['누적수율'], name=yr_label, mode='markers+lines+text',
                                     text=y_data['누적수율'].apply(lambda x: f"{x:.2f}%"), 
-                                    textposition=text_positions, textfont=dict(size=14, color='#F8FAFC', weight='bold'),
+                                    textposition=text_positions, textfont=dict(size=14, color='#0F172A', weight='bold'),
                                     line=dict(color=MAIN_BLUE if '26년' in yr_label else COMP_GRAY, width=4), marker=dict(size=10),
                                     hovertemplate=custom_hovertemplate
                                 ))
                             y_min, y_max = trend['누적수율'].min(), trend['누적수율'].max()
                             
+                            # 🚀 라이트 배경 전용 Plotly 투명 레아아웃 및 그레이 차트 그리드 설정
                             fig.update_layout(
                                 height=280, margin=dict(l=100,r=80,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                                font=dict(color='#F8FAFC'), 
-                                yaxis=dict(range=[y_min-3, y_max+3], gridcolor='rgba(255,255,255,0.05)', zeroline=False, ticksuffix="  "), 
-                                xaxis=dict(type='category', range=[-0.5, len(trend['월표시'].unique())-0.5], gridcolor='rgba(255,255,255,0.05)'), 
+                                font=dict(color='#0F172A'), 
+                                yaxis=dict(range=[y_min-3, y_max+3], gridcolor='#E2E8F0', zeroline=False, ticksuffix="  "), 
+                                xaxis=dict(type='category', range=[-0.5, len(trend['월표시'].unique())-0.5], gridcolor='#E2E8F0'), 
                                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                             )
                             st.plotly_chart(fig, use_container_width=True)
@@ -454,19 +449,19 @@ else:
                 if not f_df.empty:
                     ds = f_df.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                     ds['수율'] = (ds['이론금액'] / ds['실제금액'] * 100).round(2)
-                    fig1 = px.bar(ds, x='생산부문명', y='수율', color='연度', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
+                    fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
                     
                     fig1.update_traces(
                         texttemplate='%{text:.2f}%', textposition='outside', 
-                        textfont=dict(weight='bold', size=13, color='#F8FAFC'),
+                        textfont=dict(weight='bold', size=13, color='#0F172A'),
                         hovertemplate="<b>%{x} (%{data.name})</b><br>🎯 마스킹 수율: <b>%{y:.2f}%</b><extra></extra>"
                     )
                     
                     fig1.update_layout(
                         height=330, margin=dict(l=80, r=20, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                        font=dict(color='#F8FAFC'), 
-                        yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='rgba(255,255,255,0.05)'), 
-                        xaxis=dict(gridcolor='rgba(255,255,255,0.05)'),
+                        font=dict(color='#0F172A'), 
+                        yaxis=dict(range=[ds['수율'].min()-5, 105], gridcolor='#E2E8F0'), 
+                        xaxis=dict(gridcolor='#E2E8F0'),
                         xaxis_title=None
                     )
                     st.plotly_chart(fig1, use_container_width=True)
@@ -485,15 +480,15 @@ else:
                     fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '🚨 집중 관리 대상': ALERT_RED})
                     
                     fig3.update_traces(
-                        marker=dict(size=14, line=dict(width=1.5, color='#F8FAFC')),
+                        marker=dict(size=14, line=dict(width=1.5, color='#FFFFFF')),
                         hovertemplate="<b>📦 품목: %{hovertext}</b><br>💰 투입 금액: %{x:.2f}억 원<br>📉 마스킹 수율: %{y:.2f}%<br>🔍 상태: %{data.name}<extra></extra>"
                     )
                     
                     fig3.update_layout(
                         height=330, margin=dict(l=80, r=20, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                        font=dict(color='#F8FAFC'), xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)", 
-                        xaxis=dict(gridcolor='rgba(255,255,255,0.05)'),
-                        yaxis=dict(gridcolor='rgba(255,255,255,0.05)'),
+                        font=dict(color='#0F172A'), xaxis_title="투입 금액 (억원)", yaxis_title="수율 (%)", 
+                        xaxis=dict(gridcolor='#E2E8F0'),
+                        yaxis=dict(gridcolor='#E2E8F0'),
                         legend=dict(title=None, orientation="h", yanchor="bottom", y=1.02)
                     )
                     st.plotly_chart(fig3, use_container_width=True)
@@ -526,14 +521,14 @@ else:
                                     fig_m.update_traces(
                                         marker_color=MAIN_BLUE if ty == "26년 누적" else COMP_GRAY, 
                                         texttemplate='%{text:.2f}%', textposition='outside', 
-                                        textfont=dict(weight='bold', color='#F8FAFC'),
+                                        textfont=dict(weight='bold', color='#0F172A'),
                                         hovertemplate="<b>품목: %{y}</b><br>⚠️ 리스크 수율: <b>%{x:.2f}%</b><extra></extra>"
                                     )
                                     fig_m.update_layout(
                                         height=340, margin=dict(l=150, r=60, t=20, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                                        font=dict(color='#F8FAFC'), 
-                                        xaxis=dict(range=[0, 140], gridcolor='rgba(255,255,255,0.05)'),
-                                        yaxis=dict(gridcolor='rgba(255,255,255,0.05)')
+                                        font=dict(color='#0F172A'), 
+                                        xaxis=dict(range=[0, 140], gridcolor='#E2E8F0'),
+                                        yaxis=dict(gridcolor='#E2E8F0')
                                     )
                                     st.plotly_chart(fig_m, use_container_width=True, key=f"t5_{ty}_{d_name}")
     else:
