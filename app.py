@@ -33,7 +33,7 @@ CARD_BG = "#FFFFFF"         # 순백색 카드 바탕
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
-# 🚀 [정밀 튜닝] 연회색 배경 상태에서 화이트 카드가 LED 조명을 켠 것처럼 발광하는 스타일 정의
+# 🚀 [스타일 튜닝] 연회색 배경 유지, 화이트 카드 LED 발광 효과, 선택 박스 컬러 정상화
 st.markdown(f"""
     <style>
         /* 🎨 전체 배경: 연한 회색 고정 */
@@ -60,23 +60,28 @@ st.markdown(f"""
             font-weight: 800 !important;
         }}
         
-        /* 사이드바 미색 정돈 */
+        /* 🎛️ [2번 수정 포인트] 사이드바 내 멀티셀렉트/인풋 박스 컬러 정상화 (레드 컬러 제거 및 톤 매칭) */
+        div[data-testid="stSidebar"] div[data-baseweb="select"] {{
+            border-color: #CBD5E1 !important;
+        }}
+        /* 선택된 태그 요소를 빨간색이 아닌 차분한 네이비/슬레이트 계열로 변경 */
+        span[data-baseweb="tag"] {{
+            background-color: #E2E8F0 !important;
+            color: #1E40AF !important;
+            border: 1px solid #CBD5E1 !important;
+        }}
+        span[data-baseweb="tag"] span {{
+            color: #1E40AF !important;
+        }}
+        
+        /* 사이드바 프리미엄 정돈 */
         section[data-testid="stSidebar"] {{
             background-color: #E2E8F0 !important;
             border-right: 1px solid #CBD5E1;
+            padding-top: 20px !important;
         }}
         section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {{ color: #0F172A !important; }}
-        section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label p {{ color: #334155 !important; }}
-
-        /* 메인 상단 와이드 필터 바 컨테이너 */
-        .main-filter-box {{
-            background: {CARD_BG} !important;
-            border: 1px solid #E2E8F0 !important;
-            border-radius: 16px !important;
-            padding: 20px 24px !important;
-            margin-bottom: 30px !important;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03) !important;
-        }}
+        section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label p {{ color: #334155 !important; font-weight: 600; }}
 
         /* 구분선 및 섹션 헤더 */
         .premium-divider {{
@@ -91,7 +96,7 @@ st.markdown(f"""
         }}
         .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #0F172A !important; }}
         
-        /* ⚡ [핵심] 연회색 배경용 화이트 네온 라이트닝 카드 시스템 */
+        /* ⚡ 연회색 배경용 화이트 네온 라이트닝 카드 시스템 */
         .mes-kpi-wrapper {{ 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
@@ -103,18 +108,16 @@ st.markdown(f"""
             border: 1px solid #E2E8F0 !important;
             border-radius: 16px !important; 
             padding: 24px 28px !important; 
-            /* 기본 상태에서는 부드러운 그림자로 그림자 입체감만 부여 */
             box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04) !important; 
             transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
         }}
         
-        /* ✨ 마우스를 올렸을 때(Hover) 위로 뜨며 숨겨진 실루엣 LED 불빛이 뿜어져 나오는 효과 */
+        /* ✨ 마우스 오버 시 소프트 네온 보더 발광 */
         .mes-kpi-card:hover {{
             transform: translateY(-5px) !important;
-            border-color: transparent !important; /* 기본 테두리를 지워 LED가 더 돋보이게 함 */
+            border-color: transparent !important;
         }}
         
-        /* 각 카드별 라이트 모드 전용 부드러운 네온 보더 발광 레이어 */
         .card-yield {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
         .card-yield:hover {{ box-shadow: 0 14px 30px rgba(22, 163, 74, 0.18), 0 0 0 2px {SUCCESS_GREEN} !important; }}
         
@@ -182,7 +185,7 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 라우터 (로그인 화면 라이트 글래스모피즘 매칭)
+# 4. 라우터 (로그인 화면)
 # ------------------------------------------------------------------------------
 if not st.session_state['logged_in']:
     st.markdown("""
@@ -238,9 +241,21 @@ if not st.session_state['logged_in']:
             st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
 else:
     # --------------------------------------------------------------------------
-    # 5. 메인 대시보드 구역 (라이트 하이테크 레이아웃 완비)
+    # 5. 메인 대시보드 구역
     # --------------------------------------------------------------------------
+    
+    # 🚀 [1번 수정 포인트] 두 필터를 다시 대시보드 밖 좌측 사이드바로 안전하게 이전
     with st.sidebar:
+        st.markdown("### 🗓️ 관제 조건 설정")
+        selected_months = st.multiselect(
+            "관제 대상 년월 선택", 
+            options=ALL_MONTHS, 
+            default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"]
+        )
+        search_keyword = st.text_input("🔍 품목 실시간 검색 필터", placeholder="검색할 품목명을 입력하세요...")
+        
+        st.markdown("---")
+        
         if st.session_state['is_admin']:
             st.markdown("<span style='background-color:#DC2626; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
             st.markdown("### 🎯 관리자 목표 제어")
@@ -276,16 +291,7 @@ else:
             </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-bottom: 25px;'></div>", unsafe_allow_html=True)
-
-    # 🚀 [4번 아이디어 배치] 상단 와이드 필터 바 배치 구역
-    st.markdown('<div class="main-filter-box">', unsafe_allow_html=True)
-    f_col1, f_col2 = st.columns([6, 4])
-    with f_col1:
-        selected_months = st.multiselect("🗓️ 관제 대상 년월 선택 (다중 선택 가능)", options=ALL_MONTHS, default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"])
-    with f_col2:
-        search_keyword = st.text_input("🔍 품목 실시간 검색 필터", placeholder="검색할 품목명을 입력하세요...")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom: 35px;'></div>", unsafe_allow_html=True)
 
     if selected_months:
         active_dfs = [load_single_month_cached(SHEET_ID, m) for m in selected_months]
@@ -313,7 +319,7 @@ else:
                 kpi_color = ALERT_RED
                 kpi_text = "▼ 종합 목표 미달 (집중 분석 필요)"
 
-            # 🔥 [1번 수정 포인트 화이트 네온 적용] 마우스 오버 시 빛나는 3대 핵심 KPI 파트
+            # 마우스 오버 시 빛나는 3대 핵심 화이트 네온 KPI 파트
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
                     <div class="mes-kpi-card card-yield">
@@ -379,7 +385,6 @@ else:
                             yield_cols = [c for c in pivot.columns if '수율' in c]
                             styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                             
-                            # [3번 테이블 스타일] 라이트 스케일 소프트 컬러링 매칭
                             def style_yield_cells(val):
                                 try:
                                     v = float(val)
@@ -416,7 +421,6 @@ else:
                                         else: text_positions.append('top center' if current_val > val_26 else 'bottom center')
                                     else: text_positions.append('top center' if yr_label == '26년 누적' else 'bottom center')
                                 
-                                # [2번 한국어 툴팁 최적화]
                                 custom_hovertemplate = (
                                     f"<b>{yr_label} 실적</b><br>" +
                                     "📅 기간: %{x}<br>" +
@@ -502,7 +506,7 @@ else:
             st.markdown('<div class="premium-divider"></div>', unsafe_allow_html=True)
 
             # --- 섹션 3: 리스크 리스트 ---
-            st.markdown('<div class="section-header"><h2><h2>🚨 집중 관리 자재 리스크 Top 5</h2></div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header"><h2>🚨 집중 관리 자재 리스크 Top 5</h2></div>', unsafe_allow_html=True)
             chart_block = st.container()
             v_m = st.radio("📊 데이터 조회 방식 선택", ["📊 선택 기간 전체 누적", "🎯 특정 년월 단독"], horizontal=True)
             if v_m == "🎯 특정 년월 단독":
