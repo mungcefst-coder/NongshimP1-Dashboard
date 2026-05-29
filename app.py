@@ -23,17 +23,16 @@ YIELD_THRESHOLD = {
     '전체 총합': 98.73
 }
 
-# 라이트 모드 전용 하이 테크 팔레트
-MAIN_BLUE = "#004EA2"       # 🎯 기존 #1E40AF 대신 농심 시그니처 블루 코드로 교체!
+# 🎨 [수정 포인트] 대시보드를 화사하게 밝혀줄 쨍한 일렉트릭 네온 블루 톤업 세팅
+MAIN_BLUE = "#0066FF"       # 훨씬 더 밝고 청량한 파란색 고정
 COMP_GRAY = "#64748B"       
 ALERT_RED = "#DC2626"       
 SUCCESS_GREEN = "#16A34A"   
 LIGHT_BG = "#F1F5F9"        
-CARD_BG = "#FFFFFF"   
+CARD_BG = "#FFFFFF"         
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
-# 🚀 스타일 튜닝
 st.markdown(f"""
     <style>
         /* 🎨 전체 배경 */
@@ -41,36 +40,36 @@ st.markdown(f"""
             background-color: {LIGHT_BG} !important;
         }}
         
-        /* 🖤 글로벌 텍스트 컬러 잠금 */
+        /* 🖤 글자색 잠금 */
         .stApp, .stApp p, .stApp label, .stApp div, .stApp span, .stApp h1, .stApp h3, .stApp h4 {{
             color: #1E293B !important;
         }}
         
-        /* 🗂️ 테이블 내부 텍스트 선명화 (강제 투명화 버그 원천 방지) */
+        /* 🗂️ 테이블 내부 세팅 */
         [data-testid="stTable"] {{ color: #1E293B !important; }}
         [data-testid="stDataFrameDataCell"] {{ font-size: 14px !important; }}
         
-        /* 탭(Tab) 스타일 정의 */
+        /* 탭 스타일 */
         button[data-baseweb="tab"] p {{
             color: #64748B !important;
             font-weight: 600 !important;
         }}
         button[data-baseweb="tab"][aria-selected="true"] p {{
-            color: #2563EB !important;
+            color: {MAIN_BLUE} !important;
             font-weight: 800 !important;
         }}
         
         /* 멀티셀렉트 태그 색상 매칭 */
         span[data-baseweb="tag"] {{
             background-color: #E2E8F0 !important;
-            color: #1E40AF !important;
+            color: {MAIN_BLUE} !important;
             border: 1px solid #CBD5E1 !important;
         }}
         span[data-baseweb="tag"] span {{
-            color: #1E40AF !important;
+            color: {MAIN_BLUE} !important;
         }}
         
-        /* 🏢 사이드바 프리미엄 베이스 래핑 */
+        /* 사이드바 프리미엄 베이스 */
         section[data-testid="stSidebar"] {{
             background-color: #E2E8F0 !important;
             border-right: 1px solid #CBD5E1;
@@ -88,7 +87,7 @@ st.markdown(f"""
         }}
         
         .badge-team-member {{
-            color: #1E40AF !important;
+            color: {MAIN_BLUE} !important;
             font-size: 13px !important;
             font-weight: 800 !important;
             letter-spacing: 0.5px;
@@ -99,13 +98,13 @@ st.markdown(f"""
         /* 구분선 및 섹션 헤더 */
         .premium-divider {{
             height: 2px;
-            background: linear-gradient(to right, #2563EB, rgba(100, 116, 139, 0.1), rgba(0,0,0,0));
+            background: linear-gradient(to right, {MAIN_BLUE}, rgba(100, 116, 139, 0.1), rgba(0,0,0,0));
             margin: 40px 0 25px 0;
             border-radius: 2px; opacity: 0.8;
         }}
         .section-header {{
             display: flex; align-items: center; margin-bottom: 20px;
-            padding-left: 10px; border-left: 5px solid #2563EB;
+            padding-left: 10px; border-left: 5px solid {MAIN_BLUE};
         }}
         .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #0F172A !important; }}
         
@@ -130,8 +129,10 @@ st.markdown(f"""
         }}
         .card-yield {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
         .card-yield:hover {{ box-shadow: 0 14px 30px rgba(22, 163, 74, 0.18), 0 0 0 2px {SUCCESS_GREEN} !important; }}
-        .card-cost {{ border-top: 4px solid #2563EB !important; }}
-        .card-cost:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.18), 0 0 0 2px #2563EB !important; }}
+        
+        .card-cost {{ border-top: 4px solid {MAIN_BLUE} !important; }}
+        .card-cost:hover {{ box-shadow: 0 14px 30px rgba(0, 102, 255, 0.18), 0 0 0 2px {MAIN_BLUE} !important; }}
+        
         .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
         .card-risk:hover {{ box-shadow: 0 14px 30px rgba(220, 38, 38, 0.18), 0 0 0 2px {ALERT_RED} !important; }}
         
@@ -174,7 +175,7 @@ def preprocess_df(df, month_label):
     if df.empty: return pd.DataFrame()
     df = df.copy(); df['월'] = month_label
     df.columns = [str(c).strip() for c in df.columns]
-    rename_map = {'生産部門명': '생산부문명', '生産部門名': '생산부문명', '資재 유형 내역': '자재 유형 내역', '資재 유형내역': '자재 유형 내역', '品목텍스트': '하위품목 텍스트', '품목 텍스트': '하위품목 텍스트', '理論金額': '이론금액', '實際金額': '실제금액'}
+    rename_map = {'生産部門명': '생산부문명', '生産部門名': '생산부문명', '資재 유형 내역': '자재 유형 내역', '資재 유형내역': '자재 유형내역', '品목텍스트': '하위품목 텍스트', '품목 텍스트': '하위품목 텍스트', '理論金額': '이론금액', '實際金額': '실제금액'}
     df.rename(columns=rename_map, inplace=True)
     if '생산부문명' in df.columns:
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
@@ -193,12 +194,12 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 라우터 (로그인 화면 구역)
+# 4. 라우터 (로그인 화면 라이트 버전 매칭)
 # ------------------------------------------------------------------------------
 if not st.session_state['logged_in']:
-    st.markdown("""
+    st.markdown(f"""
         <style>
-            div[data-testid="stForm"] {
+            div[data-testid="stForm"] {{
                 background: #FFFFFF !important;
                 border: 1px solid #E2E8F0 !important;
                 border-radius: 24px !important;
@@ -206,25 +207,24 @@ if not st.session_state['logged_in']:
                 box-shadow: 0 20px 40px rgba(15, 23, 42, 0.06) !important;
                 max-width: 450px;
                 margin: 8vh auto 0 auto;
-            }
-            div[data-testid="stForm"] label p { color: #334155 !important; font-weight: 600; }
-            div[data-testid="stForm"] input {
+            }}
+            div[data-testid="stForm"] label p {{ color: #334155 !important; font-weight: 600; }}
+            div[data-testid="stForm"] input {{
                 background-color: #F8FAFC !important;
                 color: #0F172A !important;
                 border: 1px solid #CBD5E1 !important;
                 border-radius: 10px !important;
-            }
-            div[data-testid="stForm"] button {
-                background-color: #1E40AF !important;
+            }}
+            div[data-testid="stForm"] button {{
+                background-color: {MAIN_BLUE} !important;
                 color: #FFFFFF !important;
                 border-radius: 10px !important;
                 font-weight: 700 !important;
                 margin-top: 25px !important;
-            }
-            div[data-testid="stForm"] button:hover {
-                background-color: #1D4ED8 !important;
-                box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2) !important;
-            }
+            }}
+            div[data-testid="stForm"] button:hover {{
+                box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2) !important;
+            }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -289,15 +289,15 @@ else:
         st.markdown(f"""
             <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
             <h1 style="color: #0F172A; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-                생산1팀 <span style="color:#2563EB;">Smart 수율 모니터링</span> System
+                생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
             </h1>
         """, unsafe_allow_html=True)
     with h_right:
         st.markdown(f"""
             <div style='text-align: right; margin-top: 15px;'>
                 <div style='background: #FFFFFF; color: #1E293B; padding: 8px 18px; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 14px; border: 1px solid #CBD5E1; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);'>
-                    <span style='color: #00D2FF !important; text-shadow: 0 0 8px rgba(0,210,255,0.7); margin-right: 4px;'>●</span> 
-                    <span style='color: #004EA2 !important;'>SYSTEM LIVE</span>
+                    <span style='color: {MAIN_BLUE} !important; text-shadow: 0 0 6px rgba(0,102,255,0.4); margin-right: 4px;'>●</span> 
+                    <span style='color: #1E293B !important;'>SYSTEM LIVE</span>
                 </div>
                 <div style='color: #64748B; font-size: 11px; margin-top: 10px; font-weight: 600;'>Update: {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
             </div>
@@ -331,7 +331,6 @@ else:
                 kpi_color = ALERT_RED
                 kpi_text = "▼ 종합 목표 미달 (집중 분석 필요)"
 
-            # 마우스 오버 시 빛나는 3대 핵심 화이트 네온 KPI 파트
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
                     <div class="mes-kpi-card card-yield">
@@ -345,7 +344,7 @@ else:
                     <div class="mes-kpi-card card-cost">
                         <div class="mes-kpi-label">26년 누적 실제 투입 금액</div>
                         <div class="mes-kpi-value-box">
-                            <span class="mes-kpi-value" style="color: #2563EB;">{cost_billion:,.1f}</span>
+                            <span class="mes-kpi-value" style="color: {MAIN_BLUE};">{cost_billion:,.1f}</span>
                             <span class="mes-kpi-unit">억 원</span>
                         </div>
                         <div class="mes-kpi-status" style="color: #475569;">🏭 부산공장 생산 자재 스케일</div>
@@ -395,7 +394,6 @@ else:
                             
                             current_threshold = YIELD_THRESHOLD[d]
                             
-                            # 🚀 [🔥 버그 완전 해결 포인트] 글자색 투명화 충돌을 방지하는 표준 Pandas Styler 코드로 대개편
                             styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                             
                             def color_yield_cells(row):
@@ -404,14 +402,11 @@ else:
                                     if '수율' in col_name:
                                         val = row[col_name]
                                         if val > 0 and val < current_threshold:
-                                            # 목표 미달: 연빨강 배경 + 선명한 다크레드 글씨색 강제 지정
                                             styles[idx] = 'background-color: #FEE2E2; color: #B91C1C; font-weight: bold;'
                                         elif val > 0:
-                                            # 목표 달성: 연블루 배경 + 선명한 딥블루 글씨색 강제 지정
-                                            styles[idx] = 'background-color: #EFF6FF; color: #1E40AF; font-weight: bold;'
+                                            styles[idx] = f'background-color: #EFF6FF; color: {MAIN_BLUE}; font-weight: bold;'
                                 return styles
 
-                            # 행 단위 스타일 함수 적용 연동
                             styled_df = styled_df.apply(color_yield_cells, axis=1)
                             st.dataframe(styled_df, use_container_width=True)
                         else: st.caption("데이터 없음")
@@ -478,7 +473,7 @@ else:
                 if not f_df.empty:
                     ds = f_df.groupby(['연도', '생산부문명'])[['이론금액', '실제금액']].sum().reset_index()
                     ds['수율'] = (ds['이론금액'] / ds['실제금액'] * 100).round(2)
-                    fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': '#2563EB'})
+                    fig1 = px.bar(ds, x='생산부문명', y='수율', color='연도', barmode='group', text='수율', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE})
                     
                     fig1.update_traces(
                         texttemplate='%{text:.2f}%', textposition='outside', 
@@ -506,7 +501,7 @@ else:
                         if row['연도'] == '26년 누적' and row['억'] >= 4.0 and row['수율'] <= 98.0: return '🚨 집중 관리 대상'
                         return row['연도']
                     isc['분류'] = isc.apply(amc, axis=1)
-                    fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': '#2563EB', '🚨 집중 관리 대상': ALERT_RED})
+                    fig3 = px.scatter(isc, x='억', y='수율', color='분류', hover_name='하위품목 텍스트', color_discrete_map={'25년 누적': COMP_GRAY, '26년 누적': MAIN_BLUE, '🚨 집중 관리 대상': ALERT_RED})
                     
                     fig3.update_traces(
                         marker=dict(size=14, line=dict(width=1.5, color='#FFFFFF')),
