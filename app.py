@@ -48,18 +48,55 @@ st.markdown(f"""
             display: flex; align-items: center; margin-bottom: 20px;
             padding-left: 10px; border-left: 5px solid {MAIN_BLUE};
         }}
-        /* 야간 모드에 잘 보이도록 메인 텍스트 색상을 화이트 계열로 조정 */
         .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #F1F5F9 !important; }}
-        .mes-kpi-wrapper {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 5px; }}
-        .mes-kpi-card {{ 
-            background-color: rgba(255, 255, 255, 0.05); color: #F1F5F9; border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px; padding: 18px 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); backdrop-filter: blur(8px);
+        
+        /* 🚀 [1번 수정 포인트] 3열 KPI 카드 컨테이너 배치 */
+        .mes-kpi-wrapper {{ 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 24px; 
+            margin-bottom: 15px; 
         }}
-        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #94A3B8; margin-bottom: 6px; }}
-        .mes-kpi-value-box {{ display: flex; align-items: baseline; }}
-        .mes-kpi-value {{ font-size: 32px; font-weight: 800; line-height: 1.1; }}
-        .mes-kpi-unit {{ font-size: 15px; font-weight: 600; color: #94A3B8; margin-left: 5px; }}
-        .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 8px; }}
+        
+        /* 🔥 미래형 프리미엄 글래스모피즘 KPI 카드 기본 스타일 */
+        .mes-kpi-card {{ 
+            background: rgba(30, 41, 59, 0.45) !important;
+            color: #F1F5F9; 
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 16px !important; 
+            padding: 24px 28px !important; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important; 
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important; /* 부드러운 애니메이션 효과 */
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        /* ✨ 마우스를 올렸을 때(Hover) 동적 반응 효과 및 네온 그림자 */
+        .mes-kpi-card:hover {{
+            transform: translateY(-6px) !important; /* 살짝 위로 떠오름 */
+            background: rgba(30, 41, 59, 0.65) !important;
+            border-color: rgba(255, 255, 255, 0.18) !important;
+        }}
+        
+        /* 각 카드별 상단 네온 하이라이팅 라인 및 호버 시 빛나는 광채 효과 */
+        .card-yield {{ border-top: 4px solid {SUCCESS_GREEN} !important; }}
+        .card-yield:hover {{ box-shadow: 0 15px 35px rgba(16, 185, 129, 0.25) !important; }}
+        
+        .card-cost {{ border-top: 4px solid {MAIN_BLUE} !important; }}
+        .card-cost:hover {{ box-shadow: 0 15px 35px rgba(59, 130, 246, 0.25) !important; }}
+        
+        .card-risk {{ border-top: 4px solid {ALERT_RED} !important; }}
+        .card-risk:hover {{ box-shadow: 0 15px 35px rgba(239, 68, 68, 0.25) !important; }}
+        
+        /* KPI 내부 폰트 정밀 정렬 */
+        .mes-kpi-label {{ font-size: 14px; font-weight: 700; color: #94A3B8; margin-bottom: 8px; letter-spacing: 0.5px; }}
+        .mes-kpi-value-box {{ display: flex; align-items: baseline; margin-top: 2px; }}
+        .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
+        .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #94A3B8; margin-left: 6px; }}
+        .mes-kpi-status {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
+        
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
     </style>
 """, unsafe_allow_html=True)
@@ -112,12 +149,11 @@ def load_single_month_cached(sheet_id, m):
     except: return pd.DataFrame()
 
 # ------------------------------------------------------------------------------
-# 4. 라우터 (눈 모양 완벽 격파 + 일체형 유리 패널)
+# 4. 라우터 (로그인 화면 구역)
 # ------------------------------------------------------------------------------
 if not st.session_state['logged_in']:
     st.markdown("""
         <style>
-            /* 1. 입력창과 버튼을 포함한 '전체 Form'을 유리 카드로 만들기 */
             div[data-testid="stForm"] {
                 background: rgba(255, 255, 255, 0.06) !important;
                 backdrop-filter: blur(20px) !important;
@@ -129,15 +165,11 @@ if not st.session_state['logged_in']:
                 max-width: 450px;
                 margin: 8vh auto 0 auto;
             }
-            
-            /* 2. 어두운 배경에서 입력창 라벨(Username, Password) 글자색 최적화 */
             div[data-testid="stForm"] label p {
                 color: #E2E8F0 !important;
                 font-weight: 600 !important;
                 font-size: 14px !important;
             }
-            
-            /* 3. 입력창 자체의 내부 스타일 정의 */
             div[data-testid="stForm"] input {
                 background-color: rgba(15, 23, 42, 0.6) !important;
                 color: #FFFFFF !important;
@@ -145,8 +177,6 @@ if not st.session_state['logged_in']:
                 border-radius: 10px !important;
                 padding: 10px 14px !important;
             }
-            
-            /* 4. 메인 로그인 버튼 기본 스타일 (일렉트릭 블루) */
             div[data-testid="stForm"] button {
                 background-color: #3B82F6 !important;
                 color: #FFFFFF !important;
@@ -158,8 +188,6 @@ if not st.session_state['logged_in']:
                 margin-top: 25px !important;
                 transition: all 0.3s ease !important;
             }
-            
-            /* 메인 로그인 버튼 마우스 올렸을 때 (네온 효과) */
             div[data-testid="stForm"] button:hover {
                 background-color: #1D4ED8 !important;
                 color: #FFFFFF !important;
@@ -168,42 +196,28 @@ if not st.session_state['logged_in']:
         </style>
     """, unsafe_allow_html=True)
 
-    # 🏢 레이아웃 중앙 정렬 배치
     _, login_container, _ = st.columns([1, 1.5, 1])
-    
     with login_container:
         with st.form("login_form"):
-            # 카드 내부 일체형 타이틀 디자인
             st.markdown("""
                 <div style="text-align: center; margin-bottom: 30px;">
                     <div style="color: #FFFFFF; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">🔐 SYSTEM ACCESS</div>
                     <div style="color: #94A3B8; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; margin-top: 4px; text-transform: uppercase;">Busan Plant Production Team 1</div>
                 </div>
             """, unsafe_allow_html=True)
-            
-            # 입력 컴포넌트 
-            # 💡 [핵심 해결] type="password" 대신 수동 마스킹이나 일반 컴포넌트를 사용하고 CSS로 눈 모양을 날려버리는 대신,
-            # Streamlit 내부 렌더링 우회를 위해 일반 text_input으로 받고 브라우저 자체 속성을 활용하는 꼼수 대신 완전히 깔끔한 구조로 재작성
             st.text_input("Username", key="username", placeholder="ID를 입력하세요")
-            
-            # 아래 속성이 핵심입니다. 눈 모양 버그를 만드는 원흉인 Streamlit 자체 내장 비밀번호 필드를 쓰지 않고, 
-            # 일반 text_input에 HTML 렌더링 스타일을 추가하거나 폰트를 마스킹 폰트로 변환시켜 눈 모양을 원천 차단합니다.
             st.text_input("Password", key="password", placeholder="PW를 입력하세요", type="default")
-            
-            # 텍스트 입력창 글자를 동그라미로 숨겨주는 비밀번호 보안 CSS 추가 주입
             st.markdown("""
                 <style>
-                    /* 두 번째 입력창(Password)의 글자를 패스워드 형태로 강제 마스킹 */
                     div[data-testid="stForm"] div[data-testid="stInputWidget"]:nth-of-type(2) input {
-                        -webkit-text-security: disk !important; /* 글자를 디스크(●) 모양으로 강제 마스킹 */
+                        -webkit-text-security: disk !important;
                     }
                 </style>
             """, unsafe_allow_html=True)
-            
             st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
 else:
     # --------------------------------------------------------------------------
-    # 5. 메인 대시보드 구역 (기존과 완벽히 동일)
+    # 5. 메인 대시보드 구역
     # --------------------------------------------------------------------------
     with st.sidebar:
         if st.session_state['is_admin']:
@@ -265,25 +279,40 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-            kpi_color = SUCCESS_GREEN if total_26_yd >= YIELD_THRESHOLD['전체 총합'] else ALERT_RED
-            kpi_text = "▲ 목표 달성" if total_26_yd >= YIELD_THRESHOLD['전체 총합'] else "▼ 목표 미달"
+            # 목표 달성 여부에 따른 동적 텍스트 및 하이라이트 트리거 설정
+            if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
+                kpi_color = SUCCESS_GREEN
+                kpi_text = "▲ 종합 목표 달성 완료"
+            else:
+                kpi_color = ALERT_RED
+                kpi_text = "▼ 종합 목표 미달 (집중 분석 필요)"
 
+            # 🔥 [1번 수정 포인트 적용] 네온 호버 효과가 적용된 새로운 HTML 구조 렌더링
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
-                    <div class="mes-kpi-card" style="border-top: 4px solid {kpi_color};">
-                        <div class="mes-kpi-label">종합 수율</div>
-                        <div class="mes-kpi-value-box"><span class="mes-kpi-value">{total_26_yd:.2f}</span><span class="mes-kpi-unit">%</span></div>
+                    <div class="mes-kpi-card card-yield">
+                        <div class="mes-kpi-label">26년 종합 수율 실적</div>
+                        <div class="mes-kpi-value-box">
+                            <span class="mes-kpi-value" style="color: {kpi_color};">{total_26_yd:.2f}</span>
+                            <span class="mes-kpi-unit">%</span>
+                        </div>
                         <div class="mes-kpi-status" style="color: {kpi_color};">{kpi_text}</div>
                     </div>
-                    <div class="mes-kpi-card" style="border-top: 4px solid {MAIN_BLUE};">
-                        <div class="mes-kpi-label">누적 실제 투입 금액</div>
-                        <div class="mes-kpi-value-box"><span class="mes-kpi-value">{cost_billion:,.1f}</span><span class="mes-kpi-unit">억 원</span></div>
-                        <div class="mes-kpi-status" style="color: #94A3B8;">생산 운영 스케일</div>
+                    <div class="mes-kpi-card card-cost">
+                        <div class="mes-kpi-label">26년 누적 실제 투입 금액</div>
+                        <div class="mes-kpi-value-box">
+                            <span class="mes-kpi-value" style="color: {MAIN_BLUE};">{cost_billion:,.1f}</span>
+                            <span class="mes-kpi-unit">억 원</span>
+                        </div>
+                        <div class="mes-kpi-status" style="color: #94A3B8;">🏭 부산공장 생산 자재 스케일</div>
                     </div>
-                    <div class="mes-kpi-card" style="border-top: 4px solid {ALERT_RED};">
-                        <div class="mes-kpi-label">고위험 자재 건수</div>
-                        <div class="mes-kpi-value-box"><span class="mes-kpi-value" style="color: {ALERT_RED};">{risk_cnt:02d}</span><span class="mes-kpi-unit">건</span></div>
-                        <div class="mes-kpi-status" style="color: {ALERT_RED};">⚠️ 즉시 집중 점검 필요</div>
+                    <div class="mes-kpi-card card-risk">
+                        <div class="mes-kpi-label">집중 관리 고위험 자재 수</div>
+                        <div class="mes-kpi-value-box">
+                            <span class="mes-kpi-value" style="color: {ALERT_RED};">{risk_cnt:02d}</span>
+                            <span class="mes-kpi-unit">건</span>
+                        </div>
+                        <div class="mes-kpi-status" style="color: {ALERT_RED};">⚠️ 즉시 공정 분석 대기 중</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
