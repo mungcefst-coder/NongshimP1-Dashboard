@@ -98,7 +98,7 @@ def preprocess_df(df, month_label):
     if '생산부문명' in df.columns:
         dept_map = {'1팀 면1과': '면 1과', '1팀 면5과': '면 5과', '1팀 스프': '스프실', '면 1과': '면 1과', '면 5과': '면 5과', '스프실': '스프실'}
         df = df[df['생산부문명'].isin(dept_map.keys())].copy()
-        df['생산부문명'] = df['생산부num명'].map(dept_map) if '생산부num명' in df.columns else df['생산부문명'].map(dept_map)
+        df['생산부문명'] = df['생산부문명'].map(dept_map)
     for col in ['이론금액', '실제금액']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
@@ -111,43 +111,118 @@ def load_single_month_cached(sheet_id, m):
         return preprocess_df(pd.read_csv(url), m)
     except: return pd.DataFrame()
 
-/* 🔍 [정밀 타격] 비밀번호 눈 모양 영역 완전 투명화 및 스타일 조율 */
+# ------------------------------------------------------------------------------
+# 4. 라우터 (정밀 튜닝된 일체형 유리 질감 로그인 UI)
+# ------------------------------------------------------------------------------
+if not st.session_state['logged_in']:
+    # 🎨 일체형 유리 패널 및 눈 모양 아이콘 버그 완벽 수정 CSS
+    st.markdown("""
+        <style>
+            /* 1. 입력창과 버튼을 포함한 '전체 Form'을 유리 카드로 만들기 */
+            div[data-testid="stForm"] {
+                background: rgba(255, 255, 255, 0.06) !important;
+                backdrop-filter: blur(20px) !important;
+                -webkit-backdrop-filter: blur(20px) !important;
+                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                border-radius: 24px !important;
+                padding: 45px 40px !important;
+                box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4) !important;
+                max-width: 450px;
+                margin: 8vh auto 0 auto;
+            }
             
-            /* 1. 눈 모양을 감싸고 있는 우측 내부 컨테이너 배경 지우기 */
-            div[data-testid="stForm"] div[data-relative-input="true"] div {
+            /* 2. 어두운 배경에서 입력창 라벨(Username, Password) 글자색 최적화 */
+            div[data-testid="stForm"] label p {
+                color: #E2E8F0 !important;
+                font-weight: 600 !important;
+                font-size: 14px !important;
+            }
+            
+            /* 3. 입력창 자체의 내부 스타일 정의 */
+            div[data-testid="stForm"] input {
+                background-color: rgba(15, 23, 42, 0.6) !important;
+                color: #FFFFFF !important;
+                border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                border-radius: 10px !important;
+            }
+            
+            /* 4. [정밀 해결] 비밀번호 입력창 우측 눈모양 컨테이너 구역 강제 투명화 */
+            div[data-testid="stForm"] div[data-relative-input="true"] div,
+            div[data-testid="stForm"] div[data-relative-input="true"] div:has(button) {
                 background-color: transparent !important;
                 border: none !important;
+                background: transparent !important;
             }
 
-            /* 2. 눈 모양 버튼 자체의 배경 제거 및 기본 색상을 은은한 회색으로 */
+            /* 5. 눈 모양 버튼 배경 제거 및 회색 매칭 */
             div[data-testid="stForm"] button[aria-label="Show password"],
             div[data-testid="stForm"] button[aria-label="Hide password"] {
                 background-color: transparent !important;
+                background: transparent !important;
                 color: #94A3B8 !important;
                 border: none !important;
                 box-shadow: none !important;
                 margin-right: 5px !important;
             }
             
-            /* 3. 마우스를 올렸을 때만 선명한 화이트로 반응 */
+            /* 눈 모양 버튼 마우스 오버 효과 */
             div[data-testid="stForm"] button[aria-label="Show password"]:hover,
             div[data-testid="stForm"] button[aria-label="Hide password"]:hover {
                 color: #FFFFFF !important;
                 background-color: rgba(255, 255, 255, 0.1) !important;
-                border-radius: 50% !important; /* 동그랗게 피드백 효과 */
+                border-radius: 50% !important;
             }
 
-            /* 4. Streamlit 내부에 강제로 심어진 파란색 피드백 아이콘 색상 강제 제어 */
+            /* 6. 눈 모양 SVG 그래픽 색상 자체를 강제 통제 (기본 파란색 차단) */
             div[data-testid="stForm"] button[aria-label="Show password"] svg,
             div[data-testid="stForm"] button[aria-label="Hide password"] svg {
-                fill: #94A3B8 !important; /* 아이콘 선 색상을 은은한 회색으로 */
+                fill: #94A3B8 !important;
                 transition: fill 0.2s ease !important;
             }
-
             div[data-testid="stForm"] button[aria-label="Show password"]:hover svg,
             div[data-testid="stForm"] button[aria-label="Hide password"]:hover svg {
-                fill: #FFFFFF !important; /* 마우스 올리면 아이콘 선도 화이트로 */
+                fill: #FFFFFF !important;
             }
+            
+            /* 7. 메인 로그인 버튼 기본 상태 (일렉트릭 블루) */
+            div[data-testid="stForm"] button:not([aria-label="Show password"]):not([aria-label="Hide password"]) {
+                background-color: #3B82F6 !important;
+                color: #FFFFFF !important;
+                border: none !important;
+                border-radius: 10px !important;
+                padding: 10px 0 !important;
+                font-weight: 700 !important;
+                font-size: 16px !important;
+                margin-top: 15px !important;
+                transition: all 0.3s ease !important;
+            }
+            
+            /* 메인 로그인 버튼 마우스 올렸을 때 (네온 효과) */
+            div[data-testid="stForm"] button:not([aria-label="Show password"]):not([aria-label="Hide password"]):hover {
+                background-color: #1D4ED8 !important;
+                color: #FFFFFF !important;
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.6) !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 🏢 레이아웃 중앙 정렬 배치
+    _, login_container, _ = st.columns([1, 1.5, 1])
+    
+    with login_container:
+        with st.form("login_form"):
+            # 카드 내부 일체형 타이틀 디자인
+            st.markdown("""
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="color: #FFFFFF; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">🔐 SYSTEM ACCESS</div>
+                    <div style="color: #94A3B8; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; margin-top: 4px; text-transform: uppercase;">Busan Plant Production Team 1</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # 입력 컴포넌트
+            st.text_input("Username", key="username", placeholder="ID를 입력하세요")
+            st.text_input("Password", type="password", key="password", placeholder="PW를 입력하세요")
+            st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
 else:
     # --------------------------------------------------------------------------
     # 5. 메인 대시보드 구역 (로그인 완료 시 구동)
