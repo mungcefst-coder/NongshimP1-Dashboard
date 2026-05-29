@@ -33,7 +33,7 @@ CARD_BG = "#FFFFFF"
 
 st.set_page_config(layout="wide", page_title="생산1팀 Smart 수율 모니터링 System")
 
-# 🚀 [사이드바 및 글자 크기 동기화 튜닝]
+# 🚀 스타일 튜닝
 st.markdown(f"""
     <style>
         /* 🎨 전체 배경 */
@@ -46,9 +46,9 @@ st.markdown(f"""
             color: #1E293B !important;
         }}
         
-        /* 🗂️ 테이블 내부 텍스트 선명화 */
+        /* 🗂️ 테이블 내부 텍스트 선명화 (강제 투명화 버그 원천 방지) */
         [data-testid="stTable"] {{ color: #1E293B !important; }}
-        [data-testid="stDataFrameDataCell"] {{ color: #1E293B !important; font-size: 14px !important; }}
+        [data-testid="stDataFrameDataCell"] {{ font-size: 14px !important; }}
         
         /* 탭(Tab) 스타일 정의 */
         button[data-baseweb="tab"] p {{
@@ -78,7 +78,6 @@ st.markdown(f"""
         }}
         section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {{ color: #0F172A !important; }}
         
-        /* 🎯 [3번 수정 포인트] 사이드바 내 모든 일반 텍스트 및 제목 라벨 폰트 크기 동기화 (14px 표준화) */
         section[data-testid="stSidebar"] p, 
         section[data-testid="stSidebar"] label p, 
         .sidebar-sync-title {{ 
@@ -88,7 +87,6 @@ st.markdown(f"""
             margin-bottom: 0px !important;
         }}
         
-        /* 🛠️ [4번 수정 포인트] TEAM MEMBER 파란 음영 제거 및 시인성 높은 다크 본문 텍스트 형태로 전환 */
         .badge-team-member {{
             color: #1E40AF !important;
             font-size: 13px !important;
@@ -251,10 +249,9 @@ if not st.session_state['logged_in']:
             st.form_submit_button("보안 시스템 로그인", on_click=login, use_container_width=True)
 else:
     # --------------------------------------------------------------------------
-    # 5. 메인 대시보드 구역 (요청 사항에 맞춰 사이드바 전면 재배치)
+    # 5. 메인 대시보드 구역
     # --------------------------------------------------------------------------
     with st.sidebar:
-        # 📌 [1번 & 4번 수정 포인트] 배지 음영 제거 및 로그아웃 버튼을 사이드바 최상단으로 이주
         if st.session_state['is_admin']:
             st.markdown("<span style='background-color:#DC2626; color:white; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;'>MASTER ADMIN</span>", unsafe_allow_html=True)
         else:
@@ -265,19 +262,16 @@ else:
         
         st.markdown("---")
         
-        # 📌 [2번 & 3번 수정 포인트] 타이틀 이름 변경 및 아래 중복 라벨 삭제, 폰트 크기 일치화 완료
         st.markdown('<div class="sidebar-sync-title">🗓️ 대상 연월 선택</div>', unsafe_allow_html=True)
         selected_months = st.multiselect(
-            "label_hidden_via_empty", # 기존의 투박한 개별 라벨 문구를 지우고 공백 렌더링으로 우회 처리
+            "label_hidden_via_empty", 
             options=ALL_MONTHS, 
             default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"],
             label_visibility="collapsed"
         )
         
-        # 하부 필터 인풋 컴포넌트 (상단 타이틀과 글자 크기가 14px로 균형을 이룸)
         search_keyword = st.text_input("🔍 품목 실시간 검색 필터", placeholder="검색할 품목명을 입력하세요...")
         
-        # 관리자 전용 데이터 제어 섹션
         if st.session_state['is_admin']:
             st.markdown("---")
             st.markdown("### 🎯 관리자 목표 제어")
@@ -289,7 +283,7 @@ else:
             YIELD_THRESHOLD = {'면 1과': adm_m1, '면 5과': adm_m5, '스프실': adm_sp, '면 종합': adm_mtot, '전체 총합': adm_tot}
             st.markdown(f"[📂 구글 시트 원본](https://docs.google.com/spreadsheets/d/{SHEET_ID})")
 
-    # 메인 본문 타이틀 영역
+    # 헤더 타이틀 부문
     h_left, h_right = st.columns([4.5, 1])
     with h_left:
         st.markdown(f"""
@@ -334,6 +328,7 @@ else:
                 kpi_color = ALERT_RED
                 kpi_text = "▼ 종합 목표 미달 (집중 분석 필요)"
 
+            # 마우스 오버 시 빛나는 3대 핵심 화이트 네온 KPI 파트
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
                     <div class="mes-kpi-card card-yield">
@@ -396,18 +391,25 @@ else:
                             pivot = pivot.reindex(['원자재', '부자재', '반제품', '원부자재 수율', '전체 수율'])
                             
                             current_threshold = YIELD_THRESHOLD[d]
-                            yield_cols = [c for c in pivot.columns if '수율' in c]
+                            
+                            # 🚀 [🔥 버그 완전 해결 포인트] 글자색 투명화 충돌을 방지하는 표준 Pandas Styler 코드로 대개편
                             styled_df = pivot.style.format({c: '{:,.2f}%' if '수율' in c else '{:,.0f}' for c in pivot.columns})
                             
-                            def style_yield_cells(val):
-                                try:
-                                    v = float(val)
-                                    if v > 0 and v < current_threshold:
-                                        return f'color: {ALERT_RED} !important; background-color: #FEE2E2; font-weight: 800;'
-                                    else: return f'color: #1E40AF !important; background-color: #EFF6FF;'
-                                except: return 'color: #1E293B !important; background-color: #F1F5F9;'
-                                
-                            styled_df = styled_df.map(style_yield_cells, subset=yield_cols)
+                            def color_yield_cells(row):
+                                styles = [''] * len(row)
+                                for idx, col_name in enumerate(row.index):
+                                    if '수율' in col_name:
+                                        val = row[col_name]
+                                        if val > 0 and val < current_threshold:
+                                            # 목표 미달: 연빨강 배경 + 선명한 다크레드 글씨색 강제 지정
+                                            styles[idx] = 'background-color: #FEE2E2; color: #B91C1C; font-weight: bold;'
+                                        elif val > 0:
+                                            # 목표 달성: 연블루 배경 + 선명한 딥블루 글씨색 강제 지정
+                                            styles[idx] = 'background-color: #EFF6FF; color: #1E40AF; font-weight: bold;'
+                                return styles
+
+                            # 행 단위 스타일 함수 적용 연동
+                            styled_df = styled_df.apply(color_yield_cells, axis=1)
                             st.dataframe(styled_df, use_container_width=True)
                         else: st.caption("데이터 없음")
                         
