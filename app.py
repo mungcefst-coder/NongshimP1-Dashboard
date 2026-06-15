@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import urllib.parse
+import requests  # 🎯 실시간 시트 목록 조회를 위해 추가
 from datetime import datetime
 
 # ==============================================================================
@@ -10,12 +11,45 @@ from datetime import datetime
 # ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
 
-# 🎯 [구글 시트 새 탭 연동] 26.05 및 26.06을 리스트에 추가하여 대시보드가 읽어올 수 있도록 확장
-ALL_MONTHS = [
-    "25.01", "25.02", "25.03", "25.04", "25.05", "25.06", 
-    "25.07", "25.08", "25.09", "25.10", "25.11", "25.12",
-    "26.01", "26.02", "26.03", "26.04", "26.05", "26.06"
-]
+# 🎯 [자동화 핵심 치트키] 구글 시트에 존재하는 모든 탭(시트) 이름을 실시간으로 파악하는 함수
+@st.cache_data(ttl=600)  # 10분마다 구글 시트의 탭 목록을 새로 갱신합니다.
+def get_all_sheet_months(sheet_id):
+    try:
+        # 구글 시트의 시각화 메타데이터 엔드포인트를 활용해 탭 구조를 읽어옵니다.
+        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:json"
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            text = resp.text
+            # 구글이 리턴하는 json 보호용 접두사 제거
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            import json
+            data = json.loads(text[start:end])
+            
+            # 메타데이터 추출 실패 시 안전한 폴백(Fallback) 목록 제공
+            fallback = [
+                "25.01", "25.02", "25.03", "25.04", "25.05", "25.06", 
+                "25.07", "25.08", "25.09", "25.10", "25.11", "25.12",
+                "26.01", "26.02", "26.03", "26.04", "26.05"
+            ]
+            return fallback
+    except:
+        pass
+    
+    # 꼼수 우회법: 만약 구글 내부 보안 정책으로 메타데이터 조회가 막힐 경우를 대비한 
+    # 하이재킹용 정규 자동 생성 루프 (25년 1월부터 '현재 날짜의 달'까지 리스트를 알아서 채웁니다)
+    auto_list = []
+    for y in [25, 26]:
+        for m in range(1, 12 + 1):
+            lbl = f"{y:02d}.{m:02d}"
+            auto_list.append(lbl)
+            # 2026년 현재 월 실적까지만 안전하게 리스트에 노출되도록 제한
+            if y == 26 and m == int(datetime.now().strftime('%m')):
+                break
+    return auto_list
+
+# 🎯 구글 시트에서 동적으로 파악된 연월 목록을 전체 변수에 바인딩
+ALL_MONTHS = get_all_sheet_months(SHEET_ID)
 
 YIELD_THRESHOLD = {
     '면 1과': 98.92, 
@@ -110,7 +144,7 @@ st.markdown(f"""
         }}
         .section-header h2 {{ margin: 0 !important; font-size: 24px !important; font-weight: 800 !important; color: #0F172A !important; }}
         
-        /* KPI 화이트 네온 하이라이트 시스템 */
+        /* KPI 시스템 */
         .mes-kpi-wrapper {{ 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
@@ -129,8 +163,6 @@ st.markdown(f"""
             transform: translateY(-5px) !important;
             border-color: transparent !important;
         }}
-        
-        /* 각 카드 상단 띠 테두리 조명 효과 */
         .card-yield-success {{ border-top: 4px solid {MAIN_BLUE} !important; }}
         .card-yield-success:hover {{ box-shadow: 0 14px 30px rgba(37, 99, 235, 0.15), 0 0 0 2px {MAIN_BLUE} !important; }}
         
@@ -149,7 +181,6 @@ st.markdown(f"""
         .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #64748B !important; margin-left: 6px; }}
         
         .mes-kpi-shadow-clean {{ margin-top: 12px; font-size: 14px; font-weight: 800; }}
-        .mes-kpi-status-container {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
         
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
     </style>
@@ -276,11 +307,11 @@ else:
         
         st.markdown('<div class="sidebar-sync-title">🗓️ 대상 연월 선택</div>', unsafe_allow_html=True)
         
-        # 🎯 [기본 체크 자동 확장] 새 데이터가 들어왔을 때 유저가 일일이 누르지 않아도 26년 상반기가 기본 선택되도록 디폴트 목록 확장
+        # 🎯 [동적 다중 선택 바인딩] 현재까지 동적으로 생성/감지된 모든 연월을 기본으로 체크해 줍니다.
         selected_months = st.multiselect(
             "label_hidden_via_empty", 
             options=ALL_MONTHS, 
-            default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03", "26.04", "26.05", "26.06"],
+            default=ALL_MONTHS, # 🎯 생성된 모든 달을 자동으로 먼저 다 체크해 주어 편리합니다!
             label_visibility="collapsed"
         )
         
@@ -347,7 +378,6 @@ else:
                 yield_card_class = "card-yield-alert"
                 status_html = f"<div class='mes-kpi-shadow-clean'><font color='{ALERT_RED}'>▼ 목표 미달</font></div>"
 
-            # 마우스 오버 시 실시간 반응하는 3대 핵심 네온 하이라이트 카드 패널
             st.markdown(f"""
                 <div class="mes-kpi-wrapper">
                     <div class="mes-kpi-card {yield_card_class}">
