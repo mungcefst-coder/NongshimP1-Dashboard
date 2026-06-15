@@ -9,10 +9,12 @@ from datetime import datetime
 # 1. 전역 데이터 소스 및 설정
 # ==============================================================================
 SHEET_ID = "1hwWOk7qlsL654ZUtgfWQ10Cj81ITbcFLnkB_Gtl-bV4"
+
+# 🎯 [구글 시트 새 탭 연동] 26.05 및 26.06을 리스트에 추가하여 대시보드가 읽어올 수 있도록 확장
 ALL_MONTHS = [
     "25.01", "25.02", "25.03", "25.04", "25.05", "25.06", 
     "25.07", "25.08", "25.09", "25.10", "25.11", "25.12",
-    "26.01", "26.02", "26.03", "26.04"
+    "26.01", "26.02", "26.03", "26.04", "26.05", "26.06"
 ]
 
 YIELD_THRESHOLD = {
@@ -40,7 +42,7 @@ st.markdown(f"""
             background-color: {LIGHT_BG} !important;
         }}
         
-        /* 🖤 기본 글자색 범위 가이드 유지 */
+        /* 🖤 기본 글자색 범위 최적화 */
         .stApp, .stApp p, .stApp label, .stApp h1, .stApp h3, .stApp h4 {{
             color: #1E293B !important;
         }}
@@ -146,6 +148,9 @@ st.markdown(f"""
         .mes-kpi-value {{ font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }}
         .mes-kpi-unit {{ font-size: 16px; font-weight: 600; color: #64748B !important; margin-left: 6px; }}
         
+        .mes-kpi-shadow-clean {{ margin-top: 12px; font-size: 14px; font-weight: 800; }}
+        .mes-kpi-status-container {{ font-size: 13px; font-weight: 700; margin-top: 12px; display: flex; align-items: center; gap: 4px; }}
+        
         div[data-testid="stRadio"] {{ margin-top: -55px !important; padding-top: 0 !important; }}
     </style>
 """, unsafe_allow_html=True)
@@ -219,7 +224,6 @@ if not st.session_state['logged_in']:
                 border: 1px solid #CBD5E1 !important;
                 border-radius: 10px !important;
             }}
-            /* 🎯 [최종 조율] 로그인 버튼 파란색 배경 위 글자색 흰색(#FFFFFF) 고정 잠금 및 텍스트 섀도우 소거 */
             div[data-testid="stForm"] button {{
                 background-color: {MAIN_BLUE} !important;
                 color: #FFFFFF !important;
@@ -254,7 +258,6 @@ if not st.session_state['logged_in']:
                     }
                 </style>
             """, unsafe_allow_html=True)
-            # 🎯 문구 명칭 변경 적용: "보안 시스템 로그인" -> "시스템 로그인"
             st.form_submit_button("시스템 로그인", on_click=login, use_container_width=True)
 else:
     # --------------------------------------------------------------------------
@@ -272,10 +275,12 @@ else:
         st.markdown("---")
         
         st.markdown('<div class="sidebar-sync-title">🗓️ 대상 연월 선택</div>', unsafe_allow_html=True)
+        
+        # 🎯 [기본 체크 자동 확장] 새 데이터가 들어왔을 때 유저가 일일이 누르지 않아도 26년 상반기가 기본 선택되도록 디폴트 목록 확장
         selected_months = st.multiselect(
             "label_hidden_via_empty", 
             options=ALL_MONTHS, 
-            default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03"],
+            default=["25.01", "25.02", "25.03", "26.01", "26.02", "26.03", "26.04", "26.05", "26.06"],
             label_visibility="collapsed"
         )
         
@@ -298,7 +303,7 @@ else:
         st.markdown(f"""
             <div style="color: {MAIN_BLUE}; font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">MES INTEGRATED OPERATIONAL MONITORING</div>
             <h1 style="color: #0F172A; font-size: 42px; font-weight: 800; margin: 0; padding: 0; line-height: 1.1;">
-                생산1팀 <span style="color:{MAIN_BLUE};">Smart 수율 모니터링</span> System
+                생산1팀 <span style="color:#2563EB;">Smart 수율 모니터링</span> System
             </h1>
         """, unsafe_allow_html=True)
     with h_right:
@@ -333,15 +338,14 @@ else:
                 risk_cnt = len(agg_items[(agg_items['실제금액'] >= 400000000) & (agg_items['수율'] <= 98.0)])
             else: total_26_yd, cost_billion, risk_cnt = 0, 0, 0
 
-            # 폰트 색상을 클래스가 아닌 독립된 스타일 코드로 완전 격리 바인딩
             if total_26_yd >= YIELD_THRESHOLD['전체 총합']:
                 kpi_color = MAIN_BLUE
                 yield_card_class = "card-yield-success"
-                status_html = f"<div style='margin-top: 12px; font-size: 14px; font-weight: 800;'><span style='color: {MAIN_BLUE} !important;'><font color='{MAIN_BLUE}'>▲ 목표 달성</font></span></div>"
+                status_html = f"<div class='mes-kpi-shadow-clean'><font color='{MAIN_BLUE}'>▲ 목표 달성</font></div>"
             else:
                 kpi_color = ALERT_RED
                 yield_card_class = "card-yield-alert"
-                status_html = f"<div style='margin-top: 12px; font-size: 14px; font-weight: 800;'><span style='color: {ALERT_RED} !important;'><font color='{ALERT_RED}'>▼ 목표 미달</font></span></div>"
+                status_html = f"<div class='mes-kpi-shadow-clean'><font color='{ALERT_RED}'>▼ 목표 미달</font></div>"
 
             # 마우스 오버 시 실시간 반응하는 3대 핵심 네온 하이라이트 카드 패널
             st.markdown(f"""
